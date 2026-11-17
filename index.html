@@ -1173,7 +1173,7 @@ async function getMedia(w, video) {
   catch (e) { sysLine(w, 'Could not start the call. Please allow your microphone' + (video ? ' and camera' : '') + ' in the browser.'); return false; }
 }
 function makePC(w) {
-  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); RTC.pc = pc;
+  const pc = new RTCPeerConnection({ iceServers: iceList() }); RTC.pc = pc;
   RTC.stream.getTracks().forEach(t => pc.addTrack(t, RTC.stream));
   pc.onicecandidate = e => { if (e.candidate) sendSig(w.id, { t: 'c-ice', c: e.candidate.toJSON() }); };
   pc.ontrack = e => { const box = callUI(w, 'Connected with ' + pname(w.id), [['Hang up', () => endCall(w, true)]]); if (box) { const v = box.querySelector('.rv'); v.srcObject = e.streams[0]; v.play().catch(() => {}); if (!RTC.video) { const a = el('audio', { autoplay: 'autoplay' }); a.srcObject = e.streams[0]; box.append(a); } } };
@@ -1348,7 +1348,7 @@ function mediaNode(m, done) {
     if (m.kind === 'image') { const img = el('img', { src: u, alt: 'Picture', loading: 'lazy' }); img.onload = done; img.onclick = () => lightbox(u); box.append(img); }
     else if (m.kind === 'audio') { box.append(el('audio', { src: u, controls: 'controls', preload: 'metadata' })); if (done) done(); }
     else { const v = el('video', { src: u, controls: 'controls', preload: 'metadata', playsinline: 'playsinline' }); v.onloadedmetadata = done; box.append(v); }
-  }).catch(() => { box.textContent = '⚠ Could not load this ' + m.kind + '.'; });
+  }).catch(() => { box.textContent = '⌛ This ' + (m.kind === 'audio' ? 'voice clip' : m.kind) + ' has expired. Pictures, videos and voice clips are deleted after 30 days.'; });
   return box;
 }
 async function resizeImage(file, max, q, square) {
@@ -1737,6 +1737,148 @@ function drawKnows(w, body, nm) {
   body.append(el('div', { text: `Guess ${nm}'s answer (${n + 1}/${L}): ${q[0]}`, style: 'font-weight:600' }), el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: d.fb || (d.rev ? '⏳ Checking…' : '👇 Pick your guess') }), el('div', { class: 'qopts' }, ...q[1].map((o, i) => el('button', { text: o, disabled: d.rev, onclick: () => { sendSig(w.id, { t: 'g2', a: 'mv', k: 'knows', d: { n, g: i } }); d.rev = true; drawArc(w); } }))));
 }
 
+/* ============ PHASE 6: GROUP CHATS, CALL SERVER, MEDIA CLEAN-UP ============ */
+const MEDIA_DAYS = 30;
+state.rooms = []; state.roomWins = new Map(); state.roomUnread = new Map(); state.turn = null;
+function iceList() {
+  const l = [{ urls: 'stun:stun.l.google.com:19302' }], t = state.turn;
+  if (t && Array.isArray(t.urls) && t.urls.length && t.username) l.push({ urls: t.urls, username: t.username, credential: t.credential });
+  return l;
+}
+async function loadRooms() {
+  try { const { data, error } = await sb.from('rooms').select('*').order('created_at', { ascending: true }); if (error) return; state.rooms = data || []; renderContacts(); } catch (e) {}
+}
+function roomsInit() {
+  sb.from('app_config').select('value').eq('key', 'turn').maybeSingle().then(r => { if (r && r.data) state.turn = r.data.value; }, () => {});
+  loadRooms(); cleanMyMedia();
+  sb.channel('rooms-' + state.uid)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, pl => onRoomMsg(pl.new))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members' }, () => { loadRooms(); state.roomWins.forEach(rw => rw.people && roomPeople(rw, true)); })
+    .subscribe();
+}
+const _subscribe6 = subscribe; subscribe = function () { _subscribe6(); roomsInit(); };
+const _renderContacts6 = renderContacts;
+renderContacts = function () {
+  _renderContacts6();
+  const list = $('#clist'); if (!list) return;
+  const col = state.collapsed.rooms;
+  list.append(el('div', { class: 'grp', onclick: () => { state.collapsed.rooms = !col; renderContacts(); } }, col ? '▸' : '▾', `Group chats (${state.rooms.length}) `, el('button', { text: '+ New', title: 'Start a group chat', style: 'margin-left:.5rem;padding:0 .4rem', onclick: ev => { ev.stopPropagation(); newRoomDialog(); } })));
+  if (!col) state.rooms.forEach(r => { const n = state.roomUnread.get(r.id) || 0;
+    list.append(el('div', { class: 'crow', style: 'cursor:pointer;padding:.35rem .6rem', onclick: () => openRoom(r.id) }, '👥 ', el('b', { text: r.name }), n ? el('span', { class: 's', text: '  (' + n + ' new)', style: 'color:#d6336c;font-weight:700' }) : '')); });
+};
+async function cleanMyMedia() {
+  try {
+    const k = 'brb_clean_' + state.uid, last = +localStorage.getItem(k) || 0; if (Date.now() - last < 20 * 3600000) return;
+    localStorage.setItem(k, String(Date.now()));
+    const { data, error } = await sb.storage.from('chat-media').list(state.uid, { limit: 1000 }); if (error || !data) return;
+    const old = data.filter(f => f.created_at && Date.now() - new Date(f.created_at).getTime() > MEDIA_DAYS * 86400000).map(f => state.uid + '/' + f.name);
+    if (old.length) await sb.storage.from('chat-media').remove(old);
+  } catch (e) {}
+}
+function newRoomDialog() {
+  const fr = friendIds().accepted.map(id => state.profiles.get(id)).filter(Boolean).sort((a, b) => a.display_name.localeCompare(b.display_name));
+  const name = el('input', { type: 'text', maxlength: '40', placeholder: 'Group name, e.g. Weekend plans' }), msg = el('div', { class: 'setmsg' });
+  const picks = fr.map(p => { const c = el('input', { type: 'checkbox', style: 'width:auto' }); const nm = el('span'); renderEmo(nm, p.display_name); return [p, c, el('label', { class: 'crow' }, c, nm)]; });
+  const go = el('button', { class: 'primary', text: 'Create group chat' });
+  const ov = miniModal('New group chat', el('div', { class: 'hint', text: 'Up to 10 people. You can only add your own contacts. Everyone in the group can see everyone\'s name and messages.' }), name,
+    ...(fr.length ? picks.map(x => x[2]) : [el('div', { class: 'hint', text: 'Add some contacts first.' })]), msg, go);
+  go.onclick = async () => {
+    const nm = sanitizeName(name.value, 40), ids = picks.filter(x => x[1].checked).map(x => x[0].id);
+    if (!nm) { msg.style.color = '#b42318'; msg.textContent = 'Give the group a name.'; return; }
+    if (!ids.length) { msg.style.color = '#b42318'; msg.textContent = 'Pick at least one contact.'; return; }
+    go.disabled = true; const { data, error } = await sb.rpc('create_room', { p_name: nm, p_members: ids.slice(0, 9) });
+    if (error) { go.disabled = false; msg.style.color = '#b42318'; msg.textContent = friendlyErr(error) + ' (run the newest setup.sql once)'; return; }
+    ov.remove(); await loadRooms(); openRoom(data);
+  };
+}
+async function roomPeople(rw, quiet) {
+  const { data } = await sb.rpc('room_people', { p_room: rw.id }); if (!data) return;
+  rw.people = new Map(data.map(x => [x.user_id, x])); rw.sub.textContent = '👥 ' + data.map(x => x.display_name).join(', ');
+}
+function openRoom(id) {
+  const room = state.rooms.find(r => r.id === id); if (!room) return;
+  let rw = state.roomWins.get(id);
+  if (rw) { rw.root.classList.remove('min'); front(rw); state.roomUnread.delete(id); renderContacts(); rw.input.focus(); return; }
+  rw = { id, room, seen: new Set(), people: null, lastSender: null };
+  const bar = el('div', { class: 'wtitle' }, el('button', { class: 'bk', text: '‹ Back', onclick: () => rw.root.classList.add('min') }), el('div', { class: 'tt', text: '👥 ' + room.name }),
+    el('button', { text: '–', title: 'Minimise', onclick: () => rw.root.classList.add('min') }), el('button', { class: 'x', text: '×', title: 'Close', onclick: () => { rw.root.remove(); state.roomWins.delete(id); } }));
+  const sub = el('div', { class: 'wsub', style: 'cursor:pointer', title: 'Members', onclick: () => roomMembersDialog(rw) });
+  const log = el('div', { class: 'wlog' });
+  const input = el('textarea', { class: 'winput', maxlength: '2000', placeholder: 'Message the group…' });
+  const send = el('button', { text: 'Send', onclick: () => sendRoom(rw) });
+  const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, el('button', { text: 'Members', onclick: () => roomMembersDialog(rw) })));
+  const root = el('div', { class: 'win' }, bar, sub, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, bottom)));
+  const n = state.wins.size + state.roomWins.size, mr = document.querySelector('.main'), baseL = (mr ? mr.getBoundingClientRect().right : 350) + 18;
+  root.style.left = Math.max(0, Math.min(baseL + n * 28, innerWidth - 20 * parseFloat(getComputedStyle(document.documentElement).fontSize))) + 'px'; root.style.top = (40 + n * 28) + 'px';
+  Object.assign(rw, { root, log, input, sub }); document.body.append(root); front(rw);
+  root.addEventListener('pointerdown', () => front(rw));
+  root.addEventListener('focusin', () => { if (state.roomUnread.delete(id)) renderContacts(); });
+  input.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); sendRoom(rw); } });
+  bar.addEventListener('pointerdown', ev => {
+    if (ev.target.tagName === 'BUTTON' || matchMedia('(max-width:700px)').matches) return;
+    const r = root.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top; bar.setPointerCapture(ev.pointerId);
+    const mv = e => { root.style.left = Math.max(0, Math.min(e.clientX - dx, innerWidth - 80)) + 'px'; root.style.top = Math.max(0, Math.min(e.clientY - dy, innerHeight - 40)) + 'px'; };
+    const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); };
+    bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up);
+  });
+  state.roomWins.set(id, rw); state.roomUnread.delete(id); renderContacts();
+  roomPeople(rw).then(async () => {
+    const { data } = await sb.from('room_messages').select('*').eq('room_id', id).order('created_at', { ascending: false }).limit(100);
+    (data || []).reverse().forEach(m => roomLine(rw, m)); input.focus();
+  });
+}
+function roomName(rw, uid) { if (uid === state.uid) return state.me.display_name; const p = rw.people && rw.people.get(uid); return p ? p.display_name : ((state.profiles.get(uid) || {}).display_name || 'Someone'); }
+function roomLine(rw, m) {
+  if (rw.seen.has(m.id)) return; rw.seen.add(m.id);
+  const stick = rw.log.scrollHeight - rw.log.scrollTop - rw.log.clientHeight < 60, mine = m.sender === state.uid;
+  if (rw.lastSender !== m.sender) { const nm = el('span'); renderEmo(nm, roomName(rw, m.sender)); rw.log.append(el('div', { class: 'who' }, nm, ' says: ', el('small', { text: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }))); rw.lastSender = m.sender; }
+  const b = el('div', { class: 'msg' }); renderEmo(b, m.body); rw.log.append(b);
+  if (stick || mine) rw.log.scrollTop = rw.log.scrollHeight;
+}
+async function sendRoom(rw) {
+  const body = rw.input.value.replace(/\s+$/, '').slice(0, 2000); if (!body.trim()) return; rw.input.value = '';
+  const { data, error } = await sb.from('room_messages').insert({ room_id: rw.id, sender: state.uid, body }).select().single();
+  if (error) { rw.input.value = body; rw.log.append(el('div', { class: 'sys', text: 'Not sent: ' + friendlyErr(error) })); rw.lastSender = null; return; }
+  roomLine(rw, data); rw.input.focus();
+}
+async function onRoomMsg(m) {
+  if (m.sender === state.uid) return;
+  if (!state.rooms.find(r => r.id === m.room_id)) await loadRooms();
+  const room = state.rooms.find(r => r.id === m.room_id); if (!room) return;
+  const rw = state.roomWins.get(m.room_id);
+  if (rw) { if (!rw.people || !rw.people.has(m.sender)) await roomPeople(rw); roomLine(rw, m); }
+  if (isMuted(m.sender)) return;
+  if (rw && !rw.root.classList.contains('min') && !document.hidden && document.hasFocus()) { return; }
+  state.roomUnread.set(room.id, (state.roomUnread.get(room.id) || 0) + 1); renderContacts();
+  tone(SND.msg);
+  const who = (rw && rw.people && rw.people.get(m.sender) || {}).display_name || (state.profiles.get(m.sender) || {}).display_name || 'Someone';
+  toast('👥 ' + room.name, who + ': ' + m.body.slice(0, 80), () => openRoom(room.id));
+}
+async function roomMembersDialog(rw) {
+  await roomPeople(rw); const box = el('div'), ov = miniModal('👥 ' + rw.room.name, box), me = state.uid;
+  const iOwn = rw.room.owner === me;
+  const draw = () => {
+    box.textContent = '';
+    rw.people.forEach(x => { const nm = el('b'); renderEmo(nm, x.display_name); const row = el('div', { class: 'crow' }, nm, x.is_owner ? el('span', { class: 'hint', text: ' (made this group)' }) : '');
+      if (iOwn && x.user_id !== me) row.append(el('button', { text: 'Remove', style: 'margin-left:auto', onclick: async () => { await sb.rpc('remove_room_member', { p_room: rw.id, p_user: x.user_id }); await roomPeople(rw); draw(); } }));
+      box.append(row); });
+    const inRoom = new Set(rw.people.keys()), cand = friendIds().accepted.filter(id => !inRoom.has(id)).map(id => state.profiles.get(id)).filter(Boolean);
+    const out = el('div', { class: 'setmsg' });
+    if (cand.length && rw.people.size < 10) {
+      const sel = el('select', {}, ...cand.map(p => el('option', { value: p.id, text: p.display_name })));
+      box.append(el('h3', { text: 'Add a contact', style: 'margin:.8rem 0 .3rem;color:#1f4170' }), el('div', { class: 'row2' }, sel, el('button', { text: 'Add', onclick: async () => {
+        const { data } = await sb.rpc('add_room_member', { p_room: rw.id, p_user: sel.value }); out.style.color = data === 'ok' ? '#1a7f37' : '#b42318';
+        out.textContent = data === 'ok' ? 'Added!' : data === 'full' ? 'The group is full (10 people).' : data === 'blocked' ? 'You cannot add this person to this group.' : 'Could not add them.';
+        await roomPeople(rw); if (data === 'ok') draw(); else box.append(out);
+      } })), out);
+    }
+    box.append(el('div', { class: 'row2', style: 'margin-top:1rem' }, el('button', { text: 'Leave this group', onclick: async () => {
+      if (!confirm('Leave "' + rw.room.name + '"?')) return; await sb.rpc('leave_room', { p_room: rw.id }); ov.remove(); rw.root.remove(); state.roomWins.delete(rw.id); await loadRooms();
+    } })));
+  };
+  draw();
+}
+
 /* ============ PHASE 3: ATTENTION FEATURES ============ */
 const MOODS = ['💔 heartbroken', '🔥 bored', '🎮 gaming', '😴 sleepy', '📚 studying', '🎧 vibing', '🍜 hungry', '✈️ travelling', '🥳 celebrating', '😎 chilling'];
 const sgToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
@@ -1988,7 +2130,7 @@ function legalModal(which) {
     H('Who can see it'), P('Your contacts see your nickname, picture, status, personal message and song (unless you switch on Anonymous mode, which hides picture, message and song). Nobody sees your email. The admin can see reports and, technically, the data stored in the service in order to keep it running and safe.'),
     H('Where it is kept'), P('On Supabase cloud servers, which may be outside Singapore. We do not sell your data and we do not show advertising.'),
     H('Your choices'), P('You can change your nickname and picture any time, switch on Anonymous mode, turn off being found by email, switch off new contact requests, block, mute, and get a new friend code. You can delete your account in Settings; this permanently deletes your profile, contacts, messages and the pictures and videos you uploaded.'),
-    H('Keeping messages'), P('Messages are kept until you or the other person deletes the account. Reports are kept while needed for safety.'),
+    H('Keeping messages'), P('Messages are kept until you or the other person deletes the account. Pictures, videos and voice clips are deleted from storage 30 days after they were sent. Reports are kept while needed for safety.'),
     H('Children'), P('You must be 13 or older to use BeRightBack.'),
     H('Questions or requests'), P('Use Settings, Help, rules and reports, Contact the admin to ask about, correct or remove your information.')
   ];
