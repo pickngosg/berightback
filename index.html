@@ -1766,6 +1766,30 @@ function drawKnows(w, body, nm) {
   body.append(el('div', { text: `Guess ${nm}'s answer (${n + 1}/${L}): ${q[0]}`, style: 'font-weight:600' }), el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: d.fb || (d.rev ? '⏳ Checking…' : '👇 Pick your guess') }), el('div', { class: 'qopts' }, ...q[1].map((o, i) => el('button', { text: o, disabled: d.rev, onclick: () => { sendSig(w.id, { t: 'g2', a: 'mv', k: 'knows', d: { n, g: i } }); d.rev = true; drawArc(w); } }))));
 }
 
+/* ============ PHASE 7: PUSH NOTIFICATIONS (messages arrive even when the app is closed) ============ */
+const VAPID_PUBLIC = 'BHzMzg6KvnVPaG2PlfalwqOgb6iRkimC5dTa2nFYzz3lC8Dzelps1RMxeMbb8J1bCdh00A1xkcbZ0PGV_rKY8pI';
+const b64u = t => { const raw = atob((t + '='.repeat((4 - t.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+async function enablePush() {
+  if (!pushSupported()) throw new Error('This browser cannot receive push notifications. On an iPhone, first add the app to your Home Screen (iOS 16.4 or newer) and open it from there.');
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('Notifications are blocked. Allow them for this site in your browser or phone settings, then try again.');
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
+  const j = sub.toJSON();
+  const { error } = await sb.rpc('save_push', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+  if (error) throw error;
+  localStorage.setItem('brb_push', 'on');
+}
+async function disablePush() {
+  localStorage.setItem('brb_push', 'off');
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await sb.rpc('drop_push', { p_endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {}
+}
+async function pushRefresh() { // keeps this device's subscription attached to whoever is signed in
+  try { if (localStorage.getItem('brb_push') === 'on' && pushSupported() && Notification.permission === 'granted') await enablePush(); } catch (e) {}
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.open && state.uid) openChat(e.data.open); });
+
 /* ============ PHASE 6: GROUP CHATS, CALL SERVER, MEDIA CLEAN-UP ============ */
 const MEDIA_DAYS = 30;
 state.rooms = []; state.roomWins = new Map(); state.roomUnread = new Map(); state.turn = null;
@@ -1779,7 +1803,7 @@ async function loadRooms() {
 }
 function roomsInit() {
   sb.from('app_config').select('value').eq('key', 'turn').maybeSingle().then(r => { if (r && r.data) state.turn = r.data.value; }, () => {});
-  loadRooms(); cleanMyMedia();
+  loadRooms(); cleanMyMedia(); setTimeout(pushRefresh, 2000);
   sb.channel('rooms-' + state.uid)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, pl => onRoomMsg(pl.new))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members' }, () => { loadRooms(); state.roomWins.forEach(rw => rw.people && roomPeople(rw, true)); })
@@ -2298,6 +2322,9 @@ function openSettings() {
       chk('Pop-up when a contact signs in or signs out', noteOn('inout'), v => localStorage.setItem('brb_n_inout', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their status', noteOn('status'), v => localStorage.setItem('brb_n_status', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their song', noteOn('song'), v => localStorage.setItem('brb_n_song', v ? 'on' : 'off')),
+      (() => { const c = el('input', { type: 'checkbox', style: 'width:auto' }), out = el('div', { class: 'hint' }); c.checked = localStorage.getItem('brb_push') === 'on';
+        c.onchange = async () => { out.textContent = ''; try { if (c.checked) { await enablePush(); out.textContent = '✓ On for this device. You will get messages even when the app is closed.'; } else { await disablePush(); out.textContent = 'Off for this device.'; } } catch (e) { c.checked = false; out.textContent = e.message || 'Could not switch on.'; } };
+        return el('div', {}, el('label', { class: 'crow' }, c, 'Notify me of new messages when the app is closed (this device)'), out); })(),
       el('div', { class: 'row2' }, el('button', { text: '🔔 Allow desktop notifications', onclick: () => { if (!('Notification' in window)) { say('This browser does not support notifications.'); return; } Notification.requestPermission().then(r => say(r === 'granted' ? 'Notifications are on.' : 'Notifications are blocked in your browser settings.', r === 'granted')); } }))),
     sec('Privacy and safety', ...privItems(say), chk('Show my current song to my contacts', pl.share, v => { pl.share = v; localStorage.setItem('brb_share_music', v ? 'on' : 'off'); if (pl.ui.chk) pl.ui.chk.checked = v; setNow(pl.audio.paused ? '' : curTitle()); updatePlayer(); })),
     sec('Help, rules and reports', ...helpItems()),
@@ -2319,6 +2346,7 @@ async function purgeMyFiles() {
 
 /* ============ SIGN OUT / DELETE ============ */
 async function signOut() {
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) await sb.rpc('drop_push', { p_endpoint: sub.endpoint }); } catch (e) {}
   try { pl.audio.pause(); await sb.from('profiles').update({ now_playing: '' }).eq('id', state.uid); } catch (e) {}
   try { await sb.from('profiles').update({ last_seen: '1970-01-01T00:00:00Z' }).eq('id', state.uid); } catch (e) {}
   state.uid = null; await sb.auth.signOut(); showLogin();
