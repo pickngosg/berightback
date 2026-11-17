@@ -135,7 +135,7 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .wtools button.on{background:#bcd6f6;border-color:#7f9fcb}
 .sw{width:1.05rem;height:1.05rem;border-radius:50%;padding:0!important;border:2px solid #fff!important;box-shadow:0 0 0 1px #8fa!important}
 .wbottom{display:flex;gap:.45rem;padding:.45rem .6rem;background:#f3f8ff}
-.wbottom textarea{resize:none;height:3.6rem}
+.wbottom textarea{resize:vertical;height:3.6rem;min-height:3.6rem;max-height:14rem}
 .wbottom button{align-self:stretch;padding:0 1.1rem;font-weight:600}
 .wside{width:9rem;flex:none;background:linear-gradient(#f4f9fe,#d4e4f5);border-left:1px solid #b6cce6;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:.8rem 0}
 .pic{width:7rem;height:7rem;border:3px solid #9db9de;border-radius:.5rem;background:#fff;overflow:hidden;box-shadow:0 .1rem .4rem #0003;transition:border-color .3s}
@@ -179,8 +179,8 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .wbottom .btns{display:flex;flex-direction:column;gap:.3rem}
 .wbottom .btns button{flex:1;align-self:auto;padding:0 1.3rem}
 .sbar{padding:.22rem .8rem;font-size:.86rem;color:#3f5a82;background:linear-gradient(#f3f8ff,#d7e5f6);border:1px solid #a3bfe0;border-top:0;border-radius:0 0 .5rem .5rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.25rem}
-.wside{width:10.5rem!important}
-.pic{width:8.6rem!important;height:8.6rem!important;border-radius:.7rem!important;border-width:4px!important}
+.wside{width:var(--sw,10.5rem)!important;overflow:hidden}
+.pic{width:min(calc(100% - 1.4rem),28vh)!important;height:auto!important;aspect-ratio:1/1;border-radius:.7rem!important;border-width:4px!important}
 .wsearch{display:flex;gap:.4rem;align-items:center;padding:.25rem .6rem;background:#fff9d8;border-bottom:1px solid #e6d58a}
 .wsearch input{flex:1}
 .gamebox{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.4rem .8rem;background:#fff8d9;border-bottom:1px solid #e6d58a}
@@ -203,6 +203,16 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 @keyframes wburst{0%{opacity:0;transform:translate(0,0) scale(.3)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.3) rotate(200deg)}}
 @keyframes wfly{0%{transform:translateX(0) translateY(0) rotate(0)}50%{transform:translateX(60vw) translateY(-2.5rem) rotate(8deg)}100%{transform:translateX(125vw) translateY(1.5rem) rotate(-6deg)}}
 @keyframes wdisco{0%{background:#ff2d8a33}25%{background:#2d9bff33}50%{background:#39e07033}75%{background:#ffd62d33}100%{background:#ff2d8a33}}
+
+.main.fixedlist>.player{flex:1 1 auto;overflow:auto;min-height:4rem}
+.rzx{position:absolute;top:0;right:-4px;width:10px;height:100%;cursor:ew-resize;z-index:6}
+.main>.rzx{margin:0!important}
+.rzx:hover{background:linear-gradient(90deg,#0000,#6f93c366)}
+.hsplit{flex:none;height:9px;cursor:ns-resize;margin-top:2px!important;margin-bottom:2px!important;border-radius:4px;background:repeating-linear-gradient(90deg,#9db9de 0 3px,#0000 3px 6px) center/100% 3px no-repeat}
+.hsplit:hover{background-color:#c9daf0}
+.vsplit{flex:none;width:7px;cursor:ew-resize;background:linear-gradient(90deg,#d6e4f5,#a9c1e2)}
+.vsplit:hover{background:#7fa2d2}
+@media(max-width:700px){.rzx,.hsplit,.vsplit{display:none}}
 @keyframes toastin{from{transform:translateY(2rem);opacity:0}}
 .toast .tbody{min-width:0}
 .toast b{display:block;color:#10294a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -230,6 +240,10 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
  .main{inset:0;width:auto;border-radius:0;border:0}
  .win{inset:0!important;width:auto!important;height:auto!important;border-radius:0;resize:none}
  .wside{display:none}
+ .wtb{gap:0;padding:.3rem .2rem;overflow:hidden}
+ .wtb .tb{flex:1;min-width:0;padding:.2rem 0;font-size:.74rem;white-space:nowrap}
+ .wtb .ti{font-size:1.6rem;line-height:2rem}
+ .wsub small{display:none}
 }
 </style>
 </head>
@@ -553,7 +567,15 @@ function buildMain() {
     addMsg.textContent = error ? friendlyErr(error) : (M[data] || 'Done.');
     if (!error && (data === 'sent' || data === 'accepted')) { addIn.value = ''; await refresh(); }
   }
-  app.append(el('div', { class: 'main' }, title, head, notifyBar(), reqs, list, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn)));
+  const rzx = el('div', { class: 'rzx', title: 'Drag to make this window wider or narrower', ondblclick: () => { main.style.width = ''; localStorage.removeItem('brb_mainw'); } });
+  const hs = el('div', { class: 'hsplit', title: 'Drag to resize the contact list and the music player (double-click to reset)', ondblclick: () => { list.style.flex = ''; list.style.height = ''; main.classList.remove('fixedlist'); localStorage.removeItem('brb_listh'); } });
+  const main = el('div', { class: 'main' }, title, head, notifyBar(), reqs, list, hs, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn), rzx);
+  const sw = +localStorage.getItem('brb_mainw'), shh = +localStorage.getItem('brb_listh');
+  if (sw) main.style.width = clampN(sw, 280, innerWidth * 0.85) + 'px';
+  if (shh) { main.classList.add('fixedlist'); list.style.flex = 'none'; list.style.height = clampN(shh, 80, innerHeight - 250) + 'px'; }
+  dragSize(rzx, e => { main.style.width = clampN(e.clientX - main.getBoundingClientRect().left, 280, innerWidth * 0.85) + 'px'; }, () => localStorage.setItem('brb_mainw', parseInt(main.style.width)));
+  dragSize(hs, e => { main.classList.add('fixedlist'); list.style.flex = 'none'; list.style.height = clampN(e.clientY - list.getBoundingClientRect().top, 80, innerHeight - 250) + 'px'; }, () => localStorage.setItem('brb_listh', parseInt(list.style.height)));
+  app.append(main);
   renderHeader();
 }
 function notifyBar() {
@@ -813,6 +835,18 @@ function expandShort(text) {
 }
 
 
+
+/* ============ DRAG-TO-RESIZE HELPERS ============ */
+function dragSize(h, move, end) {
+  h.addEventListener('pointerdown', ev => {
+    ev.preventDefault(); h.setPointerCapture(ev.pointerId); document.body.style.userSelect = 'none';
+    const mv = e => move(e), up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); document.body.style.userSelect = ''; if (end) end(); };
+    h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up);
+  });
+}
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+(() => { const w = +localStorage.getItem('brb_sidew'); if (w) document.documentElement.style.setProperty('--sw', clampN(w, 96, 320) + 'px'); })();
+
 /* ============ CHAT WINDOW EXTRAS ============ */
 function newId() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2); }
 const BGS = { 'White': '#fff', 'Sunny day': 'linear-gradient(#fffbe0,#ffe9a8)', 'Blue sky': 'linear-gradient(#f0f8ff,#bfe0fb)', 'Pink dream': 'linear-gradient(#fff4f9,#ffd3e6)', 'Meadow': 'linear-gradient(#f4fff0,#c9efc0)', 'Lavender': 'linear-gradient(#f8f3ff,#dccbf7)' };
@@ -1032,9 +1066,11 @@ function openChat(id) {
   const big = (ico, label, fn) => el('button', { class: 'tb', onclick: ev => { ev.stopPropagation(); fn(ev); } }, el('span', { class: 'ti', text: ico }), el('span', { text: label }));
   const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', () => inviteFriend(w)), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', () => startGame(w)));
   const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
+  const vsp = el('div', { class: 'vsplit', title: 'Drag to resize the pictures column (double-click to reset)', ondblclick: () => { document.documentElement.style.removeProperty('--sw'); localStorage.removeItem('brb_sidew'); } });
   const sbar = el('div', { class: 'sbar', text: 'Tip: click ✨ to send a wink, or 📳 to nudge your friend.' });
   const picThem = el('div', { class: 'pic' }), picMe = el('div', { class: 'pic' }); picMe.append(avatarEl(state.me, 100, false)); picMe.style.borderColor = STATUS[state.me.status][1];
-  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, typ, tools, bottom), el('div', { class: 'wside' }, picThem, picMe)), sbar);
+  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, typ, tools, bottom), vsp, el('div', { class: 'wside' }, picThem, picMe)), sbar);
+  dragSize(vsp, e => { const r = root.querySelector('.wbody').getBoundingClientRect(); document.documentElement.style.setProperty('--sw', clampN(r.right - e.clientX, 96, 320) + 'px'); }, () => localStorage.setItem('brb_sidew', parseInt(getComputedStyle(root.querySelector('.wside')).width)));
   const n = state.wins.size;
   const mr = document.querySelector('.main'), baseL = (mr ? mr.getBoundingClientRect().right : 350) + 18;
   root.style.left = Math.max(0, Math.min(baseL + n * 28, innerWidth - 20 * parseFloat(getComputedStyle(document.documentElement).fontSize))) + 'px'; root.style.top = (40 + n * 28) + 'px';
@@ -1423,18 +1459,34 @@ let ytReady;
 function ytLoad() { if (ytReady) return ytReady; ytReady = new Promise(res => { if (window.YT && YT.Player) return res(true); window.onYouTubeIframeAPIReady = () => res(true); const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => { ytReady = null; res(false); }; document.head.append(sc); }); return ytReady; }
 function stopYT(keepBox) { try { if (pl.ytp) pl.ytp.destroy(); } catch (e) {} pl.ytp = null; try { if (pl.spc) pl.spc.destroy(); } catch (e) {} pl.spc = null; pl.ytTitle = ''; if (pl.ui.ytbox && !keepBox) { pl.ui.ytbox.style.display = 'none'; pl.ui.ytbox.textContent = ''; } }
 async function playYT(item) {
-  if (!(await ytLoad()) || !(window.YT && YT.Player)) { pl.err = 'Could not load YouTube. Check your connection.'; updatePlayer(); return; }
   pl.audio.pause(); stopYT(true); pl.err = ''; pl.skips = 0; pl.info = 'Loading YouTube…'; updatePlayer();
-  const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
-  const vars = { playsinline: 1, rel: 0 }; if (item.list) { vars.listType = 'playlist'; vars.list = item.list; }
-  pl.ytp = new YT.Player(d, { width: '100%', height: '170', videoId: item.v || undefined, playerVars: vars, events: {
-    onReady: e => { try { e.target.playVideo(); } catch (x) {} pl.err = ''; pl.info = 'Loading your YouTube music…'; updatePlayer(); setTimeout(() => { if (pl.ytp === e.target && !pl.ytTitle) { pl.info = 'If the video is not playing, tap the ▶ on the video above (your browser may block auto-play).'; updatePlayer(); } }, 4000); },
-    onStateChange: e => { const S = YT.PlayerState; if (e.data === S.PLAYING) { pl.ytTitle = ((e.target.getVideoData() || {}).title) || 'YouTube'; setNow(pl.ytTitle); updatePlayer(); } else if (e.data === S.PAUSED || e.data === S.ENDED) { setNow(''); updatePlayer(); } },
-    onError: e => {
-      const c = e.data, noEmbed = (c === 101 || c === 150 || c === 153);
-      if (noEmbed && item.list && pl.ytp) { pl.skips = (pl.skips || 0) + 1; if (pl.skips < 30) { pl.info = 'Skipped a video whose owner does not allow it to play outside YouTube.'; updatePlayer(); try { pl.ytp.nextVideo(); } catch (x) {} return; } }
-      try { if (!pl.ui.ytbox.querySelector('.openapp')) pl.ui.ytbox.append(el('a', { class: 'openapp', href: itemUrl(item), target: '_blank', rel: 'noopener noreferrer', text: '▶ Open this in the YouTube app instead', style: 'display:block;padding:.5rem;font-weight:600' })); } catch (x) {}
-      pl.err = noEmbed ? 'The owner of this video does not allow it to be played outside YouTube (error ' + c + '). Pick a playlist of videos that allow embedding, or use songs from your device.' : 'YouTube could not play this (error ' + c + '). The playlist must be Public or Unlisted.'; updatePlayer(); } } });
+  const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = '';
+  const q = new URLSearchParams({ playsinline: '1', rel: '0', autoplay: '1', enablejsapi: '1', origin: location.origin });
+  let src; if (item.list) { q.set('list', item.list); src = 'https://www.youtube.com/embed/videoseries?' + q; } else src = 'https://www.youtube.com/embed/' + item.v + '?' + q;
+  const f = el('iframe', { src, width: '100%', height: '210', allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: 'allowfullscreen', referrerpolicy: 'strict-origin-when-cross-origin', title: 'YouTube player', style: 'border:0;border-radius:10px;display:block' });
+  host.append(f, el('a', { class: 'openapp', href: itemUrl(item), target: '_blank', rel: 'noopener noreferrer', text: 'Not playing? Open this in the YouTube app', style: 'display:block;padding:.45rem .2rem;font-size:.92rem;font-weight:600' }));
+  let heard = false, vtitle = '';
+  const cmd = fn => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: fn, args: '' }), 'https://www.youtube.com'); } catch (e) {} };
+  const ctl = { st: -1, previousVideo: () => cmd('previousVideo'), nextVideo: () => cmd('nextVideo'), pauseVideo: () => cmd('pauseVideo'), playVideo: () => cmd('playVideo'), getPlayerState() { return this.st; }, destroy() { removeEventListener('message', onMsg); clearInterval(hello); } };
+  const refresh = () => { if (ctl.st === 1) { pl.ytTitle = vtitle || item.name; setNow(pl.ytTitle); pl.info = ''; } else if (ctl.st === 2 || ctl.st === 0) { pl.ytTitle = ''; setNow(''); } updatePlayer(); };
+  function onMsg(ev) {
+    if (ev.source !== f.contentWindow || !/^https:\/\/www\.youtube(-nocookie)?\.com$/.test(ev.origin)) return;
+    let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+    heard = true;
+    if (d.event === 'onStateChange') { ctl.st = +d.info; refresh(); }
+    else if (d.event === 'infoDelivery' && d.info) {
+      if (d.info.videoData && d.info.videoData.title && d.info.videoData.title !== vtitle) { vtitle = d.info.videoData.title; if (ctl.st === 1) refresh(); }
+      if (d.info.playerState !== undefined && +d.info.playerState !== ctl.st) { ctl.st = +d.info.playerState; refresh(); }
+    } else if (d.event === 'onError') {
+      const c = +d.info, noEmbed = (c === 101 || c === 150 || c === 153);
+      if (noEmbed && item.list && pl.skips < 30) { pl.skips++; pl.info = 'Skipped a video whose owner does not allow it to play outside YouTube.'; updatePlayer(); cmd('nextVideo'); return; }
+      pl.err = noEmbed ? 'The owner of this video does not allow it to play outside YouTube (error ' + c + '). Tap "Open this in the YouTube app" below.' : 'YouTube could not play this (error ' + c + ').'; updatePlayer();
+    }
+  }
+  addEventListener('message', onMsg);
+  let tries = 0; const hello = setInterval(() => { if (heard || ++tries > 20) { clearInterval(hello); return; } try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), 'https://www.youtube.com'); } catch (e) {} }, 500);
+  pl.ytp = ctl;
+  setTimeout(() => { if (pl.ytp === ctl && ctl.st !== 1) { pl.info = 'Tap the ▶ on the video above to start. Sharing the title needs the video to be playing.'; updatePlayer(); } }, 6000);
 }
 
 /* ---- Spotify, open-in-app and manual "I'm listening to" ---- */
@@ -1453,7 +1505,7 @@ async function playSP(item) {
   const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
   host.append(el('div', { class: 'hint', text: 'Log in to Spotify in this browser (open.spotify.com) to hear full songs. Without a login, Spotify plays 30-second previews.' }));
   const api = await spLoad(), uri = `spotify:${item.sp}:${item.id}`, label = item.name + ' (Spotify)';
-  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { pl.spc = c; c.addListener('playback_update', e => { const play = e.data && !e.data.isPaused && !e.data.isBuffering; pl.ytTitle = play ? label : ''; setNow(play ? label : ''); updatePlayer(); }); }); }
+  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { pl.spc = c; let was = null; c.addListener('playback_update', e => { const play = !!(e.data && !e.data.isPaused); if (play === was) return; was = play; pl.ytTitle = play ? label : ''; setNow(play ? label : ''); updatePlayer(); }); }); }
   else { d.replaceWith(el('iframe', { src: `https://open.spotify.com/embed/${item.sp}/${item.id}`, width: '100%', height: item.sp === 'track' ? '152' : '300', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen', style: 'border:0;border-radius:12px' })); pl.ytTitle = label; setNow(label); updatePlayer(); }
 }
 function openMusic() {
@@ -1486,8 +1538,9 @@ function openMusic() {
 }
 
 function setNow(text) {
-  pl.nowTitle = text; clearTimeout(pl.t);
+  pl.nowTitle = text; if (pl.pend === text && pl.t) return; pl.pend = text; clearTimeout(pl.t);
   pl.t = setTimeout(async () => {
+    pl.t = null;
     if (!state.uid || !state.me) return;
     const v = pl.share ? text : '';
     if ((state.me.now_playing || '') === v && !pl.err) return;
@@ -1506,9 +1559,9 @@ async function playIdx(i) {
 }
 function updatePlayer() {
   const u = pl.ui; if (!u.title) return;
-  u.title.textContent = pl.ytTitle ? '▶ YouTube: ' + pl.ytTitle : pl.tracks.length ? '♫ ' + curTitle() : 'No song playing - tap 📚 to make a playlist';
+  u.title.textContent = pl.ytTitle ? '▶ ' + pl.ytTitle : pl.tracks.length ? '♫ ' + curTitle() : 'No song playing - tap 📚 to make a playlist';
   u.play.textContent = pl.audio.paused ? '▶' : '⏸';
-  if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (pl.info && pl.ytp && !pl.ytTitle ? pl.info : '') || (!pl.share ? 'Sharing is off - contacts cannot see your song' : (pl.audio.paused && !pl.ytTitle) ? '' : '✔ Your contacts can see this song'); }
+  if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (pl.info && pl.ytp && !pl.ytTitle ? pl.info : '') || (!pl.share ? 'Sharing is off - contacts cannot see your song' : (pl.audio.paused && !pl.ytTitle) ? '' : (state.me && state.me.now_playing ? '✔ Your contacts can see this song' : 'Sharing with your contacts…')); }
   try { if ('mediaSession' in navigator && curTitle()) navigator.mediaSession.metadata = new MediaMetadata({ title: curTitle(), artist: APP_NAME }); } catch (e) {}
 }
 pl.audio.addEventListener('play', () => { stopYT(); setNow(curTitle()); updatePlayer(); });
