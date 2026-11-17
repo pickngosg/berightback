@@ -297,6 +297,12 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .av.fr-stars{box-shadow:0 0 0 3px #7c6cf0,0 0 .7rem #7c6cf099}
 .av.fr-stars::after{content:'⭐';position:absolute;right:-.4rem;top:-.55rem;font-size:.95em}
 .av.fr-pixel{outline:3px dashed #2a2a2a;outline-offset:2px;border-radius:.15rem}
+
+.funrow{display:flex;gap:.3rem;margin-top:.3rem;flex-wrap:wrap}
+.funbtn{width:auto;min-width:0;padding:.1rem .5rem;font-size:.82rem;border-radius:.9rem}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:500;overflow:hidden}
+.confetti i{position:absolute;top:-1.2rem;width:.55rem;height:1rem;animation:cfall linear forwards}
+@keyframes cfall{to{transform:translateY(108vh) rotate(900deg)}}
 </style>
 </head>
 <body>
@@ -593,7 +599,7 @@ async function startApp(user) {
     await loadAll();
     try { const ra = await sb.rpc('is_admin'); state.isAdmin = ra.data === true; } catch (e) { state.isAdmin = false; }
     buildMain(); renderContacts();
-    setTimeout(handleInviteLink, 800);
+    setTimeout(handleInviteLink, 800); loadStreaks(); setTimeout(checkBirthdays, 2500); setTimeout(checkAdmirers, 3500);
     if (state.me.suspended) setTimeout(() => alert('Your account is paused because of reports, so sending is switched off. Open Settings and use Contact the admin to ask about it.'), 900);
     subscribe(); startTimers();
     document.addEventListener('click', () => { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }, { once: true });
@@ -698,7 +704,12 @@ function renderHeader() {
   nm.onclick = () => editInline(nm, me.display_name, 40, 'display_name');
   pm.onclick = () => editInline(pm, me.personal_message, 100, 'personal_message');
   const stb = el('button', { class: 'stbtn', text: '(' + STATUS[me.status][0] + ') ▾', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, ['online', 'busy', 'away', 'invisible'].map(k => [STATUS[k][0], () => setStatus(k)])); } });
-  h.append(av, el('div', { class: 'who' }, el('div', { class: 'nmrow' }, nm, stb), pm));
+  const fun = el('div', { class: 'funrow' },
+    el('button', { class: 'funbtn', text: me.mood || '😊 Mood', title: 'Set your mood', onclick: moodMenu }),
+    el('button', { class: 'funbtn', text: '📣', title: 'Look at me! Send a wink to everyone online', onclick: lookAtMe }),
+    el('button', { class: 'funbtn', text: '💌', title: 'Secret admirer', onclick: admirerDialog }),
+    el('button', { class: 'funbtn', text: '👁', title: 'Who looked at my profile', onclick: viewsDialog }));
+  h.append(av, el('div', { class: 'who' }, el('div', { class: 'nmrow' }, nm, stb), pm, fun));
 }
 function editInline(node, cur, max, field) {
   const inp = el('input', { type: 'text', maxlength: String(max), value: cur || '' });
@@ -747,6 +758,9 @@ function renderContacts() {
     const nm = el('span', { class: 'n' }); renderEmo(nm, p.display_name); decorName(nm, p);
     const l1 = el('div', { class: 'l1' }, nm, el('span', { class: 's', text: st !== 'offline' && st !== 'online' ? ' (' + STATUS[st][0] + ')' : '' }));
     const l2 = el('div', { class: 'l2' }); if (isMuted(p.id)) l1.append(el('span', { class: 's', text: ' 🔇' }));
+    { const sk = state.streaks.get(p.id); if (sk) l1.append(el('span', { class: 's', title: sk.n + ' days chatting in a row' + (sk.last < sgToday() ? '. Chat today to keep it going.' : ''), text: ' 🔥' + sk.n + (sk.last < sgToday() ? '⏳' : '') })); }
+    if (p.birthday === sgMD() && !p.anon) l1.append(el('span', { class: 's', title: 'Birthday today', text: ' 🎂' }));
+    if (p.mood && !p.anon && st !== 'offline') l1.append(el('span', { class: 's', text: ' · ' + p.mood }));
     if (st !== 'offline' && p.now_playing) { l2.classList.add('np'); l2.title = 'Listening to ' + p.now_playing; l2.append(eqBars(), ' ' + p.now_playing); }
     else if (p.personal_message && !p.anon) renderEmo(l2, p.personal_message);
     const icon = state.pics ? avatarEl(p, 40, true, st) : buddy(st);
@@ -1333,11 +1347,12 @@ async function sendMsg(w) {
   w.typ.textContent = ''; appendMsg(w, data); w.input.focus();
 }
 async function sendNudge(w) {
-  if (Date.now() - state.nudgeAt < 10000) { sysLine(w, 'You can send a nudge only once every 10 seconds.'); return; }
-  state.nudgeAt = Date.now();
+  const nowN = Date.now(); state.nudgeLog = (state.nudgeLog || []).filter(t => nowN - t < 10000);
+  if (state.nudgeLog.length >= 3) { sysLine(w, 'That is the limit: 3 nudges in a row, then wait 10 seconds.'); return; }
+  state.nudgeLog.push(nowN);
   const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: 'nudge', kind: 'nudge' }).select().single();
   if (error) { sysLine(w, 'Nudge not sent: ' + friendlyErr(error)); return; }
-  appendMsg(w, data); shake(w); tone(SND.nudge);
+  appendMsg(w, data); shake(w); tone(SND.nudge); nudgeCombo(w, 'me');
 }
 function shake(w) {
   w.root.classList.remove('shake'); void w.root.offsetWidth; w.root.classList.add('shake');
@@ -1391,7 +1406,7 @@ function onIncoming(m) {
   const visible = w && !w.root.classList.contains('min') && !document.hidden;
   if (isMuted(id)) { if (w) { w.typ.textContent = ''; appendMsg(w, m); } if (visible && document.hasFocus()) sb.rpc('mark_read', { p_from: id }); else { state.unread.set(id, (state.unread.get(id) || 0) + 1); renderContacts(); } return; }
   if (w) { w.typ.textContent = ''; appendMsg(w, m); }
-  if (m.kind === 'nudge') { if (!w) openChat(id); const w2 = state.wins.get(id); if (w2) { w2.root.classList.remove('min'); front(w2); shake(w2); } tone(SND.nudge); }
+  if (m.kind === 'nudge') { if (!w) openChat(id); const w2 = state.wins.get(id); if (w2) { w2.root.classList.remove('min'); front(w2); shake(w2); nudgeCombo(w2, 'them'); } tone(SND.nudge); }
   if (m.kind === 'wink') { playWink(m.body); tone(SND.nudge); }
   if (visible && document.hasFocus()) { sb.rpc('mark_read', { p_from: id }); return; }
   state.unread.set(id, (state.unread.get(id) || 0) + 1);
@@ -1425,6 +1440,8 @@ function startTimers() {
   }, 60000));
   state.timers.push(setInterval(() => { if (state.uid) { detectOnline(); renderContacts(); state.wins.forEach((w, id) => updateWinHeader(id)); } }, 30000));
   state.timers.push(setInterval(() => { if (state.uid) refresh(); }, 40000)); // safety net if a live update is missed
+  state.timers.push(setInterval(() => { if (state.uid) { checkAdmirers(); } }, 60000));
+  state.timers.push(setInterval(() => { if (state.uid) { loadStreaks(); checkBirthdays(); } }, 600000));
 }
 
 /* ============ SETTINGS ============ */
@@ -1435,6 +1452,109 @@ async function setAvatar(value) {
   const { error } = await sb.from('profiles').update({ avatar: value }).eq('id', state.uid);
   if (error) return friendlyErr(error);
   state.me.avatar = value; afterProfileChange(); return '';
+}
+
+/* ============ PHASE 3: ATTENTION FEATURES ============ */
+const MOODS = ['💔 heartbroken', '🔥 bored', '🎮 gaming', '😴 sleepy', '📚 studying', '🎧 vibing', '🍜 hungry', '✈️ travelling', '🥳 celebrating', '😎 chilling'];
+const sgToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+const sgMD = () => sgToday().slice(5);
+state.streaks = new Map();
+async function loadStreaks() {
+  try { const { data, error } = await sb.rpc('my_streaks'); if (error) return; state.streaks = new Map((data || []).map(r => [r.friend, { n: r.days, last: r.last_day }])); renderContacts(); } catch (e) {}
+}
+function confetti() {
+  const box = el('div', { class: 'confetti' }), cols = ['#ff3b6b', '#ffb703', '#2fb344', '#1c7ed6', '#9c36b5', '#ff7a1a'];
+  for (let i = 0; i < 80; i++) { const c = el('i'); c.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};animation-delay:${Math.random() * 1.3}s;animation-duration:${2.6 + Math.random() * 2.2}s;transform:rotate(${Math.floor(Math.random() * 360)}deg)`; box.append(c); }
+  document.body.append(box); setTimeout(() => box.remove(), 6500);
+}
+function checkBirthdays() {
+  if (!state.uid) return;
+  const md = sgMD(), yr = sgToday().slice(0, 4);
+  const once = k => { k = 'brb_bd_' + k + '_' + yr; if (localStorage.getItem(k)) return false; localStorage.setItem(k, '1'); return true; };
+  if (state.me.birthday === md && once('me')) { confetti(); toast('Happy birthday! 🎂', 'BeRightBack wishes you a wonderful day.'); }
+  for (const id of friendIds().accepted) {
+    const p = state.profiles.get(id);
+    if (p && !p.anon && p.birthday === md && once(id)) { confetti(); bigCard(p, 'has a birthday today! 🎂', false); }
+  }
+}
+function setMood(v) { return sb.from('profiles').update({ mood: v }).eq('id', state.uid).select().single().then(({ data, error }) => { if (error) toast('Mood', friendlyErr(error)); else { state.me = data; afterProfileChange(); } }); }
+function moodMenu(ev) {
+  ev.stopPropagation();
+  showMenu(ev.clientX, ev.clientY, [...MOODS.map(m => [m, () => setMood(m)]), '-', ['Write my own…', () => { const v = sanitizeName(prompt('Your mood (up to 30 characters)', state.me.mood || '') || '', 30); if (v) setMood(v); }], ['Clear my mood', () => setMood('')]]);
+}
+async function lookAtMe() {
+  const keys = Object.keys(WINKS), key = keys[Math.floor(Math.random() * keys.length)];
+  const { data, error } = await sb.rpc('broadcast_look', { p_wink: key });
+  if (error) { toast('Look at me', /10 minutes/.test(error.message || '') ? 'You can use Look at me once every 10 minutes.' : friendlyErr(error)); return; }
+  playWink(key); toast('Look at me! 📣', data ? 'Sent to ' + data + ' contact' + (data === 1 ? '' : 's') + ' who are online.' : 'Nobody who accepts it is online right now.');
+}
+async function viewsDialog() {
+  const box = el('div'), ov = miniModal('👁 Who looked at my profile', box);
+  if (state.me.views_on === false) { box.append(el('div', { class: 'hint', text: 'This is switched off. Turn it on in Settings, Privacy and safety. It works both ways: people can see you looked at them too.' })); return; }
+  box.textContent = 'Loading…';
+  const { data, error } = await sb.rpc('my_profile_views');
+  box.textContent = '';
+  if (error) { box.append(el('div', { class: 'hint', text: friendlyErr(error) })); return; }
+  box.append(el('div', { class: 'hint', text: 'Only contacts who also have this switched on appear here. Last 30 days.' }));
+  if (!data.length) box.append(el('div', { class: 'hint', text: 'Nobody yet.' }));
+  data.forEach(r => { const n = el('b'); renderEmo(n, r.viewer_name); box.append(el('div', { class: 'crow' }, n, el('span', { class: 'hint', text: ' looked at ' + new Date(r.seen_at).toLocaleString() }))); });
+}
+async function admirerDialog() {
+  const body = el('div'); miniModal('💌 Secret admirer', body);
+  const draw = async () => {
+    body.textContent = '';
+    body.append(el('div', { class: 'hint', text: 'A secret admirer wink hides who sent it. It is optional: only friends who switched it on in Settings can receive one. You can send up to 3 a day, and any note can be reported.' }));
+    const fr = friendIds().accepted.map(id => state.profiles.get(id)).filter(Boolean);
+    const can = fr.filter(p => p.allow_admirer);
+    body.append(el('h3', { text: 'Send one', style: 'margin:.8rem 0 .3rem;color:#1f4170' }));
+    if (!can.length) body.append(el('div', { class: 'hint', text: 'None of your contacts accept secret admirer winks yet.' }));
+    else {
+      const to = el('select', {}, ...can.map(p => el('option', { value: p.id, text: p.display_name })));
+      const wk = el('select', {}, ...Object.keys(WINKS).map(k => el('option', { value: k, text: (WINKS[k][1] || '') + ' ' + WINKS[k][0] })));
+      const out = el('div', { class: 'setmsg' });
+      body.append(to, wk, el('button', { class: 'primary', text: 'Send secretly', onclick: async ev => {
+        ev.target.disabled = true; const { error } = await sb.rpc('send_admirer', { p_to: to.value, p_wink: wk.value }); ev.target.disabled = false;
+        out.style.color = error ? '#b42318' : '#1a7f37'; out.textContent = error ? 'Not sent. They may not accept notes, or you reached the limit (3 a day, 1 per person a day).' : 'Sent! 💌';
+      } }), out);
+    }
+    body.append(el('h3', { text: 'My notes', style: 'margin:.8rem 0 .3rem;color:#1f4170' }));
+    if (!state.me.allow_admirer) { body.append(el('div', { class: 'hint', text: 'You are not receiving notes. Switch it on in Settings, Privacy and safety.' })); return; }
+    const { data, error } = await sb.rpc('my_admirer_notes');
+    if (error) { body.append(el('div', { class: 'hint', text: friendlyErr(error) })); return; }
+    if (!data.length) body.append(el('div', { class: 'hint', text: 'No notes yet.' }));
+    data.forEach(n => {
+      const wk = WINKS[n.wink], row = el('div', { class: 'rcard' }), left = 3 - n.tries;
+      row.append(el('div', { text: '💌 A secret admirer sent you a wink: ' + (wk ? wk[1] + ' ' + wk[0] : '✨') }), el('div', { class: 'rhd', text: new Date(n.sent_at).toLocaleString() }));
+      if (n.guessed) row.append(el('div', { class: 'hint', text: 'You guessed it! 🎉' }));
+      else if (left > 0) {
+        const g = el('select', {}, ...fr.map(p => el('option', { value: p.id, text: p.display_name }))); const r = el('div', { class: 'setmsg' });
+        row.append(el('div', { class: 'hint', text: 'Guess who it was (' + left + ' ' + (left === 1 ? 'try' : 'tries') + ' left):' }), el('div', { class: 'row2' }, g, el('button', { text: 'Guess', onclick: async () => {
+          const { data: ok } = await sb.rpc('guess_admirer', { p_note: n.note_id, p_guess: g.value });
+          if (ok) { const nm = (state.profiles.get(g.value) || {}).display_name || 'them'; toast('Secret admirer 💌', 'Yes! It was ' + nm + '!'); } else r.textContent = 'Not them. Try again!';
+          draw();
+        } })), r);
+      } else row.append(el('div', { class: 'hint', text: 'No tries left. Your admirer stays a mystery.' }));
+      row.append(el('div', { class: 'row2' }, el('button', { text: 'Report this note', onclick: async () => { if (!confirm('Report this note to the admin?')) return; await sb.rpc('report_admirer', { p_note: n.note_id }); toast('Report sent', 'Thank you. The admin will look at it.'); } })));
+      body.append(row);
+    });
+  };
+  draw();
+}
+async function checkAdmirers() {
+  if (!state.uid || !state.me.allow_admirer) return;
+  try {
+    const { data } = await sb.rpc('my_admirer_notes'); if (!data || !data.length) return;
+    const top = Math.max(...data.map(n => n.note_id)), seen = +localStorage.getItem('brb_adm_seen') || 0;
+    if (top > seen) { localStorage.setItem('brb_adm_seen', String(top)); if (seen) { tone(SND.msg); toast('Secret admirer 💌', 'Someone sent you a secret wink! Open 💌 to see.', admirerDialog); } }
+  } catch (e) {}
+}
+function nudgeCombo(w, who) {
+  const now = Date.now(); w.nw = w.nw || { me: [], them: [] };
+  w.nw[who].push(now); w.nw.me = w.nw.me.filter(t => now - t < 20000); w.nw.them = w.nw.them.filter(t => now - t < 20000);
+  const combo = w.nw[who].filter(t => now - t < 6000).length;
+  if (combo >= 2) { sysLine(w, `💥 Nudge combo x${combo}!`); for (let i = 1; i < Math.min(combo, 3); i++) setTimeout(() => shake(w), i * 500); }
+  const a = w.nw.me.length, b = w.nw.them.length;
+  if (a >= 2 && b >= 2) sysLine(w, `⚔ NUDGE WAR! You ${a} – ${(state.profiles.get(w.id) || {}).display_name || 'them'} ${b}`);
 }
 
 /* ============ PHASE 2: MY STYLE, PROFILE CARD, SETTINGS THAT FOLLOW YOU ============ */
@@ -1470,12 +1590,15 @@ function profileCard(id) {
   const p = id === state.uid ? state.me : state.profiles.get(id); if (!p) return;
   const st = p.id === state.uid ? p.status : effStatus(p), hide = p.anon && p.id !== state.uid;
   const nm = el('h2', { style: 'margin:.5rem 0 .1rem;text-align:center' }); renderEmo(nm, p.display_name); decorName(nm, p);
+  if (id !== state.uid) sb.rpc('log_profile_view', { p_other: id }).then(() => {}, () => {});
   const fr = state.friendships.find(f => f.status === 'accepted' && (f.requester === id || f.addressee === id));
   const pic = el('div', { style: 'display:flex;justify-content:center;padding:.6rem 0' }, avatarEl(p, 120, false));
   const line = (t, cls) => el('div', { class: cls || 'hint', style: 'text-align:center', text: t });
   const kids = [pic, nm, line(STATUS[st] ? STATUS[st][0] : 'Offline')];
   if (!hide && p.personal_message) { const pm = el('div', { style: 'text-align:center;font-style:italic;margin:.3rem 0' }); renderEmo(pm, p.personal_message); kids.push(pm); }
   if (!hide && p.now_playing && st !== 'offline') kids.push(line('♫ ' + p.now_playing));
+  if (!hide && p.mood) kids.push(line('Mood: ' + p.mood));
+  if (!hide && p.birthday) { const [bm, bd] = p.birthday.split('-'); kids.push(line('🎂 Birthday: ' + bd + ' ' + ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][+bm - 1])); }
   if (!hide && p.about) kids.push(el('div', { class: 'sec' }, el('h3', { text: 'About me' }), el('div', { style: 'white-space:pre-wrap', text: p.about })));
   if (hide) kids.push(line('This person is in anonymous mode.'));
   if (fr && fr.created_at) kids.push(line('Contacts since ' + new Date(fr.created_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })));
@@ -1491,6 +1614,9 @@ function styleItems(say) {
   const fx = el('select', {}, ...NAME_FX.map(x => el('option', { value: x[0], text: x[1] }))); fx.value = m[2] || '';
   const frame = el('select', {}, ...FRAMES.map(x => el('option', { value: x[0], text: x[1] }))); frame.value = me.frame || '';
   const about = el('textarea', { maxlength: '200', rows: '3', placeholder: 'A few words about you (shown on your profile card)' }); about.value = me.about || '';
+  const bm = el('select', {}, el('option', { value: '', text: 'Month' }), ...['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((n, i) => el('option', { value: String(i + 1).padStart(2, '0'), text: n })));
+  const bd = el('select', {}, el('option', { value: '', text: 'Day' }), ...Array.from({ length: 31 }, (_, i) => el('option', { value: String(i + 1).padStart(2, '0'), text: String(i + 1) })));
+  { const b = (me.birthday || '').split('-'); bm.value = b[0] || ''; bd.value = b[1] || ''; }
   const prev = el('div', { style: 'display:flex;align-items:center;gap:.8rem;margin:.5rem 0' });
   const mk = () => ({ ...me, name_style: (useCol.checked ? col.value : '') + (fx.value ? ':' + fx.value : ''), frame: frame.value });
   const draw = () => { prev.innerHTML = ''; const q = mk(), n = el('b', { style: 'font-size:1.2rem' }); renderEmo(n, me.display_name); decorName(n, q); prev.append(avatarEl(q, 56, false), n); };
@@ -1499,9 +1625,9 @@ function styleItems(say) {
   pack.value = localStorage.getItem('brb_pack') === 'retro' ? 'retro' : 'classic';
   pack.onchange = () => { localStorage.setItem('brb_pack', pack.value); tone(SND.msg); };
   return [prev, el('label', { text: 'Name colour' }), el('div', { class: 'row2', style: 'align-items:center' }, useCol, 'Use a colour', col),
-    el('label', { text: 'Name effect' }), fx, el('label', { text: 'Picture frame' }), frame, el('label', { text: 'About me' }), about,
+    el('label', { text: 'Name effect' }), fx, el('label', { text: 'Picture frame' }), frame, el('label', { text: 'About me' }), about, el('label', { text: 'Birthday (optional, month and day only)' }), el('div', { class: 'row2' }, bm, bd),
     el('button', { class: 'primary', text: 'Save my style', onclick: async () => {
-      const q = mk(); const { data, error } = await sb.from('profiles').update({ name_style: q.name_style, frame: q.frame, about: about.value.trim() }).eq('id', state.uid).select().single();
+      const q = mk(); const { data, error } = await sb.from('profiles').update({ name_style: q.name_style, frame: q.frame, about: about.value.trim(), birthday: bm.value && bd.value ? bm.value + '-' + bd.value : '' }).eq('id', state.uid).select().single();
       if (error) say(friendlyErr(error)); else { state.me = data; renderHeader(); renderContacts(); say('Your style is saved.', true); }
     } }),
     el('label', { text: 'Sound pack' }), pack];
@@ -1601,6 +1727,9 @@ function privItems(say) {
     chk('Anonymous mode: contacts see a plain picture, no personal message and no song', !!me.anon, v => upd({ anon: v }, v ? 'Anonymous mode is on.' : 'Anonymous mode is off.')),
     chk('Let people find me by my email address (off is more private)', !!me.find_by_email, v => upd({ find_by_email: v }, 'Saved.')),
     chk('Allow new contact requests (switch off and nobody new can add me)', me.allow_requests !== false, v => upd({ allow_requests: v }, 'Saved.')),
+    chk('Profile views: show me who looked at my profile, and let contacts see when I looked at theirs', me.views_on !== false, v => upd({ views_on: v }, 'Saved.')),
+    chk('Secret admirer: let my contacts send me secret admirer winks', !!me.allow_admirer, v => upd({ allow_admirer: v }, v ? 'Secret admirer is on.' : 'Secret admirer is off.')),
+    chk('"Look at me" winks: let contacts send me an attention wink', me.accept_broadcasts !== false, v => upd({ accept_broadcasts: v }, 'Saved.')),
     el('div', { class: 'hint', text: 'Tip: your nickname does not have to be your real name. Use "Appear offline" to browse without being seen. Mute or block anyone from the ⋯ button in your contact list.' }));
   return out;
 }
