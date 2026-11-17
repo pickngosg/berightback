@@ -277,6 +277,26 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .rcard.open{border-color:#e0a030;background:#fffaf0}
 .rhd{font-size:.8rem;color:#6b7b93}
 .rev{margin:.3rem 0;padding:.3rem .6rem;border-left:3px solid #c0392b;background:#fdf1ef;white-space:pre-wrap}
+
+.fx-rainbow{background:linear-gradient(90deg,#ff3b3b,#ff9f1c,#e6c800,#2fb344,#1c7ed6,#9c36b5,#ff3b3b);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:rbw 4s linear infinite}
+@keyframes rbw{to{background-position:200% 0}}
+.fx-glow{text-shadow:0 0 .45rem currentColor}
+.fx-neon{font-weight:700;text-shadow:0 0 .15rem #fff,0 0 .55rem currentColor,0 0 1rem currentColor}
+.fx-pulse{animation:npulse 1.6s ease-in-out infinite}
+@keyframes npulse{50%{opacity:.45}}
+.av[class*=fr-]{overflow:visible}
+.av[class*=fr-] img,.av[class*=fr-] svg{border-radius:inherit}
+.av.fr-gold{box-shadow:0 0 0 3px #f5c542,0 0 .8rem #f5c542aa}
+.av.fr-rainbow{animation:frb 3s linear infinite}
+@keyframes frb{0%{box-shadow:0 0 0 3px #ff3b3b,0 0 .8rem #ff3b3b88}25%{box-shadow:0 0 0 3px #e6c800,0 0 .8rem #e6c80088}50%{box-shadow:0 0 0 3px #2fb344,0 0 .8rem #2fb34488}75%{box-shadow:0 0 0 3px #1c7ed6,0 0 .8rem #1c7ed688}100%{box-shadow:0 0 0 3px #ff3b3b,0 0 .8rem #ff3b3b88}}
+.av.fr-neon{box-shadow:0 0 0 2px #fff,0 0 .9rem #19d3ff,0 0 1.5rem #19d3ff}
+.av.fr-flame{box-shadow:0 0 0 3px #ff7a1a,0 0 .9rem #ff3d00aa}
+.av.fr-flame::after{content:'🔥';position:absolute;left:-.35rem;top:-.55rem;font-size:.95em}
+.av.fr-hearts{box-shadow:0 0 0 3px #ff8fb8,0 0 .7rem #ff8fb899}
+.av.fr-hearts::after{content:'💗';position:absolute;right:-.4rem;top:-.55rem;font-size:.95em}
+.av.fr-stars{box-shadow:0 0 0 3px #7c6cf0,0 0 .7rem #7c6cf099}
+.av.fr-stars::after{content:'⭐';position:absolute;right:-.4rem;top:-.55rem;font-size:.95em}
+.av.fr-pixel{outline:3px dashed #2a2a2a;outline-offset:2px;border-radius:.15rem}
 </style>
 </head>
 <body>
@@ -342,9 +362,21 @@ function applyFmt(node, fmt) {
 /* sounds: made with the browser's own tone generator - no copyrighted audio */
 let actx;
 /* Original sounds made by the browser itself: deep, warm bell chimes with a soft low thump and echo. */
+function toneRetro(seq) {
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  const t0 = actx.currentTime + 0.03;
+  for (const [f, at, d] of seq) {
+    const o = actx.createOscillator(), g = actx.createGain(), t = t0 + at;
+    o.type = 'square'; o.frequency.value = f * 2;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(d, 0.22));
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.3);
+  }
+}
 function tone(seq) {
   if (!state.sound) return;
   try {
+    if (localStorage.getItem('brb_pack') === 'retro' && !(seq[0] && seq[0][3] === 'buzz')) { toneRetro(seq); return; }
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
     const t0 = actx.currentTime + 0.03;
@@ -431,6 +463,7 @@ function fillAvatar(node, p) {
 function avatarEl(p, size = 40, showDot = true, st) {
   const a = el('div', { class: 'av', style: `width:${size / 16}rem;height:${size / 16}rem;font-size:${(size * .55) / 16}rem` });
   fillAvatar(a, p.anon && p.id !== state.uid ? { id: p.id, avatar: '🙂' } : p);
+  if (p.frame && !(p.anon && p.id !== state.uid)) a.classList.add('fr-' + p.frame);
   if (showDot) a.append(el('span', { class: 'dot', style: `background:${STATUS[st || effStatus(p)][1]}` }));
   return a;
 }
@@ -556,6 +589,7 @@ async function startApp(user) {
     const wantStatus = ['online', 'busy', 'away', 'invisible'].includes(pre) ? pre : 'online';
     const { data: up } = await sb.from('profiles').update({ status: wantStatus, last_seen: new Date().toISOString() }).eq('id', user.id).select().single();
     if (up) state.me = up;
+    if (await syncPull()) { const lr = +sessionStorage.getItem('brb_syncreload') || 0; if (Date.now() - lr > 30000) { sessionStorage.setItem('brb_syncreload', String(Date.now())); location.reload(); return; } }
     await loadAll();
     try { const ra = await sb.rpc('is_admin'); state.isAdmin = ra.data === true; } catch (e) { state.isAdmin = false; }
     buildMain(); renderContacts();
@@ -656,7 +690,7 @@ function renderHeader() {
   const me = state.me;
   const av = avatarEl(me, 64, false); av.style.border = '3px solid ' + STATUS[me.status][1]; av.style.borderRadius = '.55rem'; av.style.boxShadow = '0 2px 6px #0004'; av.style.cursor = 'pointer'; av.title = 'Change your picture and settings';
   av.onclick = () => openSettings();
-  const nm = el('div', { class: 'nm', title: 'Click to change your name' }); renderEmo(nm, me.display_name);
+  const nm = el('div', { class: 'nm', title: 'Click to change your name' }); renderEmo(nm, me.display_name); decorName(nm, me);
   const pm = el('div', { class: 'pm', title: 'Click to type a personal message' });
   if (me.now_playing) { pm.classList.add('np'); pm.append(eqBars(), ' ' + me.now_playing); }
   else if (me.personal_message) renderEmo(pm, me.personal_message);
@@ -710,7 +744,7 @@ function renderContacts() {
   };
   const contactRow = p => {
     const st = effStatus(p), n = state.unread.get(p.id) || 0;
-    const nm = el('span', { class: 'n' }); renderEmo(nm, p.display_name);
+    const nm = el('span', { class: 'n' }); renderEmo(nm, p.display_name); decorName(nm, p);
     const l1 = el('div', { class: 'l1' }, nm, el('span', { class: 's', text: st !== 'offline' && st !== 'online' ? ' (' + STATUS[st][0] + ')' : '' }));
     const l2 = el('div', { class: 'l2' }); if (isMuted(p.id)) l1.append(el('span', { class: 's', text: ' 🔇' }));
     if (st !== 'offline' && p.now_playing) { l2.classList.add('np'); l2.title = 'Listening to ' + p.now_playing; l2.append(eqBars(), ' ' + p.now_playing); }
@@ -720,7 +754,7 @@ function renderContacts() {
       icon, el('div', { class: 'txt' }, l1, l2));
     if (n) row.append(el('span', { class: 'badge', text: String(n) }));
     row.append(el('button', { text: '⋯', title: 'More', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, [
-      ['Send an instant message', () => openChat(p.id)], '-',
+      ['Send an instant message', () => openChat(p.id)], ['View profile', () => profileCard(p.id)], '-',
       ...state.groups.names.map(n => ['Move to ' + n, () => { state.groups.map[p.id] = n; saveGroups(); renderContacts(); }]),
       ['Move to a new group…', () => newGroup(p.id)],
       ...(state.groups.map[p.id] ? [['Remove from group', () => { delete state.groups.map[p.id]; saveGroups(); renderContacts(); }]] : []), '-',
@@ -768,7 +802,7 @@ async function sysNotify(title, body, tag) {
 function bigCard(p, text, off) {
   const c = el('div', { class: 'bigcard' + (off ? ' off' : ''), onclick: () => { c.remove(); openChat(p.id); } });
   const pic = el('div', { class: 'bpic' }); pic.append(avatarEl(p, 96, false));
-  const nm = el('b'); renderEmo(nm, p.display_name);
+  const nm = el('b'); renderEmo(nm, p.display_name); decorName(nm, p);
   const sub = el('span', { class: 'bsub', text: 'Click to chat' });
   c.append(pic, el('div', { class: 'btxt' }, nm, ' ' + text, sub));
   c.style.bottom = (1.1 + document.querySelectorAll('.bigcard').length * 9) + 'rem';
@@ -1192,7 +1226,7 @@ function front(w) { w.root.style.zIndex = ++state.z; }
 function closeChat(id) { const w = state.wins.get(id); if (w) { if (RTC.id === id) endCall(w, true); w.root.remove(); state.wins.delete(id); } }
 function setPic(node, prof, st) {
   node.style.borderColor = STATUS[st][1];
-  const k = (prof.avatar || '') + '|' + st + (prof.anon ? 'a' : '');
+  const k = (prof.avatar || '') + '|' + st + (prof.anon ? 'a' : '') + (prof.frame || '');
   if (node.dataset.k === k) return; node.dataset.k = k;
   node.innerHTML = ''; node.append(avatarEl(prof, 100, false));
 }
@@ -1201,7 +1235,7 @@ function updateWinHeader(id) {
   const st = effStatus(p);
   w.tt.textContent = `${p.display_name} - Conversation`;
   w.dot.style.background = STATUS[st][1];
-  w.sub.textContent = ''; const toN = el('span', { class: 'to' }); renderEmo(toN, p.display_name); w.sub.append('To: ', toN, el('small', { text: ` (${STATUS[st][0]})` + (p.personal_message && !p.anon ? ' - ' + p.personal_message : '') }));
+  w.sub.textContent = ''; const toN = el('span', { class: 'to', style: 'cursor:pointer', title: 'View profile', onclick: () => profileCard(p.id) }); renderEmo(toN, p.display_name); decorName(toN, p); w.sub.append('To: ', toN, el('small', { text: ` (${STATUS[st][0]})` + (p.personal_message && !p.anon ? ' - ' + p.personal_message : '') }));
   w.np.innerHTML = '';
   if (st !== 'offline' && p.now_playing) { w.np.append(eqBars(), ` ${p.display_name} is listening to: ${p.now_playing}`); w.np.style.display = 'flex'; } else w.np.style.display = 'none';
   setPic(w.picThem, p, st); setPic(w.picMe, state.me, state.me.status);
@@ -1224,7 +1258,7 @@ function appendMsg(w, m, quiet) {
   if (m.kind === 'nudge') { sysLine(w, mine ? 'You have sent a nudge.' : `${name} has sent you a nudge!`); }
   else if (m.kind === 'wink') { const wk = WINKS[m.body]; sysLine(w, (mine ? 'You sent a wink: ' : `${name} sent you a wink: `) + (wk ? wk[1] + ' ' + wk[0] : '✨')); }
   else {
-    if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); renderEmo(who, name); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
+    if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); const wn = el('span'); renderEmo(wn, name); decorName(wn, mine ? state.me : state.profiles.get(w.id)); who.append(wn); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
     if (m.kind === 'image' || m.kind === 'video' || m.kind === 'audio') d.append(mediaNode(m, () => { if (stick) w.log.scrollTop = w.log.scrollHeight; }));
     else { applyFmt(d, m.fmt); renderRich(d, m.body); }
@@ -1401,6 +1435,76 @@ async function setAvatar(value) {
   const { error } = await sb.from('profiles').update({ avatar: value }).eq('id', state.uid);
   if (error) return friendlyErr(error);
   state.me.avatar = value; afterProfileChange(); return '';
+}
+
+/* ============ PHASE 2: MY STYLE, PROFILE CARD, SETTINGS THAT FOLLOW YOU ============ */
+const NAME_FX = [['', 'Plain'], ['rainbow', 'Rainbow'], ['glow', 'Glow'], ['neon', 'Neon'], ['pulse', 'Pulse']];
+const FRAMES = [['', 'None'], ['gold', 'Gold'], ['rainbow', 'Rainbow'], ['hearts', 'Hearts 💗'], ['stars', 'Stars ⭐'], ['neon', 'Neon'], ['flame', 'Flame 🔥'], ['pixel', 'Pixel']];
+function decorName(node, p) {
+  const m = /^(#[0-9a-fA-F]{6})?(?::([a-z]+))?$/.exec((p && p.name_style) || ''); if (!m) return node;
+  if (m[1]) node.style.color = m[1];
+  if (m[2] && NAME_FX.some(x => x[0] === m[2])) node.classList.add('fx-' + m[2]);
+  return node;
+}
+const SYNC_KEYS = ['brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack'];
+let syncT, syncReady = false;
+const _lsSet = Storage.prototype.setItem, _lsDel = Storage.prototype.removeItem;
+function syncSoon() { if (!syncReady) return; clearTimeout(syncT); syncT = setTimeout(syncPush, 2500); }
+Storage.prototype.setItem = function (k, v) { _lsSet.call(this, k, v); if (this === localStorage && SYNC_KEYS.includes(k)) syncSoon(); };
+Storage.prototype.removeItem = function (k) { _lsDel.call(this, k); if (this === localStorage && SYNC_KEYS.includes(k)) syncSoon(); };
+async function syncPush() {
+  if (!state.uid) return;
+  const d = {}; SYNC_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) d[k] = v; });
+  try { await sb.from('user_settings').upsert({ user_id: state.uid, data: d, updated_at: new Date().toISOString() }); } catch (e) {}
+}
+async function syncPull() {
+  let res; try { res = await sb.from('user_settings').select('data').eq('user_id', state.uid).maybeSingle(); } catch (e) { return false; }
+  if (!res || res.error) return false;
+  syncReady = true;
+  if (!res.data) { syncPush(); return false; }
+  const sv = res.data.data || {}; let changed = false;
+  SYNC_KEYS.forEach(k => { if (typeof sv[k] === 'string' && sv[k] !== localStorage.getItem(k)) { _lsSet.call(localStorage, k, sv[k]); changed = true; } });
+  return changed;
+}
+function profileCard(id) {
+  const p = id === state.uid ? state.me : state.profiles.get(id); if (!p) return;
+  const st = p.id === state.uid ? p.status : effStatus(p), hide = p.anon && p.id !== state.uid;
+  const nm = el('h2', { style: 'margin:.5rem 0 .1rem;text-align:center' }); renderEmo(nm, p.display_name); decorName(nm, p);
+  const fr = state.friendships.find(f => f.status === 'accepted' && (f.requester === id || f.addressee === id));
+  const pic = el('div', { style: 'display:flex;justify-content:center;padding:.6rem 0' }, avatarEl(p, 120, false));
+  const line = (t, cls) => el('div', { class: cls || 'hint', style: 'text-align:center', text: t });
+  const kids = [pic, nm, line(STATUS[st] ? STATUS[st][0] : 'Offline')];
+  if (!hide && p.personal_message) { const pm = el('div', { style: 'text-align:center;font-style:italic;margin:.3rem 0' }); renderEmo(pm, p.personal_message); kids.push(pm); }
+  if (!hide && p.now_playing && st !== 'offline') kids.push(line('♫ ' + p.now_playing));
+  if (!hide && p.about) kids.push(el('div', { class: 'sec' }, el('h3', { text: 'About me' }), el('div', { style: 'white-space:pre-wrap', text: p.about })));
+  if (hide) kids.push(line('This person is in anonymous mode.'));
+  if (fr && fr.created_at) kids.push(line('Contacts since ' + new Date(fr.created_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })));
+  const acts = id === state.uid ? [] : [el('button', { text: '💬 Chat', onclick: () => { document.querySelectorAll('.modal').forEach(m => m.remove()); openChat(id); } }), el('button', { text: 'Report…', onclick: () => reportDialog(id) })];
+  if (id === state.uid) acts.push(el('button', { text: '✎ Edit my profile', onclick: () => { document.querySelectorAll('.modal').forEach(m => m.remove()); openSettings(); } }));
+  kids.push(el('div', { class: 'row2', style: 'justify-content:center' }, ...acts));
+  miniModal('Profile', ...kids);
+}
+function styleItems(say) {
+  const me = state.me; const m = /^(#[0-9a-fA-F]{6})?(?::([a-z]+))?$/.exec(me.name_style || '') || [];
+  const col = el('input', { type: 'color', value: m[1] || '#1f4170', style: 'width:3.2rem;padding:0;height:2.2rem' });
+  const useCol = el('input', { type: 'checkbox', style: 'width:auto' }); useCol.checked = !!m[1];
+  const fx = el('select', {}, ...NAME_FX.map(x => el('option', { value: x[0], text: x[1] }))); fx.value = m[2] || '';
+  const frame = el('select', {}, ...FRAMES.map(x => el('option', { value: x[0], text: x[1] }))); frame.value = me.frame || '';
+  const about = el('textarea', { maxlength: '200', rows: '3', placeholder: 'A few words about you (shown on your profile card)' }); about.value = me.about || '';
+  const prev = el('div', { style: 'display:flex;align-items:center;gap:.8rem;margin:.5rem 0' });
+  const mk = () => ({ ...me, name_style: (useCol.checked ? col.value : '') + (fx.value ? ':' + fx.value : ''), frame: frame.value });
+  const draw = () => { prev.innerHTML = ''; const q = mk(), n = el('b', { style: 'font-size:1.2rem' }); renderEmo(n, me.display_name); decorName(n, q); prev.append(avatarEl(q, 56, false), n); };
+  [col, useCol, fx, frame].forEach(x => x.addEventListener('input', draw)); draw();
+  const pack = el('select', {}, el('option', { value: 'classic', text: 'Classic: deep chimes (default)' }), el('option', { value: 'retro', text: 'Retro: old-school bleeps' }));
+  pack.value = localStorage.getItem('brb_pack') === 'retro' ? 'retro' : 'classic';
+  pack.onchange = () => { localStorage.setItem('brb_pack', pack.value); tone(SND.msg); };
+  return [prev, el('label', { text: 'Name colour' }), el('div', { class: 'row2', style: 'align-items:center' }, useCol, 'Use a colour', col),
+    el('label', { text: 'Name effect' }), fx, el('label', { text: 'Picture frame' }), frame, el('label', { text: 'About me' }), about,
+    el('button', { class: 'primary', text: 'Save my style', onclick: async () => {
+      const q = mk(); const { data, error } = await sb.from('profiles').update({ name_style: q.name_style, frame: q.frame, about: about.value.trim() }).eq('id', state.uid).select().single();
+      if (error) say(friendlyErr(error)); else { state.me = data; renderHeader(); renderContacts(); say('Your style is saved.', true); }
+    } }),
+    el('label', { text: 'Sound pack' }), pack];
 }
 
 /* ============ PHASE 1: SAFETY AND PRIVACY ============ */
@@ -1596,6 +1700,7 @@ function openSettings() {
     sec('My profile', pic,
       el('label', { text: 'Display name (symbols and emoticons like ★ ♥ (L) :) are allowed)' }), name, syms,
       el('label', { text: 'Personal message' }), pm, saveP),
+    sec('Make it yours', ...styleItems(say)),
     sec('My picture', el('div', { class: 'hint', text: 'Choose one of the 10 pictures that come with BeRightBack:' }), grid,
       el('div', { class: 'row2' }, el('button', { text: '📷 Upload my own picture', onclick: () => up.click() }), up),
       el('div', { class: 'hint', text: 'Your picture is cropped to a square and made small automatically.' })),
