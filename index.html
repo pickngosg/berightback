@@ -148,6 +148,23 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .menu div:hover{background:linear-gradient(#e8f2fd,#c8defa)}
 .menu hr{border:0;border-top:1px solid #dbe5f2;margin:.25rem 0}
 .toast{position:fixed;right:1.1rem;bottom:1.1rem;z-index:350;width:min(20rem,92vw);display:flex;gap:.7rem;align-items:center;background:linear-gradient(#fbfdff,#d5e5f7);border:1px solid #5d86bb;border-radius:.7rem;box-shadow:0 .5rem 1.6rem #0005;padding:.6rem .8rem;cursor:pointer;animation:toastin .35s cubic-bezier(.2,.9,.3,1.1)}
+
+.bigcard{position:fixed;right:1.1rem;z-index:360;width:min(25rem,94vw);display:flex;gap:1.1rem;align-items:center;background:linear-gradient(#ffffff,#cfe2f8);border:2px solid #4f7db8;border-radius:1rem;box-shadow:0 .8rem 2.4rem #0007;padding:1.1rem 1.3rem;cursor:pointer;animation:toastin .4s cubic-bezier(.2,.9,.3,1.1)}
+.bigcard.off{background:linear-gradient(#fbfbfd,#d9dde6);border-color:#7b8697}
+.bigcard .bpic{flex:none;border-radius:.8rem;overflow:hidden;box-shadow:0 .2rem .7rem #0004;line-height:0}
+.bigcard.off .bpic{filter:grayscale(.85)}
+.bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
+.bigcard .btxt b{font-size:1.45rem}
+.bigcard .bsub{display:block;font-size:.85rem;color:#4b6285;margin-top:.3rem}
+.winkov{position:fixed;inset:0;z-index:420;overflow:hidden;pointer-events:none;background:radial-gradient(#ffffff22,#0000)}
+.winkov span.p{position:absolute;top:-4rem;animation:wfall linear forwards}
+.winkov span.r{position:absolute;bottom:-4rem;animation:wrise linear forwards}
+.winkov .big{position:absolute;left:50%;top:42%;font-size:min(14rem,48vw);transform:translate(-50%,-50%);animation:wpop 3.6s ease-out forwards}
+.winkov .cap{position:absolute;left:0;right:0;top:68%;text-align:center;font-size:1.6rem;font-weight:700;color:#fff;text-shadow:0 .1rem .6rem #000a;animation:wpop 3.6s ease-out forwards}
+@keyframes wfall{to{transform:translateY(112vh) rotate(360deg)}}
+@keyframes wrise{to{transform:translateY(-112vh) rotate(-300deg)}}
+@keyframes wpop{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}15%{transform:translate(-50%,-50%) scale(1.15);opacity:1}25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
+.scrow{display:flex;gap:.4rem;margin:.3rem 0;align-items:center}.scrow span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @keyframes toastin{from{transform:translateY(2rem);opacity:0}}
 .toast .tbody{min-width:0}
 .toast b{display:block;color:#10294a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -619,14 +636,23 @@ async function sysNotify(title, body, tag) {
     new Notification(title, opts);
   } catch (e) {}
 }
+function bigCard(p, text, off) {
+  const c = el('div', { class: 'bigcard' + (off ? ' off' : ''), onclick: () => { c.remove(); openChat(p.id); } });
+  const pic = el('div', { class: 'bpic' }); pic.append(avatarEl(p, 96, false));
+  const nm = el('b'); renderEmo(nm, p.display_name);
+  const sub = el('span', { class: 'bsub', text: 'Click to chat' });
+  c.append(pic, el('div', { class: 'btxt' }, nm, ' ' + text, sub));
+  c.style.bottom = (1.1 + document.querySelectorAll('.bigcard').length * 9) + 'rem';
+  document.body.append(c); setTimeout(() => c.remove(), 8000);
+}
 function announce(p, text, key, chime) {
   if (!noteOn(key)) return;
   if (chime) tone(SND.online);
-  toast(p.display_name, text, () => openChat(p.id), p);
+  if (key === 'inout') bigCard(p, text, text.includes('off')); else toast(p.display_name, text, () => openChat(p.id), p);
   sysNotify(p.display_name, text, 'c-' + p.id);
 }
 function signedIn(p) {
-  announce(p, 'has just signed in', 'inout', true);
+  announce(p, 'has logged in', 'inout', true);
   state.flash.add(p.id); renderContacts();
   setTimeout(() => { state.flash.delete(p.id); renderContacts(); }, 5000);
 }
@@ -637,7 +663,7 @@ function checkContact(p, say) {
   if (!say || was === undefined) return;
   const t = Date.now(), last = state.lastNote.get(p.id) || 0;
   if (was === 'offline' && now !== 'offline') { signedIn(p); state.lastNote.set(p.id, t); }
-  else if (was !== 'offline' && now === 'offline') { announce(p, 'has signed out', 'inout', false); state.lastNote.set(p.id, t); }
+  else if (was !== 'offline' && now === 'offline') { announce(p, 'has logged off', 'inout', false); state.lastNote.set(p.id, t); }
   else if (was !== now) { announce(p, 'is now ' + STATUS[now][0], 'status', false); state.lastNote.set(p.id, t); }
   else if (np && np !== wasNp && t - last > 8000) { announce(p, 'is listening to ♫ ' + np, 'song', false); state.lastNote.set(p.id, t); }
 }
@@ -669,6 +695,55 @@ function toast(title, text, onclick, prof) {
   document.body.append(t); setTimeout(() => t.remove(), 6000);
 }
 
+
+/* ============ WINKS (full-screen animations) ============ */
+const WINKS = {
+  hearts: ['Hearts', '💖', ['💖','💗','💕','💘'], 'r', 'Sending love'],
+  confetti: ['Party', '🎉', ['🎉','🎊','✨','🥳'], 'p', 'Party time!'],
+  snow: ['Snow', '❄️', ['❄️','❄️','⛄','✨'], 'p', 'Let it snow'],
+  stars: ['Stars', '🌟', ['⭐','🌟','💫','✨'], 'r', 'Wish upon a star'],
+  ghosts: ['Spooky', '👻', ['👻','🎃','🦇','💀'], 'p', 'Boo!'],
+  bubbles: ['Bubbles', '🫧', ['🫧','🐠','🐟','🫧'], 'r', 'Blub blub']
+};
+function playWink(key) {
+  const w = WINKS[key]; if (!w) return;
+  document.querySelectorAll('.winkov').forEach(o => o.remove());
+  const ov = el('div', { class: 'winkov' });
+  ov.append(el('div', { class: 'big', text: w[1] }), el('div', { class: 'cap', text: w[4] }));
+  for (let i = 0; i < 46; i++) {
+    const sp = el('span', { class: w[3], text: w[2][i % w[2].length] });
+    sp.style.left = Math.random() * 96 + '%';
+    sp.style.fontSize = (1.4 + Math.random() * 2.6) + 'rem';
+    sp.style.animationDuration = (2.2 + Math.random() * 2.4) + 's';
+    sp.style.animationDelay = (Math.random() * 1.6) + 's';
+    ov.append(sp);
+  }
+  document.body.append(ov); setTimeout(() => ov.remove(), 5200);
+}
+function toggleWinks(w) {
+  const old = w.tools.querySelector('.winkpop'); if (old) { old.remove(); return; }
+  const pop = el('div', { class: 'emopop winkpop' });
+  Object.entries(WINKS).forEach(([k, v]) => pop.append(el('span', { text: v[1], title: v[0], onclick: ev => { ev.stopPropagation(); pop.remove(); sendWink(w, k); } })));
+  w.tools.append(pop);
+  setTimeout(() => document.addEventListener('click', () => pop.remove(), { once: true }), 0);
+}
+async function sendWink(w, key) {
+  if (Date.now() - (state.winkAt || 0) < 8000) { sysLine(w, 'You can send a wink only once every 8 seconds.'); return; }
+  state.winkAt = Date.now();
+  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: key, kind: 'wink' }).select().single();
+  if (error) { sysLine(w, 'Wink not sent: ' + friendlyErr(error) + ' (if this says "constraint", run the newest setup.sql once)'); return; }
+  appendMsg(w, data); playWink(key); tone(SND.nudge);
+}
+
+/* ============ MY OWN EMOTICON SHORTCUTS (saved on this device) ============ */
+function getShort() { try { const o = JSON.parse(localStorage.getItem('brb_short') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+function setShort(o) { localStorage.setItem('brb_short', JSON.stringify(o)); }
+function expandShort(text) {
+  const o = getShort(); let out = text;
+  for (const k of Object.keys(o)) out = out.replace(new RegExp('(^|\\s)' + esc(k) + '(?=$|\\s|[.,!?])', 'gi'), (m, a) => a + o[k]);
+  return out;
+}
+
 /* ============ CHAT WINDOWS ============ */
 function openChat(id) {
   const prof = state.profiles.get(id); if (!prof) return;
@@ -688,13 +763,14 @@ function openChat(id) {
   const send = el('button', { text: 'Send', onclick: () => sendMsg(w) });
   const emoBtn = el('button', { text: '🙂', title: 'Emoticons', onclick: ev => { ev.stopPropagation(); toggleEmo(w); } });
   const nudgeBtn = el('button', { text: '📳 Nudge', title: 'Get their attention', onclick: () => sendNudge(w) });
+  const winkBtn = el('button', { text: '✨ Wink', title: 'Send a full-screen wink', onclick: ev => { ev.stopPropagation(); toggleWinks(w); } });
   const bBtn = el('button', { text: 'B', style: 'font-weight:700', onclick: () => { w.fmt.b = !w.fmt.b; bBtn.classList.toggle('on', w.fmt.b); } });
   const iBtn = el('button', { text: 'I', style: 'font-style:italic', onclick: () => { w.fmt.i = !w.fmt.i; iBtn.classList.toggle('on', w.fmt.i); } });
   const sws = ['', '#d6336c', '#1c7ed6', '#2f9e44', '#f08c00', '#7048e8'].map(c => el('button', { class: 'sw', title: c ? 'Text colour' : 'Default colour', style: `background:${c || '#222'}`, onclick: () => { w.fmt.c = c; } }));
   const fileIn = el('input', { type: 'file', accept: 'image/*,video/*', style: 'display:none' });
   fileIn.onchange = () => { if (fileIn.files[0]) sendMedia(w, fileIn.files[0]); fileIn.value = ''; };
-  const attachBtn = el('button', { text: '📎 Photo/Video', title: 'Send a picture or a video', onclick: () => fileIn.click() });
-  const tools = el('div', { class: 'wtools' }, emoBtn, attachBtn, nudgeBtn, bBtn, iBtn, ...sws, fileIn);
+  const attachBtn = el('button', { text: '📎', title: 'Send a picture or a video', onclick: () => fileIn.click() });
+  const tools = el('div', { class: 'wtools' }, emoBtn, attachBtn, nudgeBtn, winkBtn, bBtn, iBtn, ...sws, fileIn);
   const bottom = el('div', { class: 'wbottom' }, input, send);
   const picThem = el('div', { class: 'pic' }), picMe = el('div', { class: 'pic' }); picMe.append(avatarEl(state.me, 100, false)); picMe.style.borderColor = STATUS[state.me.status][1];
   const root = el('div', { class: 'win' }, bar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, typ, tools, bottom), el('div', { class: 'wside' }, picThem, picMe)));
@@ -756,6 +832,7 @@ function appendMsg(w, m, quiet) {
   const stick = w.log.scrollHeight - w.log.scrollTop - w.log.clientHeight < 60;
   const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   if (m.kind === 'nudge') { sysLine(w, mine ? 'You have sent a nudge.' : `${name} has sent you a nudge!`); }
+  else if (m.kind === 'wink') { const wk = WINKS[m.body]; sysLine(w, (mine ? 'You sent a wink: ' : `${name} sent you a wink: `) + (wk ? wk[1] + ' ' + wk[0] : '✨')); }
   else {
     if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); renderEmo(who, name); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
@@ -821,7 +898,7 @@ async function sendMedia(w, file) {
   w.typ.textContent = ''; appendMsg(w, data);
 }
 async function sendMsg(w) {
-  const body = w.input.value.replace(/\s+$/, '');
+  const body = expandShort(w.input.value.replace(/\s+$/, '')).slice(0, 2000);
   if (!body.trim()) return;
   const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.c || '');
   w.input.value = '';
@@ -890,11 +967,12 @@ function onIncoming(m) {
   const visible = w && !w.root.classList.contains('min') && !document.hidden;
   if (w) { w.typ.textContent = ''; appendMsg(w, m); }
   if (m.kind === 'nudge') { if (!w) openChat(id); const w2 = state.wins.get(id); if (w2) { w2.root.classList.remove('min'); front(w2); shake(w2); } tone(SND.nudge); }
+  if (m.kind === 'wink') { playWink(m.body); tone(SND.nudge); }
   if (visible && document.hasFocus()) { sb.rpc('mark_read', { p_from: id }); return; }
   state.unread.set(id, (state.unread.get(id) || 0) + 1);
   renderContacts(); updateTitle();
-  if (m.kind !== 'nudge') tone(SND.msg);
-  const preview = m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.slice(0, 80);
+  if (m.kind !== 'nudge' && m.kind !== 'wink') tone(SND.msg);
+  const preview = m.kind === 'wink' ? 'sent you a wink ✨' : m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.slice(0, 80);
   toast(p.display_name, preview, () => openChat(id), p);
   sysNotify(p.display_name, preview, 'm-' + id);
 }
@@ -982,6 +1060,17 @@ function openSettings() {
   const sizeSel = el('select', { onchange: () => { localStorage.setItem('brb_size', sizeSel.value); applyPrefs(); } },
     [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large'], ['xl', 'Extra large']].map(([v, t]) => el('option', { value: v, text: t })));
   sizeSel.value = localStorage.getItem('brb_size') || 'normal';
+  // --- shortcuts
+  const scList = el('div'), scCode = el('input', { placeholder: 'Code (e.g. brb)', maxlength: '12' }), scText = el('input', { placeholder: 'Becomes (e.g. 🏃 be right back)', maxlength: '100' });
+  const drawSc = () => { scList.textContent = ''; const o = getShort(); Object.keys(o).forEach(k => scList.append(el('div', { class: 'scrow' }, el('b', { text: k }), '→', el('span', { text: o[k] }), el('button', { text: '✕', title: 'Remove', onclick: () => { const q = getShort(); delete q[k]; setShort(q); drawSc(); } })))); if (!Object.keys(o).length) scList.append(el('div', { class: 'hint', text: 'You have no shortcuts yet.' })); };
+  const scAdd = el('button', { text: 'Add', onclick: () => {
+    const k = scCode.value.trim(), v = sanitizeName(scText.value, 100), o = getShort();
+    if (!/^[^\s]{2,12}$/.test(k)) { say('A code needs 2 to 12 characters with no spaces.'); return; }
+    if (!v) { say('Please type what the code should turn into.'); return; }
+    if (Object.keys(o).length >= 30 && !(k in o)) { say('You can keep up to 30 shortcuts.'); return; }
+    o[k] = v; setShort(o); scCode.value = ''; scText.value = ''; drawSc(); say('Shortcut saved.', true);
+  } });
+  drawSc();
   // --- account
   const pw = el('input', { type: 'password', autocomplete: 'new-password', placeholder: 'New password (8 or more characters)' });
   const pwBtn = el('button', { text: 'Change password', onclick: async () => {
@@ -999,6 +1088,7 @@ function openSettings() {
       el('div', { class: 'hint', text: 'Your picture is cropped to a square and made small automatically.' })),
     sec('Appearance', el('label', { text: 'Text size' }), sizeSel,
       chk('Show display pictures in my contact list', state.pics, v => { state.pics = v; localStorage.setItem('brb_pics', v ? 'on' : 'off'); renderContacts(); })),
+    sec('My emoticon shortcuts', el('div', { class: 'hint', text: 'Type a short code in a chat and it turns into your text or emoticon when you press Send. Example: code  brb  becomes  🏃 be right back' }), scList, el('div', { class: 'row2' }, scCode, scText, scAdd)),
     sec('Sounds and notifications',
       chk('Play sounds (messages, nudges, contacts signing in)', state.sound, v => { state.sound = v; localStorage.setItem('brb_sound', v ? 'on' : 'off'); }),
       chk('Pop-up when a contact signs in or signs out', noteOn('inout'), v => localStorage.setItem('brb_n_inout', v ? 'on' : 'off')),
