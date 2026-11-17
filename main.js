@@ -13,7 +13,7 @@ else {
     session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
       cb(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission) && wc.getURL().startsWith(SITE));
     });
-    win = new BrowserWindow({ width: 460, height: 820, minWidth: 360, minHeight: 500, center: true, title: 'BeRightBack', icon: path.join(__dirname, 'icon-512.png'), autoHideMenuBar: true,
+    win = new BrowserWindow({ useContentSize: true, width: 425, height: 780, minWidth: 340, minHeight: 500, center: true, title: 'BeRightBack', icon: path.join(__dirname, 'icon-512.png'), autoHideMenuBar: true,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
     win.loadURL(START);
     win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });

@@ -41,6 +41,12 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .ok{color:#1a7f37}
 .center{text-align:center;margin-top:.6rem}
 .main{position:fixed;left:1.4rem;top:1.4rem;bottom:1.4rem;width:min(25rem,calc(100vw - 2.8rem));display:flex;flex-direction:column;background:linear-gradient(#d3e6f9 0,#abcaec 4rem,#8fb4df);border:1px solid #4d74a8;border-radius:.9rem;box-shadow:0 0 0 1px #ffffffaa inset,0 1rem 3rem #12356588;overflow:hidden;animation:pop .4s cubic-bezier(.2,.9,.3,1.1)}
+html.appwin body,html.appwin body::before{background:#e6eefa}
+html.appwin .main{left:0;top:0;bottom:0;width:min(25rem,100vw);border-radius:0;border-width:0 1px 0 0;box-shadow:none}
+@media(max-width:700px){html.appwin .main{inset:0!important;width:auto!important;border-width:0}
+html.appwin body.login #app{display:block;min-height:100vh}
+html.appwin .card{width:100%;max-width:none;min-height:100vh;border:0;border-radius:0;box-shadow:none;animation:none;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
+html.appwin .card>*{width:100%;max-width:22rem}}
 .main>*:not(.mtitle){margin-left:.5rem;margin-right:.5rem}
 .mtitle{display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;color:#10294a;text-shadow:0 0 .4rem #fff,0 0 .2rem #fff}
 .mtitle .logo{width:1.7rem;margin:0;filter:none;border-radius:.4rem}
@@ -315,6 +321,7 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .qopts button.ok{background:#b2f2bb!important;border-color:#2f9e44}.qopts button.bad{background:#ffc9c9!important;border-color:#e03131}.qopts button.sel{background:#ffe08a!important;border-color:#e0a800;font-weight:700}.qopts button:disabled{opacity:.75}
 .abc{display:flex;flex-wrap:wrap;gap:.2rem;max-width:24rem}.abc button{width:1.9rem;padding:.1rem 0}
 </style>
+<script>try{if(/Electron/.test(navigator.userAgent))document.documentElement.classList.add('appwin')}catch(e){}</script>
 </head>
 <body>
 <div id="app"></div>
