@@ -233,20 +233,37 @@ function applyFmt(node, fmt) {
 
 /* sounds: made with the browser's own tone generator - no copyrighted audio */
 let actx;
+/* Original sounds made by the browser itself (soft glassy bell chimes). Not copied from any other product. */
 function tone(seq) {
   if (!state.sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    let t = actx.currentTime;
-    for (const [f, d, type] of seq) {
-      const o = actx.createOscillator(), g = actx.createGain();
-      o.type = type || 'sine'; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + 0.02); t += d * 0.9;
+    if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + 0.03;
+    const master = actx.createGain(); master.gain.value = 0.9; master.connect(actx.destination);
+    const dly = actx.createDelay(); dly.delayTime.value = 0.13;
+    const fb = actx.createGain(); fb.gain.value = 0.3;
+    const wet = actx.createGain(); wet.gain.value = 0.35;
+    master.connect(dly); dly.connect(fb); fb.connect(dly); dly.connect(wet); wet.connect(actx.destination);
+    for (const [f, at, d, kind] of seq) {
+      const t = t0 + at;
+      const parts = kind === 'buzz' ? [[f, 0.16, 'square']] : [[f, 0.30, 'sine'], [f * 2.76, 0.08, 'sine'], [f * 5.4, 0.025, 'sine']];
+      for (const [pf, pg, type] of parts) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = type; o.frequency.value = pf;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(pg, t + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.05);
+      }
     }
   } catch (e) {}
 }
-const SND = { msg: [[880, .1], [1175, .16]], online: [[523, .1], [659, .1], [784, .2]], nudge: [[200, .08, 'square'], [150, .08, 'square'], [200, .08, 'square'], [150, .08, 'square'], [200, .1, 'square']] };
+const SND = {
+  msg: [[1174.7, 0, 0.55], [1568, 0.12, 0.8]],
+  online: [[784, 0, 0.5], [1046.5, 0.12, 0.5], [1318.5, 0.24, 0.5], [1568, 0.36, 1.0]],
+  nudge: [[180, 0, 0.09, 'buzz'], [140, 0.1, 0.09, 'buzz'], [180, 0.2, 0.09, 'buzz'], [140, 0.3, 0.09, 'buzz'], [180, 0.4, 0.13, 'buzz']]
+};
 
 const STATUS = { online: ['Online', '#2fb344'], busy: ['Busy', '#e03131'], away: ['Away', '#f59f00'], invisible: ['Appear offline', '#868e96'], offline: ['Offline', '#868e96'] };
 const AVATARS = ['🙂','😎','🤓','😺','🐶','🐱','🦊','🐼','🐸','🦁','🐧','🐢','🦄','🚀','✈️','⚽','🎮','🎧','🌸','🌈','⭐','🔥','🍕','☕'];
@@ -257,7 +274,7 @@ applyPrefs();
 const state = {
   uid: null, me: null, profiles: new Map(), friendships: [], unread: new Map(), wins: new Map(),
   eff: new Map(), flash: new Set(), tchans: {}, lastTyping: {}, chan: null, timers: [], starting: false, z: 20,
-  sound: localStorage.getItem('brb_sound') !== 'off', collapsed: {}, pics: localStorage.getItem('brb_pics') === 'on', autoAway: false, nudgeAt: 0
+  sound: localStorage.getItem('brb_sound') !== 'off', collapsed: {}, pics: localStorage.getItem('brb_pics') !== 'off', autoAway: false, nudgeAt: 0
 };
 function buddy(st) {
   const c = { online: '#45a81c', busy: '#d9302a', away: '#f2a30f', offline: '#a9b3c1' }[st] || '#a9b3c1';
