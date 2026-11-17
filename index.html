@@ -267,6 +267,16 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
  .wtb .ti{font-size:1.6rem;line-height:2rem}
  .wsub small{display:none}
 }
+
+.wlog .msg{position:relative}
+.rpt{position:absolute;right:.2rem;top:0;width:auto;min-width:0;padding:0 .3rem;border:0;background:none;box-shadow:none;opacity:0;cursor:pointer;font-size:.85rem;color:#a61e12}
+.wlog .msg:hover .rpt{opacity:.7}
+@media (hover:none){.rpt{opacity:.35}}
+.fcode{display:inline-block;font-size:1.5rem;letter-spacing:.15rem;padding:.2rem .6rem;margin:.2rem 0;background:#fff;border:1px dashed #6f93c3;border-radius:.5rem;user-select:all}
+.rcard{border:1px solid #c9d8ee;border-radius:.6rem;padding:.6rem .8rem;margin:.5rem 0;background:#fff}
+.rcard.open{border-color:#e0a030;background:#fffaf0}
+.rhd{font-size:.8rem;color:#6b7b93}
+.rev{margin:.3rem 0;padding:.3rem .6rem;border-left:3px solid #c0392b;background:#fdf1ef;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -420,7 +430,7 @@ function fillAvatar(node, p) {
 }
 function avatarEl(p, size = 40, showDot = true, st) {
   const a = el('div', { class: 'av', style: `width:${size / 16}rem;height:${size / 16}rem;font-size:${(size * .55) / 16}rem` });
-  fillAvatar(a, p);
+  fillAvatar(a, p.anon && p.id !== state.uid ? { id: p.id, avatar: '🙂' } : p);
   if (showDot) a.append(el('span', { class: 'dot', style: `background:${STATUS[st || effStatus(p)][1]}` }));
   return a;
 }
@@ -437,6 +447,8 @@ function friendIds() {
 const friendlyErr = e => {
   const m = (e && e.message) || '';
   if (/rate_limited/.test(m)) return 'You are sending too fast. Wait a few seconds.';
+  if (/not allowed/.test(m)) return 'You are not allowed to do that.';
+  if (state.me && state.me.suspended && /row-level security|violates/.test(m)) return 'Your account is paused. Open Settings and use Contact the admin.';
   if (/row-level security|violates/.test(m)) return 'You can only message people who are on your contact list.';
   if (/Failed to fetch|NetworkError/i.test(m)) return 'No internet connection.';
   return m || 'Something went wrong.';
@@ -460,7 +472,9 @@ function showLogin(msg) {
   const email = el('input', { type: 'email', autocomplete: 'email', placeholder: 'you@example.com', value: localStorage.getItem('brb_email') || '' });
   const pass = el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'At least 8 characters' });
   const name = el('input', { type: 'text', maxlength: '40', placeholder: 'What should friends call you?' });
-  const nameRow = el('div', { style: 'display:none' }, el('label', { text: 'Display name' }), name);
+  const nameRow = el('div', { style: 'display:none' }, el('label', { text: 'Nickname (no need to use your real name)' }), name);
+  const agree = el('input', { type: 'checkbox', style: 'width:auto' });
+  const agreeRow = el('label', { style: 'display:none;gap:6px;align-items:flex-start;margin-top:10px;font-size:.9rem' }, agree, el('span', {}, 'I am 13 or older. I agree to the ', el('a', { href: '#', text: 'Community rules', onclick: ev => { ev.preventDefault(); legalModal('rules'); } }), ' and the ', el('a', { href: '#', text: 'Privacy policy', onclick: ev => { ev.preventDefault(); legalModal('privacy'); } }), '.'));
   const st = el('select', {}, ...['online', 'busy', 'away', 'invisible'].map(k => el('option', { value: k, text: STATUS[k][0] })));
   st.value = localStorage.getItem('brb_pre_status') || 'online';
   const rem = el('input', { type: 'checkbox', style: 'width:auto', checked: 'checked' });
@@ -470,7 +484,7 @@ function showLogin(msg) {
   const forgot = el('button', { class: 'link', text: 'Forgot your password?' });
   toggle.onclick = () => {
     mode = mode === 'in' ? 'up' : 'in'; err.textContent = '';
-    nameRow.style.display = mode === 'up' ? 'block' : 'none';
+    nameRow.style.display = mode === 'up' ? 'block' : 'none'; agreeRow.style.display = mode === 'up' ? 'flex' : 'none';
     go.textContent = mode === 'up' ? 'Create account' : 'Sign in';
     toggle.textContent = mode === 'up' ? 'Already have an account? Sign in' : 'No account? Sign up';
     pass.autocomplete = mode === 'up' ? 'new-password' : 'current-password';
@@ -485,6 +499,7 @@ function showLogin(msg) {
     const e = email.value.trim(), p = pass.value;
     if (!e || !p) { err.textContent = 'Enter your email and password.'; return; }
     if (mode === 'up' && p.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
+    if (mode === 'up' && !agree.checked) { err.textContent = 'Please tick the box to confirm you are 13 or older and agree to the Community rules and Privacy policy.'; return; }
     go.disabled = true;
     localStorage.setItem('brb_pre_status', st.value);
     if (rem.checked) localStorage.setItem('brb_email', e); else localStorage.removeItem('brb_email');
@@ -493,7 +508,7 @@ function showLogin(msg) {
         const { error } = await sb.auth.signInWithPassword({ email: e, password: p });
         if (error) err.textContent = /Invalid login/i.test(error.message) ? 'Wrong email or password.' : /not confirmed/i.test(error.message) ? 'Please confirm your email first (check your inbox).' : friendlyErr(error);
       } else {
-        const { data, error } = await sb.auth.signUp({ email: e, password: p, options: { data: { display_name: name.value.trim() || e.split('@')[0] }, emailRedirectTo: location.href.split('#')[0] } });
+        const { data, error } = await sb.auth.signUp({ email: e, password: p, options: { data: { display_name: name.value.trim() || ('User' + Math.floor(1000 + Math.random() * 9000)), accepted_terms: new Date().toISOString() }, emailRedirectTo: location.href.split('#')[0] } });
         if (error) err.textContent = friendlyErr(error);
         else if (!data.session) { err.className = 'err ok'; err.textContent = 'Account created. Check your email and click the confirmation link, then sign in.'; }
       }
@@ -501,11 +516,11 @@ function showLogin(msg) {
     go.disabled = false;
   }
   const form = el('form', { onsubmit: submit }, el('label', { text: 'Email' }), email, el('label', { text: 'Password' }), pass, nameRow,
-    el('label', { text: 'Sign in as' }), st,
+    agreeRow, el('label', { text: 'Sign in as' }), st,
     el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:10px' }, rem, 'Remember my email'), go, err);
   const card = el('div', { class: 'card' });
   const lg = el('div'); lg.innerHTML = LOGO;
-  card.append(lg, el('h2', { text: 'Sign in to ' + APP_NAME }), form, el('div', { class: 'center' }, toggle), el('div', { class: 'center' }, forgot), isStandalone() ? '' : el('div', { class: 'center' }, el('button', { class: 'link', type: 'button', text: '📲 Install BeRightBack on this device', onclick: installApp })));
+  card.append(lg, el('h2', { text: 'Sign in to ' + APP_NAME }), form, el('div', { class: 'center' }, toggle), el('div', { class: 'center' }, forgot), el('div', { class: 'center', style: 'font-size:.85rem' }, el('button', { class: 'link', type: 'button', text: 'Community rules', onclick: () => legalModal('rules') }), ' · ', el('button', { class: 'link', type: 'button', text: 'Privacy and terms', onclick: () => legalModal('privacy') })), isStandalone() ? '' : el('div', { class: 'center' }, el('button', { class: 'link', type: 'button', text: '📲 Install BeRightBack on this device', onclick: installApp })));
   app.append(card);
 }
 function showRecovery() {
@@ -529,10 +544,10 @@ async function startApp(user) {
   if (state.starting || state.uid === user.id) return;
   state.starting = true;
   try {
-    state.uid = user.id;
+    state.uid = user.id; state.authEmail = user.email || '';
     let { data: p } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (!p) {
-      await sb.from('profiles').insert({ id: user.id, display_name: ((user.user_metadata && user.user_metadata.display_name) || (user.email || 'User').split('@')[0]).slice(0, 30) });
+      await sb.from('profiles').insert({ id: user.id, display_name: ((user.user_metadata && user.user_metadata.display_name) || 'User').slice(0, 30) });
       ({ data: p } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle());
     }
     if (!p) throw new Error('Your profile could not be loaded. Has setup.sql been run?');
@@ -542,7 +557,10 @@ async function startApp(user) {
     const { data: up } = await sb.from('profiles').update({ status: wantStatus, last_seen: new Date().toISOString() }).eq('id', user.id).select().single();
     if (up) state.me = up;
     await loadAll();
+    try { const ra = await sb.rpc('is_admin'); state.isAdmin = ra.data === true; } catch (e) { state.isAdmin = false; }
     buildMain(); renderContacts();
+    setTimeout(handleInviteLink, 800);
+    if (state.me.suspended) setTimeout(() => alert('Your account is paused because of reports, so sending is switched off. Open Settings and use Contact the admin to ask about it.'), 900);
     subscribe(); startTimers();
     document.addEventListener('click', () => { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }, { once: true });
   } catch (e) {
@@ -575,7 +593,7 @@ function buildMain() {
   const head = el('div', { class: 'mhead', id: 'mhead' });
   const list = el('div', { class: 'contacts', id: 'clist' });
   const reqs = el('div', { id: 'reqs' });
-  const addIn = el('input', { type: 'email', placeholder: 'Add a contact by email', onkeydown: ev => { if (ev.key === 'Enter') addContact(); } });
+  const addIn = el('input', { type: 'text', autocomplete: 'off', placeholder: 'Add a contact by friend code', onkeydown: ev => { if (ev.key === 'Enter') addContact(); } });
   const addMsg = el('div', { class: 'addmsg', id: 'addmsg' });
   const addBtn = el('button', { text: 'Add', onclick: addContact });
   async function addContact() {
@@ -583,7 +601,7 @@ function buildMain() {
     addBtn.disabled = true;
     const { data, error } = await sb.rpc('send_friend_request', { p_email: v });
     addBtn.disabled = false;
-    const M = { sent: 'Request sent! They need to accept it.', accepted: 'You are now contacts!', exists: 'You already have a request or contact with this person.', self: 'That is your own email.', not_found: 'No BeRightBack user found with that email.', rate_limited: 'Too many requests. Try again later.' };
+    const M = { sent: 'Request sent! They need to accept it.', accepted: 'You are now contacts!', exists: 'You already have a request or contact with this person.', self: 'That is your own code.', suspended: 'Your account is paused. Use Settings, Contact the admin.', not_found: 'No one found with that code. Check it and try again.', rate_limited: 'Too many requests. Try again later.' };
     addMsg.className = 'addmsg ' + (error || data === 'not_found' || data === 'self' || data === 'rate_limited' ? '' : 'ok');
     addMsg.style.color = error ? '#b42318' : (data === 'sent' || data === 'accepted') ? '#1a7f37' : '#b45309';
     addMsg.textContent = error ? friendlyErr(error) : (M[data] || 'Done.');
@@ -677,8 +695,8 @@ function renderContacts() {
   r.incoming.forEach(id => {
     const p = state.profiles.get(id); if (!p) return;
     const act = a => async () => { await sb.rpc('respond_friend_request', { p_requester: id, p_action: a }); await refresh(); };
-    reqs.append(el('div', { class: 'req' }, el('div', {}, el('b', { text: p.display_name }), ' (' + p.email + ') wants to add you to their contacts.'),
-      el('div', { class: 'row' }, el('button', { text: 'Accept', onclick: act('accept') }), el('button', { text: 'Decline', onclick: act('decline') }), el('button', { text: 'Block', onclick: act('block') }))));
+    reqs.append(el('div', { class: 'req' }, el('div', {}, el('b', { text: p.display_name }), ' wants to add you to their contacts.'),
+      el('div', { class: 'row' }, el('button', { text: 'Accept', onclick: act('accept') }), el('button', { text: 'Decline', onclick: act('decline') }), el('button', { text: 'Block', onclick: act('block') }), el('button', { text: 'Report', onclick: () => reportDialog(id) }))));
   });
   const online = [], offline = [], byGroup = {};
   r.accepted.forEach(id => { const p = state.profiles.get(id); if (!p) return; const gn = state.groups.map[id]; if (gn && state.groups.names.includes(gn)) (byGroup[gn] = byGroup[gn] || []).push(p); else (effStatus(p) === 'offline' ? offline : online).push(p); });
@@ -694,9 +712,9 @@ function renderContacts() {
     const st = effStatus(p), n = state.unread.get(p.id) || 0;
     const nm = el('span', { class: 'n' }); renderEmo(nm, p.display_name);
     const l1 = el('div', { class: 'l1' }, nm, el('span', { class: 's', text: st !== 'offline' && st !== 'online' ? ' (' + STATUS[st][0] + ')' : '' }));
-    const l2 = el('div', { class: 'l2' });
+    const l2 = el('div', { class: 'l2' }); if (isMuted(p.id)) l1.append(el('span', { class: 's', text: ' 🔇' }));
     if (st !== 'offline' && p.now_playing) { l2.classList.add('np'); l2.title = 'Listening to ' + p.now_playing; l2.append(eqBars(), ' ' + p.now_playing); }
-    else if (p.personal_message) renderEmo(l2, p.personal_message);
+    else if (p.personal_message && !p.anon) renderEmo(l2, p.personal_message);
     const icon = state.pics ? avatarEl(p, 40, true, st) : buddy(st);
     const row = el('div', { class: 'ct' + (st === 'offline' ? ' off' : '') + (state.flash.has(p.id) ? ' flash' : ''), ondblclick: () => openChat(p.id), onclick: () => { if (matchMedia('(max-width:700px)').matches || n) openChat(p.id); } },
       icon, el('div', { class: 'txt' }, l1, l2));
@@ -706,6 +724,8 @@ function renderContacts() {
       ...state.groups.names.map(n => ['Move to ' + n, () => { state.groups.map[p.id] = n; saveGroups(); renderContacts(); }]),
       ['Move to a new group…', () => newGroup(p.id)],
       ...(state.groups.map[p.id] ? [['Remove from group', () => { delete state.groups.map[p.id]; saveGroups(); renderContacts(); }]] : []), '-',
+      [isMuted(p.id) ? 'Turn notifications back on' : 'Mute notifications', () => toggleMute(p)],
+      ['Report…', () => reportDialog(p.id)],
       ['Block', async () => { if (confirm('Block ' + p.display_name + '?')) { await sb.rpc('block_user', { p_other: p.id }); closeChat(p.id); await refresh(); } }],
       ['Delete contact', async () => { if (confirm('Delete ' + p.display_name + ' from your contacts?')) { await sb.rpc('remove_friend', { p_other: p.id }); closeChat(p.id); await refresh(); } }]]); } }));
     return row;
@@ -717,10 +737,10 @@ function renderContacts() {
   });
   group('online', 'Online', online, contactRow);
   group('offline', 'Offline', offline, contactRow);
-  if (r.outgoing.length) group('pending', 'Waiting for reply', r.outgoing.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name }), el('span', { class: 'm', text: ' - ' + p.email })), el('button', { text: '✕', style: 'padding:0 7px', title: 'Cancel request', onclick: async () => { await sb.rpc('remove_friend', { p_other: p.id }); await refresh(); } })));
+  if (r.outgoing.length) group('pending', 'Waiting for reply', r.outgoing.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name }), el('span', { class: 'm', text: ' - waiting for them to accept' })), el('button', { text: '✕', style: 'padding:0 7px', title: 'Cancel request', onclick: async () => { await sb.rpc('remove_friend', { p_other: p.id }); await refresh(); } })));
   if (r.blocked.length) group('blocked', 'Blocked', r.blocked.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name })), el('button', { text: 'Unblock', onclick: async () => { await sb.rpc('unblock_user', { p_other: p.id }); await refresh(); } })));
   list.append(el('div', { class: 'grp newg', onclick: () => newGroup(), text: '＋ Create a group or list (Friends, Work…)' }));
-  if (!r.accepted.length && !r.incoming.length) list.append(el('div', { style: 'padding:14px;color:#7a869b;text-align:center', text: 'No contacts yet. Type a friend\'s email below and click Add. They need a BeRightBack account.' }));
+  if (!r.accepted.length && !r.incoming.length) list.append(el('div', { style: 'padding:14px;color:#7a869b;text-align:center', text: 'No contacts yet. Ask a friend for their friend code (Settings, Privacy and safety), type it below and click Add.' }));
 }
 let refreshT;
 function refresh() {
@@ -755,7 +775,7 @@ function bigCard(p, text, off) {
   document.body.append(c); setTimeout(() => c.remove(), 8000);
 }
 function announce(p, text, key, chime) {
-  if (!noteOn(key)) return;
+  if (!noteOn(key) || isMuted(p.id)) return;
   if (chime) tone(SND.online);
   if (key === 'inout') bigCard(p, text, text.includes('off')); else toast(p.display_name, text, () => openChat(p.id), p);
   sysNotify(p.display_name, text, 'c-' + p.id);
@@ -1172,7 +1192,7 @@ function front(w) { w.root.style.zIndex = ++state.z; }
 function closeChat(id) { const w = state.wins.get(id); if (w) { if (RTC.id === id) endCall(w, true); w.root.remove(); state.wins.delete(id); } }
 function setPic(node, prof, st) {
   node.style.borderColor = STATUS[st][1];
-  const k = (prof.avatar || '') + '|' + st;
+  const k = (prof.avatar || '') + '|' + st + (prof.anon ? 'a' : '');
   if (node.dataset.k === k) return; node.dataset.k = k;
   node.innerHTML = ''; node.append(avatarEl(prof, 100, false));
 }
@@ -1181,7 +1201,7 @@ function updateWinHeader(id) {
   const st = effStatus(p);
   w.tt.textContent = `${p.display_name} - Conversation`;
   w.dot.style.background = STATUS[st][1];
-  w.sub.textContent = ''; const toN = el('span', { class: 'to' }); renderEmo(toN, p.display_name); w.sub.append('To: ', toN, el('small', { text: ` <${p.email}> (${STATUS[st][0]})` + (p.personal_message ? ' - ' + p.personal_message : '') }));
+  w.sub.textContent = ''; const toN = el('span', { class: 'to' }); renderEmo(toN, p.display_name); w.sub.append('To: ', toN, el('small', { text: ` (${STATUS[st][0]})` + (p.personal_message && !p.anon ? ' - ' + p.personal_message : '') }));
   w.np.innerHTML = '';
   if (st !== 'offline' && p.now_playing) { w.np.append(eqBars(), ` ${p.display_name} is listening to: ${p.now_playing}`); w.np.style.display = 'flex'; } else w.np.style.display = 'none';
   setPic(w.picThem, p, st); setPic(w.picMe, state.me, state.me.status);
@@ -1208,6 +1228,7 @@ function appendMsg(w, m, quiet) {
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
     if (m.kind === 'image' || m.kind === 'video' || m.kind === 'audio') d.append(mediaNode(m, () => { if (stick) w.log.scrollTop = w.log.scrollHeight; }));
     else { applyFmt(d, m.fmt); renderRich(d, m.body); }
+    if (!mine) d.append(el('button', { class: 'rpt', text: '⚑', title: 'Report this message', onclick: () => reportDialog(w.id, m.id) }));
     w.log.append(d);
   }
   if (stick || mine) w.log.scrollTop = w.log.scrollHeight;
@@ -1334,6 +1355,7 @@ function onIncoming(m) {
   if (!p) { refresh().then(() => onIncoming(m)); return; }
   const w = state.wins.get(id);
   const visible = w && !w.root.classList.contains('min') && !document.hidden;
+  if (isMuted(id)) { if (w) { w.typ.textContent = ''; appendMsg(w, m); } if (visible && document.hasFocus()) sb.rpc('mark_read', { p_from: id }); else { state.unread.set(id, (state.unread.get(id) || 0) + 1); renderContacts(); } return; }
   if (w) { w.typ.textContent = ''; appendMsg(w, m); }
   if (m.kind === 'nudge') { if (!w) openChat(id); const w2 = state.wins.get(id); if (w2) { w2.root.classList.remove('min'); front(w2); shake(w2); } tone(SND.nudge); }
   if (m.kind === 'wink') { playWink(m.body); tone(SND.nudge); }
@@ -1379,6 +1401,128 @@ async function setAvatar(value) {
   const { error } = await sb.from('profiles').update({ avatar: value }).eq('id', state.uid);
   if (error) return friendlyErr(error);
   state.me.avatar = value; afterProfileChange(); return '';
+}
+
+/* ============ PHASE 1: SAFETY AND PRIVACY ============ */
+function captureInvite() { try { const c = new URLSearchParams(location.search).get('add'); if (c) { sessionStorage.setItem('brb_add', c.slice(0, 20)); history.replaceState(null, '', location.pathname + location.hash); } } catch (e) {} }
+captureInvite();
+async function handleInviteLink() {
+  let c = ''; try { c = sessionStorage.getItem('brb_add') || ''; sessionStorage.removeItem('brb_add'); } catch (e) {}
+  if (!c || !state.uid) return;
+  if (!confirm('Someone shared a BeRightBack invite link with you. Send them a contact request?')) return;
+  const { data, error } = await sb.rpc('send_friend_request', { p_email: c });
+  toast('Invite', error ? friendlyErr(error) : data === 'sent' ? 'Request sent. They need to accept it.' : data === 'accepted' ? 'You are now contacts!' : data === 'exists' ? 'You already have a request or contact with this person.' : 'That invite link did not work.');
+  await refresh();
+}
+const getMuted = () => { try { return JSON.parse(localStorage.getItem('brb_muted') || '[]'); } catch (e) { return []; } };
+const isMuted = id => getMuted().includes(id);
+function toggleMute(p) {
+  let m = getMuted(); const was = m.includes(p.id);
+  m = was ? m.filter(x => x !== p.id) : [...m, p.id];
+  localStorage.setItem('brb_muted', JSON.stringify(m)); renderContacts();
+  toast(p.display_name, was ? 'Notifications are back on.' : 'Muted. No sounds or pop-ups from this contact. Their messages still arrive.');
+}
+const fmtCode = c => String(c || '').replace(/(.{4})(?=.)/g, '$1-');
+const REASONS = ['Bullying or harassment', 'Hate or discrimination', 'Threats or violence', 'Sexual or unsafe content', 'Scam or spam', 'Pretending to be someone else', 'Something else'];
+function miniModal(title, ...kids) {
+  const ov = el('div', { class: 'modal', onclick: ev => { if (ev.target === ov) ov.remove(); } });
+  ov.append(el('div', { class: 'mbox' }, el('div', { class: 'mhd' }, el('h2', { text: title }), el('button', { text: '✕', title: 'Close', onclick: () => ov.remove() })), ...kids));
+  document.body.append(ov); return ov;
+}
+function reportDialog(id, msgId) {
+  const p = state.profiles.get(id); if (!p) return;
+  const msg = el('div', { class: 'setmsg' });
+  let reason = REASONS[0];
+  const rows = REASONS.map((r, i) => { const rd = el('input', { type: 'radio', name: 'rr' }); rd.checked = i === 0; rd.onchange = () => { reason = r; }; return el('label', { class: 'crow' }, rd, r); });
+  const det = el('textarea', { maxlength: '600', rows: '3', placeholder: 'Anything else the admin should know (optional)' });
+  const blk = el('input', { type: 'checkbox' }); blk.checked = true;
+  const send = el('button', { class: 'primary', text: 'Send report' });
+  const ov = miniModal('Report ' + p.display_name,
+    el('div', { class: 'hint', text: msgId ? 'You are reporting this message. The admin will see it.' : 'The admin will look at your report. Nobody else is told who reported.' }), msg, ...rows, det,
+    el('label', { class: 'crow' }, blk, 'Also block this person'), send);
+  send.onclick = async () => {
+    send.disabled = true;
+    const { error } = await sb.rpc('report_user', { p_other: id, p_reason: reason, p_details: det.value.trim(), p_msg: msgId || null });
+    if (error) { msg.style.color = '#b42318'; msg.textContent = friendlyErr(error); send.disabled = false; return; }
+    if (blk.checked) { await sb.rpc('block_user', { p_other: id }); closeChat(id); await refresh(); }
+    ov.remove(); toast('Report sent', 'Thank you. The admin will look at it.');
+  };
+}
+function contactAdminDialog() {
+  const msg = el('div', { class: 'setmsg' });
+  const t = el('textarea', { maxlength: '600', rows: '5', placeholder: 'Write your message to the admin (problem, question, appeal for a paused account…)' });
+  const send = el('button', { class: 'primary', text: 'Send to the admin' });
+  const ov = miniModal('Contact the admin', el('div', { class: 'hint', text: 'Only the admin can read this.' }), msg, t, send);
+  send.onclick = async () => {
+    if (!t.value.trim()) return; send.disabled = true;
+    const { error } = await sb.rpc('contact_admin', { p_text: t.value.trim() });
+    if (error) { msg.style.color = '#b42318'; msg.textContent = friendlyErr(error); send.disabled = false; return; }
+    ov.remove(); toast('Sent', 'Your message went to the admin.');
+  };
+}
+function legalModal(which) {
+  const H = (t) => el('h3', { text: t, style: 'margin:.9rem 0 .3rem;color:#1f4170' }), P = (t) => el('p', { text: t, style: 'margin:.25rem 0;line-height:1.45' });
+  const kids = which === 'rules' ? [
+    P('BeRightBack is a friendly place. Be kind, and keep it a safe space for everyone.'),
+    H('Please do not'), P('• Bully, harass, threaten or shame anyone.'), P('• Share hate, discrimination or violent content.'), P('• Send sexual content, or anything unsafe for young people.'),
+    P('• Scam, spam, or pretend to be someone else.'), P('• Share other people\'s private details (addresses, phone numbers, photos) without their permission.'), P('• Use the app if you are under 13.'),
+    H('If something is wrong'), P('Use Report on a person or a message, Block to stop someone, or Mute to silence a contact. You can also write to the admin from Settings.'),
+    H('What can happen'), P('The admin may remove content or pause an account that breaks these rules.')
+  ] : [
+    P('This is a plain-language summary of how BeRightBack handles your information, written to follow the spirit of Singapore\'s PDPA. It may be updated; the app will show changes here.'),
+    H('What we collect'), P('Your sign-in email (kept private and never shown to other users), your nickname, picture, status, personal message, the messages, pictures, videos and voice clips you send, the song title you choose to share, when you were last active, and the reports you make.'),
+    H('Why'), P('Only to run the chat service: signing you in, delivering messages to your contacts, showing your status, and keeping the community safe.'),
+    H('Who can see it'), P('Your contacts see your nickname, picture, status, personal message and song (unless you switch on Anonymous mode, which hides picture, message and song). Nobody sees your email. The admin can see reports and, technically, the data stored in the service in order to keep it running and safe.'),
+    H('Where it is kept'), P('On Supabase cloud servers, which may be outside Singapore. We do not sell your data and we do not show advertising.'),
+    H('Your choices'), P('You can change your nickname and picture any time, switch on Anonymous mode, turn off being found by email, switch off new contact requests, block, mute, and get a new friend code. You can delete your account in Settings; this permanently deletes your profile, contacts, messages and the pictures and videos you uploaded.'),
+    H('Keeping messages'), P('Messages are kept until you or the other person deletes the account. Reports are kept while needed for safety.'),
+    H('Children'), P('You must be 13 or older to use BeRightBack.'),
+    H('Questions or requests'), P('Use Settings, Help, rules and reports, Contact the admin to ask about, correct or remove your information.')
+  ];
+  const ov = miniModal(which === 'rules' ? 'Community rules' : 'Privacy and terms', ...kids);
+  ov.style.zIndex = 400;
+}
+function privItems(say) {
+  const me = state.me, out = [];
+  const upd = async (patch, ok) => { const { data, error } = await sb.from('profiles').update(patch).eq('id', state.uid).select().single(); if (error) say(friendlyErr(error)); else { state.me = data; if (ok) say(ok, true); renderContacts(); } };
+  const chk = (label, val, fn) => { const c = el('input', { type: 'checkbox' }); c.checked = val; c.onchange = () => fn(c.checked); return el('label', { class: 'crow' }, c, label); };
+  const code = el('b', { class: 'fcode', text: fmtCode(me.friend_code) || 'Not ready (run setup.sql)' });
+  const link = () => location.origin + location.pathname + '?add=' + (state.me.friend_code || '');
+  const copy = async (t, done) => { try { await navigator.clipboard.writeText(t); say(done, true); } catch (e) { prompt('Copy this:', t); } };
+  out.push(el('div', { class: 'hint', text: 'Your friend code. Share it only with people you want as contacts. Nobody can find you without it.' }), code,
+    el('div', { class: 'row2' },
+      el('button', { text: 'Copy code', onclick: () => copy(state.me.friend_code || '', 'Code copied.') }),
+      el('button', { text: 'Copy invite link', onclick: () => copy(link(), 'Invite link copied.') }),
+      el('button', { text: 'Get a new code', onclick: async () => { if (!confirm('Get a new code? Your old code will stop working. Existing contacts stay.')) return; const { data, error } = await sb.rpc('new_friend_code'); if (error) { say(friendlyErr(error)); return; } state.me.friend_code = data; code.textContent = fmtCode(data); say('You have a new code.', true); } })),
+    chk('Anonymous mode: contacts see a plain picture, no personal message and no song', !!me.anon, v => upd({ anon: v }, v ? 'Anonymous mode is on.' : 'Anonymous mode is off.')),
+    chk('Let people find me by my email address (off is more private)', !!me.find_by_email, v => upd({ find_by_email: v }, 'Saved.')),
+    chk('Allow new contact requests (switch off and nobody new can add me)', me.allow_requests !== false, v => upd({ allow_requests: v }, 'Saved.')),
+    el('div', { class: 'hint', text: 'Tip: your nickname does not have to be your real name. Use "Appear offline" to browse without being seen. Mute or block anyone from the ⋯ button in your contact list.' }));
+  return out;
+}
+function helpItems() {
+  return [el('div', { class: 'row2' }, el('button', { text: '✉ Contact the admin', onclick: contactAdminDialog }), el('button', { text: 'Community rules', onclick: () => legalModal('rules') }), el('button', { text: 'Privacy and terms', onclick: () => legalModal('privacy') }))];
+}
+async function adminTool() {
+  const box = el('div'), ov = miniModal('Admin: reports', box);
+  const load = async () => {
+    box.textContent = 'Loading…';
+    const { data, error } = await sb.rpc('admin_reports');
+    if (error) { box.textContent = friendlyErr(error); return; }
+    box.textContent = '';
+    if (!data.length) { box.append(el('div', { class: 'hint', text: 'No reports yet.' })); return; }
+    data.forEach(r => {
+      const act = (txt, fn) => el('button', { text: txt, onclick: async () => { const x = await fn(); if (x && x.error) alert(friendlyErr(x.error)); load(); } });
+      box.append(el('div', { class: 'rcard' + (r.status === 'open' ? ' open' : '') },
+        el('div', { class: 'rhd', text: `#${r.id} · ${new Date(r.created_at).toLocaleString()} · ${r.status}` }),
+        el('div', {}, el('b', { text: r.reason }), r.reported_name ? ' about ' : '', r.reported_name ? el('b', { text: r.reported_name }) : '', ' from ', r.reporter_name || '(deleted account)'),
+        r.evidence ? el('blockquote', { class: 'rev', text: r.evidence }) : '', r.details ? el('div', { text: r.details }) : '',
+        el('div', { class: 'row2' },
+          act(r.status === 'open' ? 'Mark done' : 'Reopen', () => sb.rpc('admin_resolve_report', { p_id: r.id, p_status: r.status === 'open' ? 'done' : 'open' })),
+          ...(r.reported_id ? [act(r.reported_suspended ? 'Unpause account' : 'Pause account', () => { if (!r.reported_suspended && !confirm('Pause ' + r.reported_name + '? They will not be able to send messages.')) return null; return sb.rpc('admin_set_suspended', { p_user: r.reported_id, p_on: !r.reported_suspended }); })] : []))));
+    });
+  };
+  load();
 }
 function openSettings() {
   closeSettings();
@@ -1465,8 +1609,10 @@ function openSettings() {
       chk('Pop-up when a contact changes their status', noteOn('status'), v => localStorage.setItem('brb_n_status', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their song', noteOn('song'), v => localStorage.setItem('brb_n_song', v ? 'on' : 'off')),
       el('div', { class: 'row2' }, el('button', { text: '🔔 Allow desktop notifications', onclick: () => { if (!('Notification' in window)) { say('This browser does not support notifications.'); return; } Notification.requestPermission().then(r => say(r === 'granted' ? 'Notifications are on.' : 'Notifications are blocked in your browser settings.', r === 'granted')); } }))),
-    sec('Privacy', chk('Show my current song to my contacts', pl.share, v => { pl.share = v; localStorage.setItem('brb_share_music', v ? 'on' : 'off'); if (pl.ui.chk) pl.ui.chk.checked = v; setNow(pl.audio.paused ? '' : curTitle()); updatePlayer(); })),
-    sec('My account', el('div', { class: 'hint', text: 'Signed in as ' + me.email }), el('label', { text: 'New password' }), pw,
+    sec('Privacy and safety', ...privItems(say), chk('Show my current song to my contacts', pl.share, v => { pl.share = v; localStorage.setItem('brb_share_music', v ? 'on' : 'off'); if (pl.ui.chk) pl.ui.chk.checked = v; setNow(pl.audio.paused ? '' : curTitle()); updatePlayer(); })),
+    sec('Help, rules and reports', ...helpItems()),
+    ...(state.isAdmin ? [sec('Admin', el('div', { class: 'hint', text: 'You are an admin. Reports from people appear here.' }), el('div', { class: 'row2' }, el('button', { text: '🛡 Open the admin tool', onclick: adminTool })))] : []),
+    sec('My account', el('div', { class: 'hint', text: 'Signed in as ' + (state.authEmail || '') + '. Only you can see this email.' }), el('label', { text: 'New password' }), pw,
       el('div', { class: 'row2' }, pwBtn, el('button', { text: 'Sign out', onclick: () => { closeSettings(); signOut(); } }), el('button', { class: 'danger', text: 'Delete my account…', onclick: () => { closeSettings(); deleteAccount(); } }))));
   ov.append(box); document.body.append(ov); markSel();
 }
