@@ -2,12 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>BeRightBack</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#abcaec">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BeRightBack">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23283a8c'/%3E%3Ctext x='32' y='42' font-size='26' font-weight='900' text-anchor='middle' fill='%23fff' font-family='Arial'%3EBRB%3C/text%3E%3C/svg%3E">
 <style>
@@ -213,6 +216,20 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .vsplit{flex:none;width:7px;cursor:ew-resize;background:linear-gradient(90deg,#d6e4f5,#a9c1e2)}
 .vsplit:hover{background:#7fa2d2}
 @media(max-width:700px){.rzx,.hsplit,.vsplit{display:none}}
+
+html{-webkit-text-size-adjust:100%}
+html,body{overscroll-behavior:none}
+body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.main,.win,.menu,.toast,.bigcard,.wtb,.nbar,.mtitle,.wtitle{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.wlog,.wlog *,input,textarea{-webkit-user-select:text;user-select:text}
+.bk{display:none;padding:0 .6rem;font-weight:600}
+.rzy{position:absolute;left:0;bottom:-4px;height:10px;width:100%;cursor:ns-resize;z-index:6}
+.main>.rzy{margin:0!important}
+.rzy:hover{background:linear-gradient(#0000,#6f93c366)}
+.mtitle{cursor:move}
+.steps{margin:.3rem 0 0 1.2rem;padding:0}.steps li{margin:.4rem 0;line-height:1.5}
+.sec.mine{background:#eaf5ff;border-radius:.7rem;padding-left:.7rem;padding-right:.7rem;border:1px solid #b9d6f5}
+.shareic{display:inline-block;vertical-align:middle;margin:0 .15rem}
 @keyframes toastin{from{transform:translateY(2rem);opacity:0}}
 .toast .tbody{min-width:0}
 .toast b{display:block;color:#10294a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -237,7 +254,12 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .row2{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
 .hint{font-size:.88rem;color:#6b7b93;margin:.2rem 0}
 @media(max-width:700px){
- .main{inset:0;width:auto;border-radius:0;border:0}
+ .main{inset:0!important;width:auto!important;height:auto!important;border-radius:0;border:0;padding-bottom:calc(.4rem + env(safe-area-inset-bottom))}
+ .win{padding-bottom:calc(.4rem + env(safe-area-inset-bottom))!important}
+ input,textarea,select{font-size:16px!important}
+ .bk{display:block!important}
+ .wtitle button[title=Minimise]{display:none}
+ .rzy{display:none}
  .win{inset:0!important;width:auto!important;height:auto!important;border-radius:0;resize:none}
  .wside{display:none}
  .wtb{gap:0;padding:.3rem .2rem;overflow:hidden}
@@ -483,7 +505,7 @@ function showLogin(msg) {
     el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:10px' }, rem, 'Remember my email'), go, err);
   const card = el('div', { class: 'card' });
   const lg = el('div'); lg.innerHTML = LOGO;
-  card.append(lg, el('h2', { text: 'Sign in to ' + APP_NAME }), form, el('div', { class: 'center' }, toggle), el('div', { class: 'center' }, forgot));
+  card.append(lg, el('h2', { text: 'Sign in to ' + APP_NAME }), form, el('div', { class: 'center' }, toggle), el('div', { class: 'center' }, forgot), isStandalone() ? '' : el('div', { class: 'center' }, el('button', { class: 'link', type: 'button', text: '📲 Install BeRightBack on this device', onclick: installApp })));
   app.append(card);
 }
 function showRecovery() {
@@ -575,6 +597,23 @@ function buildMain() {
   if (shh) { main.classList.add('fixedlist'); list.style.flex = 'none'; list.style.height = clampN(shh, 80, innerHeight - 250) + 'px'; }
   dragSize(rzx, e => { main.style.width = clampN(e.clientX - main.getBoundingClientRect().left, 280, innerWidth * 0.85) + 'px'; }, () => localStorage.setItem('brb_mainw', parseInt(main.style.width)));
   dragSize(hs, e => { main.classList.add('fixedlist'); list.style.flex = 'none'; list.style.height = clampN(e.clientY - list.getBoundingClientRect().top, 80, innerHeight - 250) + 'px'; }, () => localStorage.setItem('brb_listh', parseInt(list.style.height)));
+  const rzy = el('div', { class: 'rzy', title: 'Drag to make this window taller or shorter' }); main.append(rzy);
+  const mob = () => matchMedia('(max-width:700px)').matches;
+  const fixMain = () => { const r = main.getBoundingClientRect(); Object.assign(main.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', bottom: 'auto' }); };
+  const savePos = () => { if (main.style.bottom === 'auto') localStorage.setItem('brb_mainpos', JSON.stringify([parseInt(main.style.left), parseInt(main.style.top), parseInt(main.style.width), parseInt(main.style.height)])); };
+  try { const p = JSON.parse(localStorage.getItem('brb_mainpos') || 'null'); if (p && !mob()) { Object.assign(main.style, { width: clampN(p[2], 280, innerWidth - 20) + 'px', height: clampN(p[3], 260, innerHeight - 20) + 'px', bottom: 'auto', left: clampN(p[0], 0, innerWidth - 140) + 'px', top: clampN(p[1], 0, innerHeight - 80) + 'px' }); } } catch (e) {}
+  dragSize(rzy, e => { if (main.style.bottom !== 'auto') fixMain(); main.style.height = clampN(e.clientY - main.getBoundingClientRect().top, 260, innerHeight - 10) + 'px'; }, savePos);
+  rzx.addEventListener('pointerup', savePos);
+  title.addEventListener('pointerdown', ev => {
+    if (ev.target.closest('button') || mob()) return;
+    if (main.style.bottom !== 'auto') fixMain();
+    const r = main.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top; title.setPointerCapture(ev.pointerId);
+    const mv = e => { main.style.left = clampN(e.clientX - dx, -r.width + 140, innerWidth - 140) + 'px'; main.style.top = clampN(e.clientY - dy, 0, innerHeight - 60) + 'px'; };
+    const up = () => { title.removeEventListener('pointermove', mv); title.removeEventListener('pointerup', up); savePos(); };
+    title.addEventListener('pointermove', mv); title.addEventListener('pointerup', up);
+  });
+  title.addEventListener('dblclick', ev => { if (ev.target.closest('button')) return; ['left', 'top', 'width', 'height', 'bottom'].forEach(k => { main.style[k] = ''; }); localStorage.removeItem('brb_mainpos'); localStorage.removeItem('brb_mainw'); });
+  title.title = 'Drag to move this window (double-click to put it back)';
   app.append(main);
   renderHeader();
 }
@@ -582,15 +621,16 @@ function notifyBar() {
   const bar = el('div', { class: 'nbar' });
   const draw = () => {
     bar.innerHTML = '';
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
-    if ('Notification' in window && Notification.permission === 'default') {
-      bar.append(el('span', { text: '🔔 Get a pop-up when friends sign in, sign out or change their song.' }), el('button', { text: 'Turn on', onclick: async () => { await Notification.requestPermission(); draw(); } }));
+    const dismissed = +localStorage.getItem('brb_inst_dis') > Date.now();
+    if (!isStandalone() && !dismissed) {
+      bar.append(el('span', { text: '📲 Install BeRightBack as an app on this device.' }), el('button', { text: 'Install', onclick: installApp }), el('button', { text: '✕', title: 'Hide for a week', onclick: () => { localStorage.setItem('brb_inst_dis', String(Date.now() + 7 * 864e5)); draw(); } }));
       bar.style.display = 'flex';
-    } else if (ios && !standalone) {
-      bar.append(el('span', { text: '📱 iPhone: tap Share, then Add to Home Screen, then open BeRightBack from your home screen to get notifications.' }));
+    } else if ('Notification' in window && Notification.permission === 'default') {
+      bar.append(el('span', { text: '🔔 Get a pop-up when friends sign in, sign out or change their song.' }), el('button', { text: 'Turn on', onclick: async () => { await Notification.requestPermission(); draw(); } }));
       bar.style.display = 'flex';
     } else bar.style.display = 'none';
   };
+  bar.addEventListener('redraw', draw);
   draw(); return bar;
 }
 function renderHeader() {
@@ -847,6 +887,37 @@ function dragSize(h, move, end) {
 const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
 (() => { const w = +localStorage.getItem('brb_sidew'); if (w) document.documentElement.style.setProperty('--sw', clampN(w, 96, 320) + 'px'); })();
 
+
+/* ============ INSTALL AS AN APP (Windows, Mac, Android, iPhone/iPad) ============ */
+const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let deferredInstall = null;
+const redrawBars = () => document.querySelectorAll('.nbar').forEach(b => b.dispatchEvent(new Event('redraw')));
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; redrawBars(); });
+addEventListener('appinstalled', () => { deferredInstall = null; redrawBars(); });
+async function installApp() {
+  if (deferredInstall) { const d = deferredInstall; deferredInstall = null; try { d.prompt(); await d.userChoice; } catch (e) {} redrawBars(); }
+  else installGuide();
+}
+const SHARE_SVG = '<svg class="shareic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M6 11H5v10h14V11h-1" fill="none" stroke="#0a7aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function installGuide() {
+  closeSettings();
+  const ov = el('div', { class: 'modal', onclick: ev => { if (ev.target === ov) closeSettings(); } }), box = el('div', { class: 'mbox' }); ov.append(box);
+  const ua = navigator.userAgent, ios = isIOS(), android = /Android/.test(ua), mac = /Macintosh/.test(ua) && !ios, win = /Windows/.test(ua);
+  const share = el('span'); share.innerHTML = SHARE_SVG;
+  const P = (key, title, mine, steps) => ({ mine, node: el('div', { class: 'sec' + (mine ? ' mine' : '') }, el('h3', { text: title + (mine ? '  ← this device' : '') }), el('ol', { class: 'steps' }, ...steps.map(t => el('li', {}, ...[].concat(t))))) });
+  const B = t => el('b', { text: t });
+  const list = [
+    P('ios', 'iPhone and iPad', ios, [['Open this page in ', B('Safari'), '.'], ['Tap the Share button ', share.cloneNode(true), ' (the square with an arrow, at the bottom of the screen).'], ['Scroll down and tap ', B('Add to Home Screen'), ', then tap ', B('Add'), '.'], ['Open BeRightBack from your Home Screen. It opens full-screen, like any other app.'], ['Inside the app tap ', B('Turn on'), ' to allow notifications (needs iOS 16.4 or newer).']]),
+    P('android', 'Android phone or tablet', android, [['Open this page in ', B('Chrome'), '.'], ['Tap ', B('Install'), ' on the yellow bar, or tap ⋮ (top right) then ', B('Install app'), ' (or ', B('Add to Home screen'), ').'], ['Open BeRightBack from your app list or Home screen.']]),
+    P('win', 'Windows (Chrome or Edge)', win, [['Click the ', B('Install'), ' button on the yellow bar, or the install icon (a screen with a small arrow) at the right end of the address bar.'], ['Click ', B('Install'), '. BeRightBack gets its own window and Start menu icon.'], ['Right-click its icon on the taskbar and choose ', B('Pin to taskbar'), '.']]),
+    P('mac', 'Mac', mac, [['Safari 17 or newer: click ', B('File'), ' then ', B('Add to Dock'), '.'], ['Chrome or Edge: click ', B('Install'), ' on the yellow bar, or the install icon in the address bar.'], ['Open BeRightBack from your Dock or Launchpad.']])
+  ].sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0));
+  box.append(el('div', { class: 'mhd' }, el('h2', { text: '📲 Install BeRightBack' }), el('button', { text: '✕', onclick: closeSettings })),
+    el('div', { class: 'hint', text: 'No app store needed. It installs from this page, gets its own icon and opens full-screen like a normal app.' }), ...list.map(x => x.node));
+  document.body.append(ov);
+}
+
 /* ============ CHAT WINDOW EXTRAS ============ */
 function newId() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2); }
 const BGS = { 'White': '#fff', 'Sunny day': 'linear-gradient(#fffbe0,#ffe9a8)', 'Blue sky': 'linear-gradient(#f0f8ff,#bfe0fb)', 'Pink dream': 'linear-gradient(#fff4f9,#ffd3e6)', 'Meadow': 'linear-gradient(#f4fff0,#c9efc0)', 'Lavender': 'linear-gradient(#f8f3ff,#dccbf7)' };
@@ -1049,7 +1120,8 @@ function openChat(id) {
   const tt = el('div', { class: 'tt' });
   const min = el('button', { text: '–', title: 'Minimise', onclick: () => w.root.classList.add('min') });
   const close = el('button', { class: 'x', text: '×', title: 'Close', onclick: () => closeChat(id) });
-  const bar = el('div', { class: 'wtitle' }, dot, tt, min, close);
+  const bk = el('button', { class: 'bk', text: '‹ Back', onclick: () => w.root.classList.add('min') });
+  const bar = el('div', { class: 'wtitle' }, bk, dot, tt, min, close);
   const sub = el('div', { class: 'wsub' });
   const np = el('div', { class: 'wnp' });
   const log = el('div', { class: 'wlog' });
@@ -1386,6 +1458,7 @@ function openSettings() {
     sec('Appearance', el('label', { text: 'Text size' }), sizeSel,
       chk('Show display pictures in my contact list', state.pics, v => { state.pics = v; localStorage.setItem('brb_pics', v ? 'on' : 'off'); renderContacts(); })),
     sec('My emoticon shortcuts', el('div', { class: 'hint', text: 'Type a short code in a chat and it turns into your text or emoticon when you press Send. Example: code  brb  becomes  🏃 be right back' }), scList, el('div', { class: 'row2' }, scCode, scText, scAdd)),
+    ...(isStandalone() ? [] : [sec('Install the app', el('div', { class: 'hint', text: 'Install BeRightBack on this device so it opens like a normal app.' }), el('div', { class: 'row2' }, el('button', { text: '📲 Install the app', onclick: installApp })))]),
     sec('Sounds and notifications',
       chk('Play sounds (messages, nudges, contacts signing in)', state.sound, v => { state.sound = v; localStorage.setItem('brb_sound', v ? 'on' : 'off'); }),
       chk('Pop-up when a contact signs in or signs out', noteOn('inout'), v => localStorage.setItem('brb_n_inout', v ? 'on' : 'off')),

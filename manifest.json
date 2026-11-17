@@ -1,10 +1,14 @@
 {
+  "id": "./",
   "name": "BeRightBack",
   "short_name": "BeRightBack",
-  "description": "Chat with your friends",
+  "description": "Chat with your friends - nudges, winks, music and more",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "any",
+  "categories": ["social"],
+  "lang": "en",
   "background_color": "#86addc",
   "theme_color": "#abcaec",
   "icons": [
