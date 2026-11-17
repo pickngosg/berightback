@@ -1500,12 +1500,25 @@ function itemUrl(i) { return i.sp ? `https://open.spotify.com/${i.sp}/${i.id}` :
 function playMusic(i) { if (i.sp) playSP(i); else playYT(i); }
 let spReady;
 function spLoad() { if (spReady) return spReady; spReady = new Promise(res => { window.onSpotifyIframeApiReady = api => res(api); const sc = document.createElement('script'); sc.src = 'https://open.spotify.com/embed/iframe-api/v1'; sc.async = true; sc.onerror = () => { spReady = null; res(null); }; document.head.append(sc); setTimeout(() => res(null), 8000); }); return spReady; }
+async function spTitle(uri) {
+  pl.spC = pl.spC || {};
+  const m = /^spotify:(track|episode):([A-Za-z0-9]{22})$/.exec(uri || ''); if (!m) return '';
+  if (pl.spC[uri]) return pl.spC[uri];
+  try { const r = await fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent('https://open.spotify.com/' + m[1] + '/' + m[2])); const j = await r.json(); const t = sanitizeName(j.title || '', 100); if (t) pl.spC[uri] = t; return t; } catch (e) { return ''; }
+}
 async function playSP(item) {
   pl.audio.pause(); stopYT(true); pl.err = ''; pl.info = 'Loading Spotify…'; updatePlayer();
   const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
   host.append(el('div', { class: 'hint', text: 'Log in to Spotify in this browser (open.spotify.com) to hear full songs. Without a login, Spotify plays 30-second previews.' }));
   const api = await spLoad(), uri = `spotify:${item.sp}:${item.id}`, label = item.name + ' (Spotify)';
-  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { pl.spc = c; let was = null; c.addListener('playback_update', e => { const play = !!(e.data && !e.data.isPaused); if (play === was) return; was = play; pl.ytTitle = play ? label : ''; setNow(play ? label : ''); updatePlayer(); }); }); }
+  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { pl.spc = c; let was = null, lastUri = ''; c.addListener('playback_update', e => {
+        const d = e.data || {}, play = !d.isPaused, uri = d.playingURI || '';
+        if (play === was && uri === lastUri) return; was = play; lastUri = uri;
+        if (!play) { pl.ytTitle = ''; setNow(''); updatePlayer(); return; }
+        const go = t => { if (was && lastUri === uri) { pl.ytTitle = t; setNow(t); updatePlayer(); } };
+        if (!/^spotify:(track|episode):/.test(uri)) { go(label); return; }
+        spTitle(uri).then(t => go(t || label));
+      }); }); }
   else { d.replaceWith(el('iframe', { src: `https://open.spotify.com/embed/${item.sp}/${item.id}`, width: '100%', height: item.sp === 'track' ? '152' : '300', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen', style: 'border:0;border-radius:12px' })); pl.ytTitle = label; setNow(label); updatePlayer(); }
 }
 function openMusic() {
