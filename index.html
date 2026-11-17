@@ -1128,6 +1128,7 @@ function drawGame(w) {
   if (g.st === 'wait') { box.append(el('span', { text: 'Waiting for ' + nm + ' to accept…' }), close); return; }
   if (g.st === 'ask') { box.append(el('span', { text: nm + ' invited you to play.' }), el('button', { text: 'Accept', onclick: () => { w.game = { st: 'play', b: Array(9).fill(''), me: 'O', turn: 'X' }; sendSig(w.id, { t: 'g-acc' }); drawGame(w); } }), el('button', { text: 'Decline', onclick: () => { sendSig(w.id, { t: 'g-dec' }); w.game = null; drawGame(w); } })); return; }
   const res = tttWinner(g.b), grid = el('div', { class: 'ttt' });
+  if (res && !g.done) { g.done = true; setTimeout(() => gameEnd(w, 'ttt', res === 'draw' ? 'draw' : res === g.me ? 'win' : 'loss'), 150); }
   g.b.forEach((v, i) => grid.append(el('button', { text: v, disabled: !!v || !!res || g.turn !== g.me, onclick: () => { g.b[i] = g.me; g.turn = g.me === 'X' ? 'O' : 'X'; sendSig(w.id, { t: 'g-move', i }); drawGame(w); } })));
   box.append(grid, el('span', { text: res ? (res === 'draw' ? "It's a draw!" : res === g.me ? 'You win! 🎉' : nm + ' wins.') : g.turn === g.me ? 'Your turn (' + g.me + ')' : nm + "'s turn" }), close);
 }
@@ -1144,7 +1145,7 @@ function onGame(id, p) {
   if (!w || !w.game) return;
   const g = w.game;
   if (p.t === 'g-acc' && g.st === 'wait') w.game = { st: 'play', b: Array(9).fill(''), me: 'X', turn: 'X' };
-  else if (p.t === 'g-move' && g.st === 'play') { const i = +p.i, op = g.me === 'X' ? 'O' : 'X'; if (i >= 0 && i < 9 && !g.b[i] && g.turn === op) { g.b[i] = op; g.turn = g.me; } }
+  else if (p.t === 'g-move' && g.st === 'play') { const i = +p.i, op = g.me === 'X' ? 'O' : 'X'; if (i >= 0 && i < 9 && !g.b[i] && g.turn === op) { g.b[i] = op; g.turn = g.me; tone(GSND.ttt.opp); } }
   else if (p.t === 'g-dec' || p.t === 'g-end') { sysLine(w, 'The game was closed.'); w.game = null; }
   drawGame(w);
 }
@@ -1569,7 +1570,34 @@ const KNOWS = [['Favourite food?', ['Rice dishes', 'Noodles', 'Pizza or burgers'
   ['Favourite time of day?', ['Morning', 'Afternoon', 'Evening', 'Late night']], ['Which pet?', ['Cat', 'Dog', 'Fish or bird', 'No pets']], ['Favourite drink?', ['Coffee', 'Tea', 'Bubble tea', 'Plain water']],
   ['Phone or computer?', ['Phone', 'Laptop', 'Tablet', 'Game console']], ['Early bird or night owl?', ['Early bird', 'Night owl', 'Both', 'Neither']], ['Dream holiday?', ['Beach', 'City', 'Mountains', 'Theme park']]];
 const pickN = (len, n) => { const a = Array.from({ length: len }, (_, i) => i); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); };
-const arcRec = (w, game, result) => { try { sb.rpc('record_game', { p_other: w.id, p_game: game, p_result: result }).then(() => {}, () => {}); } catch (e) {} };
+/* ---- game sounds and win/lose reactions ---- */
+const GSND = {
+  ttt: { me: [[523, 0, .06], [784, .05, .09]], opp: [[392, 0, .09]], win: [[523, 0, .12], [659, .12, .12], [784, .24, .12], [1047, .36, .4]] },
+  c4: { me: [[330, 0, .05], [247, .07, .05], [196, .14, .12]], opp: [[262, 0, .05], [196, .07, .05], [147, .14, .12]], win: [[392, 0, .1], [392, .12, .1], [392, .24, .1], [523, .36, .5]] },
+  rps: { me: [[300, 0, .05], [450, .05, .05], [600, .1, .08]], opp: [[600, 0, .05], [450, .05, .05]], win: [[440, 0, .08], [554, .1, .08], [659, .2, .08], [880, .3, .4]] },
+  hang: { me: [[900, 0, .04]], opp: [[700, 0, .04]], win: [[587, 0, .15], [740, .15, .15], [880, .3, .15], [1175, .45, .45]] },
+  trivia: { me: [[700, 0, .06]], opp: [[500, 0, .05]], win: [[784, 0, .1], [988, .1, .1], [1175, .2, .1], [1568, .3, .5]] },
+  wyr: { me: [[500, 0, .05], [620, .06, .08]], opp: [[420, 0, .06]], win: [[440, 0, .12], [660, .12, .12], [880, .24, .4]] },
+  knows: { me: [[740, 0, .07], [932, .07, .1]], opp: [[600, 0, .07]], win: [[659, 0, .12], [784, .12, .12], [988, .24, .12], [1319, .36, .5]] }
+};
+const GWIN = { ttt: 'fireworks', c4: 'rocket', rps: 'boom', hang: 'stars', trivia: 'money', wyr: 'rainbow', knows: 'hearts' };
+const gKey = g => g === 'connect4' ? 'c4' : g === 'hangman' ? 'hang' : g === 'knows_me' ? 'knows' : g;
+const OKS = [[784, 0, .1], [1047, .1, .2]], BADS = [[196, 0, .25, 'buzz']];
+function gameEnd(w, game, result) {
+  const k = gKey(game), S = GSND[k] || GSND.ttt;
+  if (result === 'win') { tone(S.win); confetti(); playWink(GWIN[k] || 'confetti'); sysLine(w, '🏆 You won! Well played!'); }
+  else if (result === 'loss') { tone([[392, 0, .18], [330, .2, .18], [262, .4, .18], [196, .6, .5]]); shake(w); playWink('rain'); sysLine(w, '😢 You lost this one. Better luck next time!'); }
+  else { tone([[440, 0, .15], [440, .2, .15]]); playWink('bubbles'); sysLine(w, '🤝 It\'s a draw!'); }
+}
+function arcKind(btn) { const bx = btn.closest('.arcbox'); if (bx) { const root = btn.closest('.win'); for (const w of state.wins.values()) if (w.root === root && w.arc) return w.arc.k === 'knows' ? 'knows' : w.arc.k; } return btn.closest('.gamebox') ? 'ttt' : null; }
+document.addEventListener('click', ev => {
+  if (localStorage.getItem('brb_clicks') === 'off') return;
+  const t = ev.target.closest && ev.target.closest('button, .tb, .grp, .crow, select, .c4c, .menu div, .mitem'); if (!t) return;
+  const c4 = t.matches('.c4c') ? t.closest('.win') : null;
+  const k = t.matches('.arcbox button, .gamebox button, .c4c') ? arcKind(t) : null;
+  tone(k && GSND[k] ? GSND[k].me : [[620, 0, .03]]);
+}, true);
+const arcRec = (w, game, result) => { try { gameEnd(w, game, result); } catch (e) {} try { sb.rpc('record_game', { p_other: w.id, p_game: game, p_result: result }).then(() => {}, () => {}); } catch (e) {} };
 function gamesMenu(w, ev) {
   const r = ev.currentTarget.getBoundingClientRect();
   showMenu(r.left, r.bottom, [['Tic-Tac-Toe', () => startGame(w)], ...Object.entries(ARC).map(([k, n]) => [n, () => arcInvite(w, k)]), '-', ['🏆 Leaderboard', leaderboard]]);
@@ -1600,7 +1628,7 @@ function onArc(id, p) {
   const a = w.arc;
   if (p.a === 'end') { sysLine(w, 'The game was closed.'); w.arc = null; }
   else if (p.a === 'acc' && a.st === 'wait') { a.st = 'play'; arcInit(w); return; }
-  else if (p.a === 'mv' && a.st === 'play' && a.d) arcMove(w, p.d || {});
+  else if (p.a === 'mv' && a.st === 'play' && a.d) { arcMove(w, p.d || {}); const S = GSND[a.k === 'knows' ? 'knows' : a.k]; if (S) tone(S.opp); }
   drawArc(w);
 }
 function arcInit(w) {
@@ -1634,7 +1662,7 @@ function arcMove(w, m) {
       if (won || lost) { d.over = won ? 'guessed' : 'failed'; arcRec(w, 'hangman', won ? 'loss' : 'win'); }
     } else if (m.len) d.pat = Array(+m.len).fill('_');
     else if (m.r && d.pat) {
-      d.tried.push(m.r); (m.pos || []).forEach(i => { if (i >= 0 && i < d.pat.length) d.pat[i] = m.r; }); d.wrong = +m.w || 0;
+      tone((m.pos || []).length ? OKS : BADS); d.tried.push(m.r); (m.pos || []).forEach(i => { if (i >= 0 && i < d.pat.length) d.pat[i] = m.r; }); d.wrong = +m.w || 0;
       if (m.done) { d.over = m.done; if (m.word) d.pat = [...m.word]; arcRec(w, 'hangman', m.done === 'win' ? 'win' : 'loss'); }
     }
   } else if (a.k === 'trivia' || a.k === 'wyr') {
@@ -1644,7 +1672,7 @@ function arcMove(w, m) {
     if (m.qs && !d.qs) d.qs = m.qs.filter(i => Number.isInteger(i)).slice(0, 5);
     else if (m.ready) d.phase = 'guess';
     else if (d.qs && a.host && Number.isInteger(m.g) && m.n === d.n && d.ans[m.n] !== undefined) { const ok = m.g === d.ans[m.n]; if (ok) d.score++; d.n++; S({ n: m.n, ok, a: d.ans[m.n] }); }
-    else if (d.qs && !a.host && m.n === d.n) { d.fb = m.ok ? '✔ You know them well!' : '✖ It was: ' + KNOWS[d.qs[m.n]][1][m.a]; if (m.ok) d.score++; d.rev = true; setTimeout(() => { if (w.arc === a) { d.n++; d.rev = false; d.fb = ''; drawArc(w); } }, 1800); }
+    else if (d.qs && !a.host && m.n === d.n) { tone(m.ok ? OKS : BADS); d.fb = m.ok ? '✔ You know them well!' : '✖ It was: ' + KNOWS[d.qs[m.n]][1][m.a]; if (m.ok) d.score++; d.rev = true; setTimeout(() => { if (w.arc === a) { d.n++; d.rev = false; d.fb = ''; drawArc(w); } }, 1800); }
   }
 }
 function c4Win(b) {
@@ -1658,13 +1686,14 @@ function rpsTry(w) {
   const r = d.mine === d.theirs ? 0 : ((d.mine - d.theirs + 3) % 3 === 1 ? 1 : -1);
   d.last = ['✊', '✋', '✌️'][d.mine] + ' vs ' + ['✊', '✋', '✌️'][d.theirs] + ': ' + (r === 0 ? 'a tie, go again!' : r > 0 ? 'you win this round!' : pname(w.id) + ' wins this round.');
   if (r > 0) d.sm++; else if (r < 0) d.st++;
+  tone(r > 0 ? OKS : r < 0 ? BADS : [[440, 0, .12], [440, .15, .12]]);
   d.mine = d.theirs = null;
   if ((d.sm === 2 || d.st === 2) && !w.arc.done) { w.arc.done = true; arcRec(w, 'rps', d.sm > d.st ? 'win' : 'loss'); }
 }
 function qzTry(w) {
   const a = w.arc, d = a.d, n = d.n; if (d.rev || d.mine[n] === undefined || d.theirs[n] === undefined) return;
   d.rev = true;
-  if (a.k === 'trivia') { const c = TRIVIA[d.qs[n]][2]; if (d.mine[n] === c) d.sm++; if (d.theirs[n] === c) d.st++; } else if (d.mine[n] === d.theirs[n]) d.same++;
+  if (a.k === 'trivia') { const c = TRIVIA[d.qs[n]][2]; setTimeout(() => tone(d.mine[n] === c ? OKS : BADS), 250); if (d.mine[n] === c) d.sm++; if (d.theirs[n] === c) d.st++; } else if (d.mine[n] === d.theirs[n]) d.same++;
   setTimeout(() => { if (w.arc === a) { d.n++; d.rev = false; drawArc(w); } }, 2300);
 }
 function drawArc(w) {
@@ -1991,7 +2020,7 @@ function decorName(node, p) {
   if (m[2] && NAME_FX.some(x => x[0] === m[2])) node.classList.add('fx-' + m[2]);
   return node;
 }
-const SYNC_KEYS = ['brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack'];
+const SYNC_KEYS = ['brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack', 'brb_clicks'];
 let syncT, syncReady = false;
 const _lsSet = Storage.prototype.setItem, _lsDel = Storage.prototype.removeItem;
 function syncSoon() { if (!syncReady) return; clearTimeout(syncT); syncT = setTimeout(syncPush, 2500); }
@@ -2049,13 +2078,15 @@ function styleItems(say) {
   const pack = el('select', {}, el('option', { value: 'classic', text: 'Classic: deep chimes (default)' }), el('option', { value: 'retro', text: 'Retro: old-school bleeps' }));
   pack.value = localStorage.getItem('brb_pack') === 'retro' ? 'retro' : 'classic';
   pack.onchange = () => { localStorage.setItem('brb_pack', pack.value); tone(SND.msg); };
+  const clk = el('input', { type: 'checkbox', style: 'width:auto' }); clk.checked = localStorage.getItem('brb_clicks') !== 'off';
+  clk.onchange = () => { localStorage.setItem('brb_clicks', clk.checked ? 'on' : 'off'); if (clk.checked) tone([[620, 0, .03]]); };
   return [prev, el('label', { text: 'Name colour' }), el('div', { class: 'row2', style: 'align-items:center' }, useCol, 'Use a colour', col),
     el('label', { text: 'Name effect' }), fx, el('label', { text: 'Picture frame' }), frame, el('label', { text: 'About me' }), about, el('label', { text: 'Birthday (optional, month and day only)' }), el('div', { class: 'row2' }, bm, bd),
     el('button', { class: 'primary', text: 'Save my style', onclick: async () => {
       const q = mk(); const { data, error } = await sb.from('profiles').update({ name_style: q.name_style, frame: q.frame, about: about.value.trim(), birthday: bm.value && bd.value ? bm.value + '-' + bd.value : '' }).eq('id', state.uid).select().single();
       if (error) say(friendlyErr(error)); else { state.me = data; renderHeader(); renderContacts(); say('Your style is saved.', true); }
     } }),
-    el('label', { text: 'Sound pack' }), pack];
+    el('label', { text: 'Sound pack' }), pack, el('label', { class: 'crow' }, clk, 'Button click sounds (games have their own)')];
 }
 
 /* ============ PHASE 1: SAFETY AND PRIVACY ============ */
