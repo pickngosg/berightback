@@ -303,6 +303,16 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:500;overflow:hidden}
 .confetti i{position:absolute;top:-1.2rem;width:.55rem;height:1rem;animation:cfall linear forwards}
 @keyframes cfall{to{transform:translateY(108vh) rotate(900deg)}}
+
+.arcbox{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.4rem .8rem;background:#eaf6ff;border-bottom:1px solid #9cc3ee;max-height:55%;overflow:auto}
+.arcbody{display:flex;flex-direction:column;gap:.3rem}
+.c4{display:grid;grid-template-columns:repeat(7,1.55rem);gap:.15rem;background:#1c5fb5;padding:.3rem;border-radius:.5rem;width:max-content}
+.c4c{width:1.55rem;height:1.55rem;border-radius:50%;background:#fff;cursor:pointer;display:block}
+.c4c.r{background:#e03131}.c4c.y{background:#fcc419}
+.qopts{display:flex;flex-direction:column;gap:.25rem;align-items:stretch}
+.qopts button{text-align:left}
+.qopts button.ok{background:#b2f2bb!important;border-color:#2f9e44}.qopts button.bad{background:#ffc9c9!important;border-color:#e03131}.qopts button.sel{background:#cfe4fb!important}
+.abc{display:flex;flex-wrap:wrap;gap:.2rem;max-width:24rem}.abc button{width:1.9rem;padding:.1rem 0}
 </style>
 </head>
 <body>
@@ -898,7 +908,25 @@ const WINKS = {
   disco: ['Disco', '🪩', ['🎵','🎶','💃','🕺','🪩'], 'x', 'Dance dance dance!', 'disco'],
   boom: ['Boom', '💥', ['💥','⚡','🔥','💢'], 'x', 'BOOM!', 'shake'],
   poo: ['Stinky', '💩', ['💩','💨','🤢','🪰'], 'p', 'Phew, what a stink'],
-  thumbs: ['Thumbs up', '👍', ['👍','👏','🙌','💯'], 'x', 'Well done!']
+  thumbs: ['Thumbs up', '👍', ['👍','👏','🙌','💯'], 'x', 'Well done!'],
+  sparkle: ['Sparkle', '✨', ['✨','⭐','💫','✨'], 'r', 'Sparkle sparkle'],
+  dance: ['Dance party', '💃', ['💃','🕺','🎶','✨'], 'x', 'Let us dance!'],
+  sleepy: ['Zzz', '😴', ['💤','😴','🌙','⭐'], 'f', 'So sleepy...'],
+  cool: ['Too cool', '😎', ['😎','🕶️','✨','🆒'], 'r', 'Too cool for school'],
+  cry: ['Boo hoo', '😭', ['😭','💧','💦','😢'], 'p', 'Boo hoo hoo'],
+  clap: ['Applause', '👏', ['👏','🙌','🎉','👏'], 'x', 'Bravo! Applause!'],
+  thunder: ['Thunder', '⚡', ['⚡','🌩️','💥','⚡'], 'x', 'Thunder strike!', 'shake'],
+  wave: ['Hello', '👋', ['👋','😊','✨','👋'], 'f', 'Hello there!'],
+  gift_rose: ['Rose', '🌹', ['🌹','💖','✨','🌹'], 'r', 'A rose for you'],
+  gift_cake: ['Birthday cake', '🎂', ['🎂','🎉','🕯️','✨'], 'x', 'A cake for you!'],
+  gift_trophy: ['Trophy', '🏆', ['🏆','🥇','✨','🎉'], 'x', 'You are a champion!'],
+  gift_teddy: ['Teddy bear', '🧸', ['🧸','💖','✨','🧸'], 'r', 'A big teddy hug'],
+  gift_coffee: ['Coffee', '☕', ['☕','✨','☕','💛'], 'r', 'Coffee on me'],
+  gift_pizza: ['Pizza', '🍕', ['🍕','🍕','🧀','✨'], 'p', 'Pizza party!'],
+  gift_bouquet: ['Flowers', '💐', ['💐','🌸','🌷','✨'], 'p', 'Flowers for you'],
+  gift_choc: ['Chocolates', '🍫', ['🍫','💖','🍬','✨'], 'p', 'Sweet chocolates'],
+  gift_crown: ['Crown', '👑', ['👑','✨','💎','👑'], 'x', 'You are royalty!'],
+  gift_burger: ['Burger', '🍔', ['🍔','🍟','🥤','✨'], 'p', 'Burger time!']
 };
 function playWink(key) {
   const w = WINKS[key]; if (!w) return;
@@ -921,7 +949,7 @@ function playWink(key) {
 function toggleWinks(w) {
   const old = w.tools.querySelector('.winkpop'); if (old) { old.remove(); return; }
   const pop = el('div', { class: 'emopop winkpop' });
-  Object.entries(WINKS).forEach(([k, v]) => pop.append(el('span', { text: v[1], title: v[0], onclick: ev => { ev.stopPropagation(); pop.remove(); sendWink(w, k); } })));
+  Object.entries(WINKS).filter(([k]) => !k.startsWith('gift_')).forEach(([k, v]) => pop.append(el('span', { text: v[1], title: v[0], onclick: ev => { ev.stopPropagation(); pop.remove(); sendWink(w, k); } })));
   w.tools.append(pop);
   setTimeout(() => document.addEventListener('click', () => pop.remove(), { once: true }), 0);
 }
@@ -1036,12 +1064,12 @@ async function toggleRec(w) {
   REC.r = r; b.classList.add('on'); b.textContent = '⏹ Stop 0s';
   REC.t = setInterval(() => { sec++; b.textContent = '⏹ Stop ' + sec + 's'; if (sec >= 60) r.stop(); }, 1000);
   r.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  r.onstop = () => { clearInterval(REC.t); REC.r = null; s.getTracks().forEach(t => t.stop()); b.classList.remove('on'); b.textContent = '🎙 Voice Clip'; if (sec >= 1) sendAudio(w, new Blob(chunks, { type: mime }), mime); };
+  r.onstop = () => { clearInterval(REC.t); REC.r = null; s.getTracks().forEach(t => t.stop()); b.classList.remove('on'); b.textContent = '🎙 Voice Clip'; if (sec >= 1) voiceFxDialog(w, new Blob(chunks, { type: mime }), mime); };
   r.start();
 }
 async function sendAudio(w, blob, mime) {
   if (blob.size > 5 * 1024 * 1024) { sysLine(w, 'That voice clip is too big.'); return; }
-  const path = `${state.uid}/${newId()}.${mime === 'audio/webm' ? 'webm' : 'm4a'}`;
+  const path = `${state.uid}/${newId()}.${mime === 'audio/webm' ? 'webm' : mime === 'audio/wav' ? 'wav' : 'm4a'}`;
   const note = el('div', { class: 'sys', text: 'Sending your voice clip…' }); w.log.append(note);
   const up = await sb.storage.from('chat-media').upload(path, blob, { contentType: mime, upsert: false });
   if (up.error) { note.remove(); sysLine(w, 'Upload failed: ' + friendlyErr(up.error) + ' (run the newest setup.sql once)'); return; }
@@ -1094,6 +1122,7 @@ function startGame(w) {
   setTimeout(() => { if (w.game === g && g.st === 'wait') { sysLine(w, pname(w.id) + ' did not answer. They must be online with the newest BeRightBack page (press Ctrl+Shift+R).'); w.game = null; drawGame(w); sendSig(w.id, { t: 'g-end' }); } }, 25000);
 }
 function onGame(id, p) {
+  if (p.t === 'g2') { onArc(id, p); return; }
   let w = state.wins.get(id);
   if (p.t === 'g-inv') { if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); w.game = { st: 'ask' }; drawGame(w); tone(SND.online); return; }
   if (!w || !w.game) return;
@@ -1204,7 +1233,7 @@ function openChat(id) {
   const nudgeBtn = mk('📳', 'Nudge - get their attention', () => sendNudge(w)); nudgeBtn.classList.add('on');
   const tools = el('div', { class: 'wtools' }, mk('A', 'Bold, italic and colour', ev => fmtMenu(w, ev)), mk('🙂▾', 'Emoticons', () => toggleEmo(w)), voiceBtn, mk('✨▾', 'Winks', () => toggleWinks(w)), mk('🖼▾', 'Chat background', ev => bgMenu(w, ev)), nudgeBtn, fileIn);
   const big = (ico, label, fn) => el('button', { class: 'tb', onclick: ev => { ev.stopPropagation(); fn(ev); } }, el('span', { class: 'ti', text: ico }), el('span', { text: label }));
-  const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', () => inviteFriend(w)), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', () => startGame(w)));
+  const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', () => inviteFriend(w)), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', ev => gamesMenu(w, ev)), big('🎁', 'Gift', ev => giftMenu(w, ev)));
   const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
   const vsp = el('div', { class: 'vsplit', title: 'Drag to resize the pictures column (double-click to reset)', ondblclick: () => { document.documentElement.style.removeProperty('--sw'); localStorage.removeItem('brb_sidew'); } });
   const sbar = el('div', { class: 'sbar', text: 'Tip: click ✨ to send a wink, or 📳 to nudge your friend.' });
@@ -1270,7 +1299,7 @@ function appendMsg(w, m, quiet) {
   const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   if (!mine && w.sbar) w.sbar.textContent = 'Last message received at ' + time + ' on ' + new Date(m.created_at).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }) + '.';
   if (m.kind === 'nudge') { sysLine(w, mine ? 'You have sent a nudge.' : `${name} has sent you a nudge!`); }
-  else if (m.kind === 'wink') { const wk = WINKS[m.body]; sysLine(w, (mine ? 'You sent a wink: ' : `${name} sent you a wink: `) + (wk ? wk[1] + ' ' + wk[0] : '✨')); }
+  else if (m.kind === 'wink') { const wk = WINKS[m.body]; const gf = String(m.body).startsWith('gift_'); sysLine(w, (mine ? (gf ? 'You sent a gift: ' : 'You sent a wink: ') : (gf ? `${name} sent you a gift: ` : `${name} sent you a wink: `)) + (wk ? wk[1] + ' ' + wk[0] : '✨')); }
   else {
     if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); const wn = el('span'); renderEmo(wn, name); decorName(wn, mine ? state.me : state.profiles.get(w.id)); who.append(wn); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
@@ -1454,6 +1483,237 @@ async function setAvatar(value) {
   state.me.avatar = value; afterProfileChange(); return '';
 }
 
+/* ============ PHASE 4: GIFTS, VOICE EFFECTS, ARCADE ============ */
+function giftMenu(w, ev) {
+  const r = ev.currentTarget.getBoundingClientRect();
+  showMenu(r.left, r.bottom, Object.entries(WINKS).filter(([k]) => k.startsWith('gift_')).map(([k, v]) => [v[1] + ' ' + v[0], () => sendWink(w, k)]));
+}
+function wavFrom(f32, rate) {
+  const n = f32.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), W = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  W(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); W(8, 'WAVE'); W(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); W(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) { const x = Math.max(-1, Math.min(1, f32[i])); v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+  return new Blob([b], { type: 'audio/wav' });
+}
+async function fxRender(blob, fx) {
+  const AC = window.AudioContext || window.webkitAudioContext, ac = new AC();
+  const buf = await blob.arrayBuffer();
+  const src = await new Promise((res, rej) => { const r = ac.decodeAudioData(buf, res, rej); if (r && r.then) r.then(res, rej); });
+  try { ac.close(); } catch (e) {}
+  const rate = 22050, mul = fx === 'chipmunk' ? 1.6 : fx === 'deep' ? 0.7 : 1, tail = fx === 'echo' ? 1.5 : 0;
+  const oc = new OfflineAudioContext(1, Math.ceil((src.duration / mul + tail) * rate), rate), s = oc.createBufferSource();
+  s.buffer = src; s.playbackRate.value = mul;
+  if (fx === 'robot') { const g = oc.createGain(); g.gain.value = 0; const o = oc.createOscillator(); o.frequency.value = 55; o.connect(g.gain); s.connect(g); g.connect(oc.destination); o.start(); }
+  else if (fx === 'echo') { const d = oc.createDelay(); d.delayTime.value = 0.28; const fb = oc.createGain(); fb.gain.value = 0.45; s.connect(oc.destination); s.connect(d); d.connect(fb); fb.connect(d); d.connect(oc.destination); }
+  else s.connect(oc.destination);
+  s.start();
+  const out = await oc.startRendering();
+  return wavFrom(out.getChannelData(0), rate);
+}
+function voiceFxDialog(w, blob, mime) {
+  let cur = { blob, mime }, busy = false;
+  const aud = el('audio', { controls: 'controls', style: 'width:100%' }), msg = el('div', { class: 'setmsg' });
+  const setSrc = b => { if (aud.dataset.u) URL.revokeObjectURL(aud.dataset.u); const u = URL.createObjectURL(b); aud.dataset.u = u; aud.src = u; };
+  setSrc(blob);
+  const fxBtn = (label, fx) => el('button', { text: label, onclick: async () => {
+    if (busy) return; busy = true; msg.style.color = '#6b7b93'; msg.textContent = 'Working…';
+    try { if (!fx) cur = { blob, mime }; else cur = { blob: await fxRender(blob, fx), mime: 'audio/wav' }; setSrc(cur.blob); msg.textContent = ''; aud.play().catch(() => {}); }
+    catch (e) { msg.style.color = '#b42318'; msg.textContent = 'This browser could not add that effect. You can still send it normally.'; }
+    busy = false;
+  } });
+  const send = el('button', { class: 'primary', text: 'Send voice clip' });
+  const ov = miniModal('🎙 Your voice clip', el('div', { class: 'hint', text: 'Listen, pick a funny effect if you like, then send.' }), aud, el('div', { class: 'row2' }, fxBtn('Normal', ''), fxBtn('🐿 Chipmunk', 'chipmunk'), fxBtn('🐻 Deep', 'deep'), fxBtn('🤖 Robot', 'robot'), fxBtn('🏔 Echo', 'echo')), msg, send);
+  const done = () => { try { URL.revokeObjectURL(aud.dataset.u); } catch (e) {} ov.remove(); };
+  ov.querySelector('.mhd button').onclick = done;
+  send.onclick = () => { const c = cur; done(); sendAudio(w, c.blob, c.mime); };
+}
+
+const ARC = { c4: 'Connect 4', rps: 'Rock-Paper-Scissors', hang: 'Hangman', trivia: 'Trivia', wyr: 'Would you rather', knows: 'How well do you know me?' };
+const TRIVIA = [
+  ['Which animal is the tallest in the world?', ['Elephant', 'Giraffe', 'Horse', 'Camel'], 1], ['Which planet is known as the Red Planet?', ['Venus', 'Mars', 'Jupiter', 'Mercury'], 1],
+  ['How many days are in a leap year?', ['365', '366', '364', '367'], 1], ['The Merlion is half lion and half what?', ['Fish', 'Eagle', 'Dragon', 'Horse'], 0],
+  ['In which year did Singapore become independent?', ['1959', '1963', '1965', '1971'], 2], ['Which is the largest ocean?', ['Atlantic', 'Indian', 'Arctic', 'Pacific'], 3],
+  ['How many continents are there?', ['5', '6', '7', '8'], 2], ['Which gas do plants take in from the air?', ['Oxygen', 'Carbon dioxide', 'Nitrogen', 'Helium'], 1],
+  ['What is the capital of Japan?', ['Seoul', 'Beijing', 'Tokyo', 'Bangkok'], 2], ['Which is the fastest land animal?', ['Lion', 'Cheetah', 'Horse', 'Leopard'], 1],
+  ['How many sides does a hexagon have?', ['5', '6', '7', '8'], 1], ['Mixing blue and yellow makes which colour?', ['Green', 'Purple', 'Orange', 'Brown'], 0],
+  ['Which is the largest animal on Earth?', ['Elephant', 'Blue whale', 'Giraffe', 'Hippo'], 1], ['Which is the hardest natural substance?', ['Gold', 'Iron', 'Diamond', 'Quartz'], 2],
+  ['Who painted the Mona Lisa?', ['Van Gogh', 'Picasso', 'Leonardo da Vinci', 'Monet'], 2], ['How many players per side are on the pitch in football?', ['9', '10', '11', '12'], 2],
+  ['Which fruit is called the king of fruits in Southeast Asia?', ['Mango', 'Durian', 'Rambutan', 'Papaya'], 1], ['What do bees make?', ['Milk', 'Honey', 'Silk', 'Chalk'], 1],
+  ['At what temperature (°C) does water boil at sea level?', ['90', '100', '110', '120'], 1], ['What is the smallest prime number?', ['0', '1', '2', '3'], 2],
+  ['What is the capital of Malaysia?', ['Johor Bahru', 'Kuala Lumpur', 'Penang', 'Malacca'], 1], ['How many strings does a standard guitar have?', ['4', '5', '6', '8'], 2],
+  ['Which planet is famous for its rings?', ['Mars', 'Saturn', 'Earth', 'Mercury'], 1], ['What is H2O?', ['Salt', 'Water', 'Air', 'Hydrogen'], 1]
+];
+const WYR = [['Be able to fly', 'Be invisible'], ['Always be 10 minutes late', 'Always be 20 minutes early'], ['Only eat rice for a year', 'Only eat noodles for a year'], ['Live at the beach', 'Live in the mountains'],
+  ['Have a pet dragon', 'Have a pet unicorn'], ['Never use a phone again', 'Never watch a video again'], ['Travel to the past', 'Travel to the future'], ['Be a famous singer', 'Be a famous footballer'],
+  ['Have super strength', 'Have super speed'], ['Eat durian every day', 'Never eat durian again'], ['Talk to animals', 'Speak every language'], ['Have no homework ever', 'Have no exams ever'],
+  ['Always be hot', 'Always be cold'], ['Win a free holiday', 'Win a free phone'], ['Sleep in a treehouse', 'Sleep in a castle']];
+const KNOWS = [['Favourite food?', ['Rice dishes', 'Noodles', 'Pizza or burgers', 'Sweets and desserts']], ['Perfect weekend?', ['Sleeping in', 'Out with friends', 'Games or movies', 'Exploring somewhere new']],
+  ['Favourite time of day?', ['Morning', 'Afternoon', 'Evening', 'Late night']], ['Which pet?', ['Cat', 'Dog', 'Fish or bird', 'No pets']], ['Favourite drink?', ['Coffee', 'Tea', 'Bubble tea', 'Plain water']],
+  ['Phone or computer?', ['Phone', 'Laptop', 'Tablet', 'Game console']], ['Early bird or night owl?', ['Early bird', 'Night owl', 'Both', 'Neither']], ['Dream holiday?', ['Beach', 'City', 'Mountains', 'Theme park']]];
+const pickN = (len, n) => { const a = Array.from({ length: len }, (_, i) => i); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); };
+const arcRec = (w, game, result) => { try { sb.rpc('record_game', { p_other: w.id, p_game: game, p_result: result }).then(() => {}, () => {}); } catch (e) {} };
+function gamesMenu(w, ev) {
+  const r = ev.currentTarget.getBoundingClientRect();
+  showMenu(r.left, r.bottom, [['Tic-Tac-Toe', () => startGame(w)], ...Object.entries(ARC).map(([k, n]) => [n, () => arcInvite(w, k)]), '-', ['🏆 Leaderboard', leaderboard]]);
+}
+async function leaderboard() {
+  const box = el('div', { text: 'Loading…' }); miniModal('🏆 Leaderboard (last 30 days)', box);
+  const { data, error } = await sb.rpc('game_leaderboard'); box.textContent = '';
+  if (error) { box.textContent = friendlyErr(error); return; }
+  box.append(el('div', { class: 'hint', text: 'You and your contacts. Games are friendly, and each player records their own result.' }));
+  data.forEach((r, i) => { const n = el('b'); renderEmo(n, r.nm); box.append(el('div', { class: 'crow' }, (i === 0 && r.w ? '🥇 ' : (i + 1) + '. '), n, el('span', { class: 'hint', text: `  ${r.w} won · ${r.l} lost · ${r.d} drawn` }))); });
+}
+function arcInvite(w, k) {
+  if (w.game || w.arc) { sysLine(w, 'Finish or close the current game first.'); return; }
+  const a = w.arc = { k, st: 'wait', host: true }; drawArc(w); sendSig(w.id, { t: 'g2', a: 'inv', k });
+  setTimeout(() => { if (w.arc === a && a.st === 'wait') { sysLine(w, pname(w.id) + ' did not answer. They must be online with the newest BeRightBack page.'); arcClose(w, true); } }, 25000);
+}
+function arcClose(w, notify) { if (notify && w.arc) sendSig(w.id, { t: 'g2', a: 'end', k: w.arc.k }); w.arc = null; drawArc(w); }
+function onArc(id, p) {
+  if (!ARC[p.k] || isMuted(id)) return;
+  let w = state.wins.get(id);
+  if (p.a === 'inv') {
+    if (!w) { openChat(id); w = state.wins.get(id); }
+    if (w.arc || w.game) { sendSig(id, { t: 'g2', a: 'end', k: p.k }); return; }
+    w.root.classList.remove('min'); front(w); w.arc = { k: p.k, st: 'ask', host: false }; drawArc(w); tone(SND.online); return;
+  }
+  if (!w || !w.arc || w.arc.k !== p.k) return;
+  const a = w.arc;
+  if (p.a === 'end') { sysLine(w, 'The game was closed.'); w.arc = null; }
+  else if (p.a === 'acc' && a.st === 'wait') { a.st = 'play'; arcInit(w); return; }
+  else if (p.a === 'mv' && a.st === 'play' && a.d) arcMove(w, p.d || {});
+  drawArc(w);
+}
+function arcInit(w) {
+  const a = w.arc, h = a.host, S = d => sendSig(w.id, { t: 'g2', a: 'mv', k: a.k, d });
+  if (a.k === 'c4') a.d = { b: Array(42).fill(''), turn: 'R', me: h ? 'R' : 'Y' };
+  else if (a.k === 'rps') a.d = { sm: 0, st: 0, round: 1, mine: null, theirs: null, last: '' };
+  else if (a.k === 'hang') {
+    if (h) {
+      const wd = String(prompt('Type a secret word (3 to 12 letters, a to z) for ' + pname(w.id) + ' to guess:') || '').toLowerCase().trim();
+      if (!/^[a-z]{3,12}$/.test(wd)) { sysLine(w, 'Hangman needs a word of 3 to 12 letters (a to z). Game cancelled.'); arcClose(w, true); return; }
+      a.d = { word: wd, tried: [], wrong: 0, setter: true }; S({ len: wd.length });
+    } else a.d = { pat: null, tried: [], wrong: 0, setter: false };
+  } else if (a.k === 'trivia' || a.k === 'wyr') {
+    a.d = { qs: null, n: 0, mine: {}, theirs: {}, sm: 0, st: 0, same: 0, rev: false };
+    if (h) { a.d.qs = pickN(a.k === 'trivia' ? TRIVIA.length : WYR.length, 5); S({ qs: a.d.qs }); }
+  } else if (a.k === 'knows') {
+    a.d = { qs: null, n: 0, ans: [], phase: 'ans', score: 0, fb: '' };
+    if (h) { a.d.qs = pickN(KNOWS.length, 5); S({ qs: a.d.qs }); }
+  }
+  drawArc(w);
+}
+function arcMove(w, m) {
+  const a = w.arc, d = a.d, S = x => sendSig(w.id, { t: 'g2', a: 'mv', k: a.k, d: x });
+  if (a.k === 'c4') { const op = d.me === 'R' ? 'Y' : 'R'; if (d.turn === op && Number.isInteger(m.c) && m.c >= 0 && m.c < 7 && c4Drop(d.b, m.c, op)) d.turn = d.me; }
+  else if (a.k === 'rps') { if ([0, 1, 2].includes(m.p) && d.theirs === null) { d.theirs = m.p; rpsTry(w); } }
+  else if (a.k === 'hang') {
+    if (d.setter) {
+      const ch = String(m.g || ''); if (!/^[a-z]$/.test(ch) || d.tried.includes(ch) || d.over) return;
+      d.tried.push(ch); const pos = []; [...d.word].forEach((c, i) => { if (c === ch) pos.push(i); });
+      if (!pos.length) d.wrong++;
+      const won = [...d.word].every(c => d.tried.includes(c)), lost = d.wrong >= 6;
+      S({ r: ch, pos, w: d.wrong, done: won ? 'win' : lost ? 'lose' : '', word: lost ? d.word : '' });
+      if (won || lost) { d.over = won ? 'guessed' : 'failed'; arcRec(w, 'hangman', won ? 'loss' : 'win'); }
+    } else if (m.len) d.pat = Array(+m.len).fill('_');
+    else if (m.r && d.pat) {
+      d.tried.push(m.r); (m.pos || []).forEach(i => { if (i >= 0 && i < d.pat.length) d.pat[i] = m.r; }); d.wrong = +m.w || 0;
+      if (m.done) { d.over = m.done; if (m.word) d.pat = [...m.word]; arcRec(w, 'hangman', m.done === 'win' ? 'win' : 'loss'); }
+    }
+  } else if (a.k === 'trivia' || a.k === 'wyr') {
+    if (m.qs && !d.qs) d.qs = m.qs.filter(i => Number.isInteger(i)).slice(0, 5);
+    else if (d.qs && m.n === d.n && Number.isInteger(m.a) && d.theirs[m.n] === undefined) { d.theirs[m.n] = m.a; qzTry(w); }
+  } else if (a.k === 'knows') {
+    if (m.qs && !d.qs) d.qs = m.qs.filter(i => Number.isInteger(i)).slice(0, 5);
+    else if (m.ready) d.phase = 'guess';
+    else if (d.qs && a.host && Number.isInteger(m.g) && m.n === d.n && d.ans[m.n] !== undefined) { const ok = m.g === d.ans[m.n]; if (ok) d.score++; d.n++; S({ n: m.n, ok, a: d.ans[m.n] }); }
+    else if (d.qs && !a.host && m.n === d.n) { d.fb = m.ok ? '✔ You know them well!' : '✖ It was: ' + KNOWS[d.qs[m.n]][1][m.a]; if (m.ok) d.score++; d.rev = true; setTimeout(() => { if (w.arc === a) { d.n++; d.rev = false; d.fb = ''; drawArc(w); } }, 1800); }
+  }
+}
+function c4Win(b) {
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 7; c++) { const v = b[r * 7 + c]; if (!v) continue;
+    for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [1, -1]]) { let k = 1; for (; k < 4; k++) { const cc = c + dc * k, rr = r + dr * k; if (cc < 0 || cc > 6 || rr < 0 || rr > 5 || b[rr * 7 + cc] !== v) break; } if (k === 4) return v; } }
+  return b.every(Boolean) ? 'draw' : null;
+}
+function c4Drop(b, c, v) { for (let r = 5; r >= 0; r--) if (!b[r * 7 + c]) { b[r * 7 + c] = v; return true; } return false; }
+function rpsTry(w) {
+  const d = w.arc.d; if (d.mine === null || d.theirs === null) return;
+  const r = d.mine === d.theirs ? 0 : ((d.mine - d.theirs + 3) % 3 === 1 ? 1 : -1);
+  d.last = ['✊', '✋', '✌️'][d.mine] + ' vs ' + ['✊', '✋', '✌️'][d.theirs] + ': ' + (r === 0 ? 'a tie, go again!' : r > 0 ? 'you win this round!' : pname(w.id) + ' wins this round.');
+  if (r > 0) d.sm++; else if (r < 0) d.st++;
+  d.mine = d.theirs = null;
+  if ((d.sm === 2 || d.st === 2) && !w.arc.done) { w.arc.done = true; arcRec(w, 'rps', d.sm > d.st ? 'win' : 'loss'); }
+}
+function qzTry(w) {
+  const a = w.arc, d = a.d, n = d.n; if (d.rev || d.mine[n] === undefined || d.theirs[n] === undefined) return;
+  d.rev = true;
+  if (a.k === 'trivia') { const c = TRIVIA[d.qs[n]][2]; if (d.mine[n] === c) d.sm++; if (d.theirs[n] === c) d.st++; } else if (d.mine[n] === d.theirs[n]) d.same++;
+  setTimeout(() => { if (w.arc === a) { d.n++; d.rev = false; drawArc(w); } }, 2300);
+}
+function drawArc(w) {
+  let box = w.root.querySelector('.arcbox'); const a = w.arc;
+  if (!a) { if (box) box.remove(); return; }
+  if (!box) { box = el('div', { class: 'arcbox' }); w.log.parentNode.insertBefore(box, w.log); }
+  box.textContent = ''; const nm = pname(w.id);
+  const close = el('button', { text: 'Close', onclick: () => arcClose(w, true) });
+  box.append(el('b', { text: '🎮 ' + ARC[a.k] }));
+  if (a.st === 'wait') { box.append(el('span', { text: 'Waiting for ' + nm + ' to accept…' }), close); return; }
+  if (a.st === 'ask') { box.append(el('span', { text: nm + ' invited you to play.' }), el('button', { text: 'Accept', onclick: () => { a.st = 'play'; sendSig(w.id, { t: 'g2', a: 'acc', k: a.k }); arcInit(w); } }), close); close.textContent = 'Decline'; return; }
+  const body = el('div', { class: 'arcbody' }); box.append(body);
+  ({ c4: drawC4, rps: drawRPS, hang: drawHang, trivia: drawQuiz, wyr: drawQuiz, knows: drawKnows })[a.k](w, body, nm);
+  box.append(close);
+}
+function drawC4(w, body, nm) {
+  const a = w.arc, d = a.d, res = c4Win(d.b), grid = el('div', { class: 'c4' });
+  if (res && !a.done) { a.done = true; arcRec(w, 'connect4', res === 'draw' ? 'draw' : res === d.me ? 'win' : 'loss'); }
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 7; c++) { const v = d.b[r * 7 + c];
+    grid.append(el('i', { class: 'c4c ' + (v === 'R' ? 'r' : v === 'Y' ? 'y' : ''), onclick: () => { if (res || d.turn !== d.me || !c4Drop(d.b, c, d.me)) return; d.turn = d.me === 'R' ? 'Y' : 'R'; sendSig(w.id, { t: 'g2', a: 'mv', k: 'c4', d: { c } }); drawArc(w); } })); }
+  body.append(grid, el('div', { text: res ? (res === 'draw' ? "It's a draw!" : res === d.me ? 'You win! 🎉' : nm + ' wins.') : d.turn === d.me ? 'Your turn (' + (d.me === 'R' ? '🔴' : '🟡') + '). Tap a column.' : nm + "'s turn" }));
+}
+function drawRPS(w, body, nm) {
+  const d = w.arc.d, over = d.sm === 2 || d.st === 2;
+  body.append(el('div', { text: `You ${d.sm} – ${d.st} ${nm}  (first to 2)` }), el('div', { class: 'row2' }, ...['✊', '✋', '✌️'].map((x, i) => el('button', { text: x, style: 'font-size:1.5rem', disabled: over || d.mine !== null, onclick: () => { d.mine = i; sendSig(w.id, { t: 'g2', a: 'mv', k: 'rps', d: { p: i } }); rpsTry(w); drawArc(w); } }))),
+    el('div', { class: 'hint', text: over ? (d.sm > d.st ? 'You win the match! 🎉' : nm + ' wins the match.') : d.mine !== null ? 'Waiting for ' + nm + '…' : d.last || 'Pick one!' }));
+  if (over && d.last) body.append(el('div', { class: 'hint', text: d.last }));
+}
+function drawHang(w, body, nm) {
+  const d = w.arc.d, lives = '❤️'.repeat(Math.max(0, 6 - d.wrong)) + '🖤'.repeat(Math.min(6, d.wrong));
+  if (d.setter) { body.append(el('div', { text: 'Your word: ' + [...d.word].map(c => d.tried.includes(c) ? c.toUpperCase() : '_').join(' ') }), el('div', { text: lives }), el('div', { class: 'hint', text: d.over ? (d.over === 'guessed' ? nm + ' guessed it.' : nm + ' ran out of tries. You win! 🎉') : nm + ' is guessing…' })); return; }
+  if (!d.pat) { body.append(el('div', { class: 'hint', text: nm + ' is choosing a secret word…' })); return; }
+  body.append(el('div', { text: d.pat.map(c => c.toUpperCase()).join(' '), style: 'font-size:1.2rem;letter-spacing:.1rem' }), el('div', { text: lives }));
+  if (d.over) body.append(el('div', { class: 'hint', text: d.over === 'win' ? 'You guessed it! 🎉' : 'Out of tries. The word was above.' }));
+  else body.append(el('div', { class: 'abc' }, ...'abcdefghijklmnopqrstuvwxyz'.split('').map(ch => el('button', { text: ch.toUpperCase(), disabled: d.tried.includes(ch), onclick: () => { sendSig(w.id, { t: 'g2', a: 'mv', k: 'hang', d: { g: ch } }); d.tried.push(ch); drawArc(w); } }))));
+}
+function drawQuiz(w, body, nm) {
+  const a = w.arc, d = a.d, tri = a.k === 'trivia';
+  if (!d.qs) { body.append(el('div', { class: 'hint', text: 'Getting ready…' })); return; }
+  if (d.n >= d.qs.length) {
+    if (tri && !a.done) { a.done = true; arcRec(w, 'trivia', d.sm > d.st ? 'win' : d.sm < d.st ? 'loss' : 'draw'); }
+    body.append(el('div', { text: tri ? `Final score: You ${d.sm} – ${d.st} ${nm}. ` + (d.sm > d.st ? 'You win! 🎉' : d.sm < d.st ? nm + ' wins.' : "It's a draw!") : `You matched on ${d.same} of ${d.qs.length}. ` + (d.same >= 4 ? 'Wow, great minds! 🧠' : 'Opposites attract! 😄') })); return;
+  }
+  const n = d.n, q = tri ? TRIVIA[d.qs[n]] : null, opts = tri ? q[1] : WYR[d.qs[n]];
+  body.append(el('div', { text: `${n + 1}/${d.qs.length}  ` + (tri ? q[0] : 'Would you rather…'), style: 'font-weight:600' }));
+  const row = el('div', { class: 'qopts' });
+  opts.forEach((o, i) => { const cls = d.rev ? (tri ? (i === q[2] ? 'ok' : (d.mine[n] === i ? 'bad' : '')) : (d.mine[n] === i || d.theirs[n] === i ? 'ok' : '')) : (d.mine[n] === i ? 'sel' : '');
+    row.append(el('button', { class: cls, text: (tri ? '' : (i ? 'B: ' : 'A: ')) + o, disabled: d.mine[n] !== undefined, onclick: () => { d.mine[n] = i; sendSig(w.id, { t: 'g2', a: 'mv', k: a.k, d: { n, a: i } }); qzTry(w); drawArc(w); } })); });
+  body.append(row, el('div', { class: 'hint', text: d.rev ? (tri ? `Score: You ${d.sm} – ${d.st} ${nm}` : d.mine[n] === d.theirs[n] ? 'You both picked the same! 🎉' : nm + ' picked ' + (d.theirs[n] ? 'B' : 'A') + '.') : d.mine[n] !== undefined ? 'Waiting for ' + nm + '…' : 'Pick an answer' }));
+}
+function drawKnows(w, body, nm) {
+  const a = w.arc, d = a.d, host = a.host;
+  if (!d.qs) { body.append(el('div', { class: 'hint', text: 'Getting ready…' })); return; }
+  const L = d.qs.length;
+  if (host && d.phase === 'ans') {
+    if (d.ans.length >= L) { d.phase = 'watch'; sendSig(w.id, { t: 'g2', a: 'mv', k: 'knows', d: { ready: true } }); drawKnows(w, body, nm); return; }
+    const n = d.ans.length, q = KNOWS[d.qs[n]];
+    body.append(el('div', { text: `Answer about YOURSELF (${n + 1}/${L}): ${q[0]}`, style: 'font-weight:600' }), el('div', { class: 'qopts' }, ...q[1].map((o, i) => el('button', { text: o, onclick: () => { d.ans.push(i); drawArc(w); } }))), el('div', { class: 'hint', text: nm + ' will try to guess your answers.' })); return;
+  }
+  if (host) { body.append(el('div', { text: d.n >= L ? `${nm} knows you ${d.score} out of ${L}! ` + (d.score >= 4 ? '🥰' : '😄') : `${nm} is guessing… (${d.score} right so far)` })); return; }
+  if (d.phase !== 'guess') { body.append(el('div', { class: 'hint', text: nm + ' is answering questions about themselves…' })); return; }
+  if (d.n >= L) { if (!a.done) { a.done = true; arcRec(w, 'knows_me', d.score >= 3 ? 'win' : 'loss'); } body.append(el('div', { text: `You know ${nm} ${d.score} out of ${L}! ` + (d.score >= 4 ? 'Best friend level! 🥰' : d.score >= 3 ? 'Not bad! 😄' : 'Time to chat more! 😅') })); return; }
+  const n = d.n, q = KNOWS[d.qs[n]];
+  body.append(el('div', { text: `Guess ${nm}'s answer (${n + 1}/${L}): ${q[0]}`, style: 'font-weight:600' }), el('div', { class: 'qopts' }, ...q[1].map((o, i) => el('button', { text: o, disabled: d.rev, onclick: () => { sendSig(w.id, { t: 'g2', a: 'mv', k: 'knows', d: { n, g: i } }); d.rev = true; drawArc(w); } }))), el('div', { class: 'hint', text: d.fb || (d.rev ? 'Checking…' : 'Pick your guess') }));
+}
+
 /* ============ PHASE 3: ATTENTION FEATURES ============ */
 const MOODS = ['💔 heartbroken', '🔥 bored', '🎮 gaming', '😴 sleepy', '📚 studying', '🎧 vibing', '🍜 hungry', '✈️ travelling', '🥳 celebrating', '😎 chilling'];
 const sgToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
@@ -1483,7 +1743,7 @@ function moodMenu(ev) {
   showMenu(ev.clientX, ev.clientY, [...MOODS.map(m => [m, () => setMood(m)]), '-', ['Write my own…', () => { const v = sanitizeName(prompt('Your mood (up to 30 characters)', state.me.mood || '') || '', 30); if (v) setMood(v); }], ['Clear my mood', () => setMood('')]]);
 }
 async function lookAtMe() {
-  const keys = Object.keys(WINKS), key = keys[Math.floor(Math.random() * keys.length)];
+  const keys = Object.keys(WINKS).filter(k => !k.startsWith('gift_')), key = keys[Math.floor(Math.random() * keys.length)];
   const { data, error } = await sb.rpc('broadcast_look', { p_wink: key });
   if (error) { toast('Look at me', /10 minutes/.test(error.message || '') ? 'You can use Look at me once every 10 minutes.' : friendlyErr(error)); return; }
   playWink(key); toast('Look at me! 📣', data ? 'Sent to ' + data + ' contact' + (data === 1 ? '' : 's') + ' who are online.' : 'Nobody who accepts it is online right now.');
@@ -1510,7 +1770,7 @@ async function admirerDialog() {
     if (!can.length) body.append(el('div', { class: 'hint', text: 'None of your contacts accept secret admirer winks yet.' }));
     else {
       const to = el('select', {}, ...can.map(p => el('option', { value: p.id, text: p.display_name })));
-      const wk = el('select', {}, ...Object.keys(WINKS).map(k => el('option', { value: k, text: (WINKS[k][1] || '') + ' ' + WINKS[k][0] })));
+      const wk = el('select', {}, ...Object.keys(WINKS).filter(k => !k.startsWith('gift_')).map(k => el('option', { value: k, text: (WINKS[k][1] || '') + ' ' + WINKS[k][0] })));
       const out = el('div', { class: 'setmsg' });
       body.append(to, wk, el('button', { class: 'primary', text: 'Send secretly', onclick: async ev => {
         ev.target.disabled = true; const { error } = await sb.rpc('send_admirer', { p_to: to.value, p_wink: wk.value }); ev.target.disabled = false;
