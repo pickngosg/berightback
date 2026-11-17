@@ -1421,7 +1421,7 @@ function ytParse(u) {
 }
 let ytReady;
 function ytLoad() { if (ytReady) return ytReady; ytReady = new Promise(res => { if (window.YT && YT.Player) return res(true); window.onYouTubeIframeAPIReady = () => res(true); const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => { ytReady = null; res(false); }; document.head.append(sc); }); return ytReady; }
-function stopYT(keepBox) { try { if (pl.ytp) pl.ytp.destroy(); } catch (e) {} pl.ytp = null; pl.ytTitle = ''; if (pl.ui.ytbox && !keepBox) { pl.ui.ytbox.style.display = 'none'; pl.ui.ytbox.textContent = ''; } }
+function stopYT(keepBox) { try { if (pl.ytp) pl.ytp.destroy(); } catch (e) {} pl.ytp = null; try { if (pl.spc) pl.spc.destroy(); } catch (e) {} pl.spc = null; pl.ytTitle = ''; if (pl.ui.ytbox && !keepBox) { pl.ui.ytbox.style.display = 'none'; pl.ui.ytbox.textContent = ''; } }
 async function playYT(item) {
   if (!(await ytLoad()) || !(window.YT && YT.Player)) { pl.err = 'Could not load YouTube. Check your connection.'; updatePlayer(); return; }
   pl.audio.pause(); stopYT(true); pl.err = ''; pl.skips = 0; pl.info = 'Loading YouTube…'; updatePlayer();
@@ -1433,7 +1433,28 @@ async function playYT(item) {
     onError: e => {
       const c = e.data, noEmbed = (c === 101 || c === 150 || c === 153);
       if (noEmbed && item.list && pl.ytp) { pl.skips = (pl.skips || 0) + 1; if (pl.skips < 30) { pl.info = 'Skipped a video whose owner does not allow it to play outside YouTube.'; updatePlayer(); try { pl.ytp.nextVideo(); } catch (x) {} return; } }
+      try { if (!pl.ui.ytbox.querySelector('.openapp')) pl.ui.ytbox.append(el('a', { class: 'openapp', href: itemUrl(item), target: '_blank', rel: 'noopener noreferrer', text: '▶ Open this in the YouTube app instead', style: 'display:block;padding:.5rem;font-weight:600' })); } catch (x) {}
       pl.err = noEmbed ? 'The owner of this video does not allow it to be played outside YouTube (error ' + c + '). Pick a playlist of videos that allow embedding, or use songs from your device.' : 'YouTube could not play this (error ' + c + '). The playlist must be Public or Unlisted.'; updatePlayer(); } } });
+}
+
+/* ---- Spotify, open-in-app and manual "I'm listening to" ---- */
+function musicParse(u) {
+  const y = ytParse(u); if (y) return y;
+  const t = String(u).trim(); let m = t.match(/^spotify:(playlist|album|track|show|episode):([A-Za-z0-9]{22})$/);
+  if (!m) { try { const x = new URL(t); if (/(^|\.)spotify\.com$/.test(x.hostname)) m = x.pathname.match(/\/(playlist|album|track|show|episode)\/([A-Za-z0-9]{22})/); } catch (e) {} }
+  return m ? { sp: m[1], id: m[2] } : null;
+}
+function itemUrl(i) { return i.sp ? `https://open.spotify.com/${i.sp}/${i.id}` : i.list ? `https://www.youtube.com/playlist?list=${i.list}` : `https://www.youtube.com/watch?v=${i.v}`; }
+function playMusic(i) { if (i.sp) playSP(i); else playYT(i); }
+let spReady;
+function spLoad() { if (spReady) return spReady; spReady = new Promise(res => { window.onSpotifyIframeApiReady = api => res(api); const sc = document.createElement('script'); sc.src = 'https://open.spotify.com/embed/iframe-api/v1'; sc.async = true; sc.onerror = () => { spReady = null; res(null); }; document.head.append(sc); setTimeout(() => res(null), 8000); }); return spReady; }
+async function playSP(item) {
+  pl.audio.pause(); stopYT(true); pl.err = ''; pl.info = 'Loading Spotify…'; updatePlayer();
+  const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
+  host.append(el('div', { class: 'hint', text: 'Log in to Spotify in this browser (open.spotify.com) to hear full songs. Without a login, Spotify plays 30-second previews.' }));
+  const api = await spLoad(), uri = `spotify:${item.sp}:${item.id}`, label = item.name + ' (Spotify)';
+  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { pl.spc = c; c.addListener('playback_update', e => { const play = e.data && !e.data.isPaused && !e.data.isBuffering; pl.ytTitle = play ? label : ''; setNow(play ? label : ''); updatePlayer(); }); }); }
+  else { d.replaceWith(el('iframe', { src: `https://open.spotify.com/embed/${item.sp}/${item.id}`, width: '100%', height: item.sp === 'track' ? '152' : '300', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen', style: 'border:0;border-radius:12px' })); pl.ytTitle = label; setNow(label); updatePlayer(); }
 }
 function openMusic() {
   closeSettings();
@@ -1446,17 +1467,20 @@ function openMusic() {
       el('button', { text: '▶', title: 'Play', onclick: () => { loadPl(pl.cur); playIdx(pl.tracks.findIndex(t => t.id === sid)); } }), el('span', { text: pl.lib[sid] }),
       el('button', { text: '✕', title: 'Remove from this playlist', onclick: () => { cur.songs = cur.songs.filter(x => x !== sid); if (!pl.pls.some(p => p.songs.includes(sid))) { delete pl.lib[sid]; idbDel(sid).catch(() => {}); } savePl(); loadPl(pl.cur); draw(); } }))); });
     if (!songs.childNodes.length) songs.append(el('div', { class: 'hint', text: 'This playlist is empty. Add songs from your device below.' }));
-    const yn = el('input', { placeholder: 'Name (e.g. My chill mix)', maxlength: '40' }), yl = el('input', { placeholder: 'Paste a YouTube playlist or video link' });
-    const ylist = el('div'); pl.yt.forEach((y, i) => ylist.append(el('div', { class: 'scrow' }, el('button', { text: '▶', title: 'Play', onclick: () => { playYT(y); closeSettings(); } }), el('span', { text: y.name + (y.list ? ' (playlist)' : ' (video)') }), el('button', { text: '✕', title: 'Remove', onclick: () => { pl.yt.splice(i, 1); savePl(); draw(); } }))));
-    box.append(el('div', { class: 'mhd' }, el('h2', { text: '🎵 My music' }), el('button', { text: '✕', onclick: closeSettings })),
+    const yn = el('input', { placeholder: 'Name (e.g. My chill mix)', maxlength: '40' }), yl = el('input', { placeholder: 'Paste a YouTube or Spotify link' });
+    const ylist = el('div'); pl.yt.forEach((y, i) => ylist.append(el('div', { class: 'scrow' }, el('button', { text: '▶', title: 'Play', onclick: () => { playMusic(y); closeSettings(); } }), el('span', { text: y.name + (y.sp ? ' (Spotify ' + y.sp + ')' : y.list ? ' (YouTube playlist)' : ' (YouTube video)') }), el('a', { href: itemUrl(y), target: '_blank', rel: 'noopener noreferrer', text: 'Open app', style: 'font-size:.85rem;white-space:nowrap' }), el('button', { text: '✕', title: 'Remove', onclick: () => { pl.yt.splice(i, 1); savePl(); draw(); } }))));
+    const mi = el('input', { placeholder: 'Song name, e.g. Taylor Swift - Anti-Hero', maxlength: '100', value: pl.manual || '' });
+    const manual = el('div', { class: 'sec' }, el('h3', { text: '🎧 Tell my friends what I am listening to' }), el('div', { class: 'hint', text: 'Playing music in your Spotify or YouTube app? Type the song here and your contacts will see it.' }),
+      el('div', { class: 'row2' }, mi, el('button', { text: 'Share', onclick: () => { const v = sanitizeName(mi.value, 100); if (!v) return; pl.manual = v; setNow('♫ ' + v); clearTimeout(pl.manT); pl.manT = setTimeout(() => { pl.manual = ''; setNow(''); }, 3 * 3600 * 1000); } }), el('button', { text: 'Stop sharing', onclick: () => { pl.manual = ''; mi.value = ''; clearTimeout(pl.manT); setNow(''); } })));
+    box.append(el('div', { class: 'mhd' }, el('h2', { text: '🎵 My music' }), el('button', { text: '✕', onclick: closeSettings })), manual,
       el('div', { class: 'sec' }, el('h3', { text: 'My playlists (songs from your device)' }), el('div', { class: 'row2' }, sel,
         el('button', { text: 'New', onclick: () => { const n = sanitizeName(prompt('Name your new playlist:') || '', 30); if (!n) return; const id = newId(); pl.pls.push({ id, name: n, songs: [] }); loadPl(id, true); draw(); } }),
         el('button', { text: 'Rename', onclick: () => { const n = sanitizeName(prompt('New name:', cur.name) || '', 30); if (n) { cur.name = n; savePl(); draw(); } } }),
         el('button', { text: 'Delete', onclick: () => { if (pl.pls.length < 2) { alert('You need at least one playlist.'); return; } if (!confirm('Delete the playlist "' + cur.name + '"? Songs only in this playlist are removed from this device.')) return; pl.pls = pl.pls.filter(p => p !== cur); cur.songs.forEach(sid => { if (!pl.pls.some(p => p.songs.includes(sid))) { delete pl.lib[sid]; idbDel(sid).catch(() => {}); } }); loadPl(pl.pls[0].id, true); draw(); } })),
         songs, el('div', { class: 'row2' }, el('button', { text: '📂 Add songs from this device', onclick: () => file.click() }), file),
         el('div', { class: 'hint', text: 'Songs stay on this device only. Contacts only see the song name.' })),
-      el('div', { class: 'sec' }, el('h3', { text: 'My YouTube playlists' }), ylist, el('div', { class: 'row2' }, yn, yl, el('button', { text: 'Add', onclick: () => { const q = ytParse(yl.value); if (!q) { alert('That is not a YouTube link. Copy the link of your playlist or video from YouTube.'); return; } if (pl.yt.length >= 30) { alert('You can save up to 30 YouTube items.'); return; } pl.yt.push({ name: sanitizeName(yn.value, 40) || 'My YouTube music', ...q }); savePl(); draw(); } })),
-        el('div', { class: 'hint', text: 'Your YouTube playlist must be set to Public or Unlisted. It plays inside the app, and your contacts can see the song title.' })));
+      el('div', { class: 'sec' }, el('h3', { text: 'My YouTube and Spotify' }), ylist, el('div', { class: 'row2' }, yn, yl, el('button', { text: 'Add', onclick: () => { const q = musicParse(yl.value); if (!q) { alert('That is not a YouTube or Spotify link. In YouTube or Spotify tap Share, then Copy link, and paste it here.'); return; } if (pl.yt.length >= 30) { alert('You can save up to 30 YouTube items.'); return; } pl.yt.push({ name: sanitizeName(yn.value, 40) || (q.sp ? 'My Spotify music' : 'My YouTube music'), ...q }); savePl(); draw(); } })),
+        el('div', { class: 'hint', text: 'YouTube: must be Public or Unlisted, and some music videos do not allow playing outside YouTube - then tap Open app. Spotify plays inside the app (log in to Spotify in this browser for full songs).' })));
   };
   draw();
 }
