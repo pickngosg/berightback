@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BeRightBack</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#abcaec">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23283a8c'/%3E%3Ctext x='32' y='42' font-size='26' font-weight='900' text-anchor='middle' fill='%23fff' font-family='Arial'%3EBRB%3C/text%3E%3C/svg%3E">
 <style>
 *{box-sizing:border-box}
@@ -77,6 +82,8 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .eq i:nth-child(3){height:60%;animation-delay:.4s}
 @keyframes eq{50%{transform:scaleY(.3)}}
 .eq i{transform-origin:bottom}
+.nbar{display:none;gap:.6rem;align-items:center;padding:.45rem .7rem;font-size:.9rem;background:linear-gradient(#fffbea,#fff1c9);border:1px solid #e6c37b;border-top:0}
+.nbar button{white-space:nowrap;padding:.15rem .7rem}
 .req{margin:.4rem;padding:.6rem;border:1px solid #e6c37b;background:linear-gradient(#fffbea,#fff1c9);border-radius:.55rem}
 .req .row{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
 .req button{padding:.15rem .7rem;font-size:.9rem}
@@ -233,36 +240,46 @@ function applyFmt(node, fmt) {
 
 /* sounds: made with the browser's own tone generator - no copyrighted audio */
 let actx;
-/* Original sounds made by the browser itself (soft glassy bell chimes). Not copied from any other product. */
+/* Original sounds made by the browser itself: deep, warm bell chimes with a soft low thump and echo. */
 function tone(seq) {
   if (!state.sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
     const t0 = actx.currentTime + 0.03;
-    const master = actx.createGain(); master.gain.value = 0.9; master.connect(actx.destination);
-    const dly = actx.createDelay(); dly.delayTime.value = 0.13;
-    const fb = actx.createGain(); fb.gain.value = 0.3;
-    const wet = actx.createGain(); wet.gain.value = 0.35;
-    master.connect(dly); dly.connect(fb); fb.connect(dly); dly.connect(wet); wet.connect(actx.destination);
+    const low = actx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 320; low.gain.value = 7; low.connect(actx.destination);
+    const master = actx.createGain(); master.gain.value = 0.95; master.connect(low);
+    const dly = actx.createDelay(); dly.delayTime.value = 0.15;
+    const fb = actx.createGain(); fb.gain.value = 0.32;
+    const wet = actx.createGain(); wet.gain.value = 0.38;
+    master.connect(dly); dly.connect(fb); fb.connect(dly); dly.connect(wet); wet.connect(low);
+    const buzz = seq[0] && seq[0][3] === 'buzz';
+    if (!buzz) {   // soft low "thump" at the start
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(58, t0 + 0.28);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + 0.35);
+    }
     for (const [f, at, d, kind] of seq) {
       const t = t0 + at;
-      const parts = kind === 'buzz' ? [[f, 0.16, 'square']] : [[f, 0.30, 'sine'], [f * 2.76, 0.08, 'sine'], [f * 5.4, 0.025, 'sine']];
-      for (const [pf, pg, type] of parts) {
+      const parts = kind === 'buzz'
+        ? [[f, 0.16, 'square', 1], [f / 2, 0.2, 'sine', 1]]
+        : [[f, 0.26, 'sine', 1], [f * 2.76, 0.06, 'sine', 0.55], [f / 2, 0.26, 'sine', 1.35], [f / 4, 0.2, 'sine', 1.6]];
+      for (const [pf, pg, type, dm] of parts) {
         const o = actx.createOscillator(), g = actx.createGain();
         o.type = type; o.frequency.value = pf;
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(pg, t + 0.006);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-        o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.05);
+        g.gain.exponentialRampToValueAtTime(pg, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d * dm);
+        o.connect(g); g.connect(master); o.start(t); o.stop(t + d * dm + 0.05);
       }
     }
   } catch (e) {}
 }
 const SND = {
-  msg: [[1174.7, 0, 0.55], [1568, 0.12, 0.8]],
-  online: [[784, 0, 0.5], [1046.5, 0.12, 0.5], [1318.5, 0.24, 0.5], [1568, 0.36, 1.0]],
-  nudge: [[180, 0, 0.09, 'buzz'], [140, 0.1, 0.09, 'buzz'], [180, 0.2, 0.09, 'buzz'], [140, 0.3, 0.09, 'buzz'], [180, 0.4, 0.13, 'buzz']]
+  msg: [[587.3, 0, 0.7], [784, 0.13, 1.0]],
+  online: [[392, 0, 0.6], [523.3, 0.13, 0.6], [659.3, 0.26, 0.6], [784, 0.39, 1.3]],
+  nudge: [[150, 0, 0.09, 'buzz'], [115, 0.1, 0.09, 'buzz'], [150, 0.2, 0.09, 'buzz'], [115, 0.3, 0.09, 'buzz'], [150, 0.4, 0.14, 'buzz']]
 };
 
 const STATUS = { online: ['Online', '#2fb344'], busy: ['Busy', '#e03131'], away: ['Away', '#f59f00'], invisible: ['Appear offline', '#868e96'], offline: ['Offline', '#868e96'] };
@@ -273,7 +290,7 @@ applyPrefs();
 /* ============ STATE ============ */
 const state = {
   uid: null, me: null, profiles: new Map(), friendships: [], unread: new Map(), wins: new Map(),
-  eff: new Map(), flash: new Set(), tchans: {}, lastTyping: {}, chan: null, timers: [], starting: false, z: 20,
+  eff: new Map(), npSeen: new Map(), lastNote: new Map(), flash: new Set(), tchans: {}, lastTyping: {}, chan: null, timers: [], starting: false, z: 20,
   sound: localStorage.getItem('brb_sound') !== 'off', collapsed: {}, pics: localStorage.getItem('brb_pics') !== 'off', autoAway: false, nudgeAt: 0
 };
 function buddy(st) {
@@ -454,7 +471,7 @@ async function loadAll() {
   state.unread = new Map();
   (u.data || []).forEach(m => state.unread.set(m.sender, (state.unread.get(m.sender) || 0) + 1));
   if (state.profiles.get(state.uid)) state.me = state.profiles.get(state.uid);
-  for (const [id, pr] of state.profiles) state.eff.set(id, effStatus(pr));
+  if (!state.eff.size) for (const [id, pr] of state.profiles) { const st = effStatus(pr); state.eff.set(id, st); state.npSeen.set(id, (st !== 'offline' && pr.now_playing) || ''); }
 }
 
 /* ============ MAIN WINDOW ============ */
@@ -481,8 +498,23 @@ function buildMain() {
     addMsg.textContent = error ? friendlyErr(error) : (M[data] || 'Done.');
     if (!error && (data === 'sent' || data === 'accepted')) { addIn.value = ''; await refresh(); }
   }
-  app.append(el('div', { class: 'main' }, title, head, reqs, list, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn)));
+  app.append(el('div', { class: 'main' }, title, head, notifyBar(), reqs, list, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn)));
   renderHeader();
+}
+function notifyBar() {
+  const bar = el('div', { class: 'nbar' });
+  const draw = () => {
+    bar.innerHTML = '';
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+    if ('Notification' in window && Notification.permission === 'default') {
+      bar.append(el('span', { text: '🔔 Get a pop-up when friends sign in, sign out or change their song.' }), el('button', { text: 'Turn on', onclick: async () => { await Notification.requestPermission(); draw(); } }));
+      bar.style.display = 'flex';
+    } else if (ios && !standalone) {
+      bar.append(el('span', { text: '📱 iPhone: tap Share, then Add to Home Screen, then open BeRightBack from your home screen to get notifications.' }));
+      bar.style.display = 'flex';
+    } else bar.style.display = 'none';
+  };
+  draw(); return bar;
 }
 function renderHeader() {
   const h = $('#mhead'); if (!h) return; h.innerHTML = '';
@@ -575,18 +607,42 @@ function refresh() {
     res();
   }, 250); });
 }
+const ICON_URL = 'icon-192.png';
+const noteOn = k => localStorage.getItem('brb_n_' + k) !== 'off';
+async function sysNotify(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!document.hidden && document.hasFocus()) return;     // app is in front: the in-app pop-up is enough
+  const opts = { body, tag, icon: ICON_URL, badge: ICON_URL, renotify: true };
+  try {
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
+    new Notification(title, opts);
+  } catch (e) {}
+}
+function announce(p, text, key, chime) {
+  if (!noteOn(key)) return;
+  if (chime) tone(SND.online);
+  toast(p.display_name, text, () => openChat(p.id), p);
+  sysNotify(p.display_name, text, 'c-' + p.id);
+}
 function signedIn(p) {
-  tone(SND.online); toast(p.display_name, 'has just signed in', () => openChat(p.id), p);
+  announce(p, 'has just signed in', 'inout', true);
   state.flash.add(p.id); renderContacts();
   setTimeout(() => { state.flash.delete(p.id); renderContacts(); }, 5000);
 }
+function checkContact(p, say) {
+  const now = effStatus(p), np = (now !== 'offline' && p.now_playing) || '';
+  const was = state.eff.get(p.id), wasNp = state.npSeen.get(p.id) || '';
+  state.eff.set(p.id, now); state.npSeen.set(p.id, np);
+  if (!say || was === undefined) return;
+  const t = Date.now(), last = state.lastNote.get(p.id) || 0;
+  if (was === 'offline' && now !== 'offline') { signedIn(p); state.lastNote.set(p.id, t); }
+  else if (was !== 'offline' && now === 'offline') { announce(p, 'has signed out', 'inout', false); state.lastNote.set(p.id, t); }
+  else if (was !== now) { announce(p, 'is now ' + STATUS[now][0], 'status', false); state.lastNote.set(p.id, t); }
+  else if (np && np !== wasNp && t - last > 8000) { announce(p, 'is listening to ♫ ' + np, 'song', false); state.lastNote.set(p.id, t); }
+}
 function detectOnline() {
-  for (const id of friendIds().accepted) {
-    const p = state.profiles.get(id); if (!p) continue;
-    const now = effStatus(p), was = state.eff.get(id);
-    if (was === 'offline' && now !== 'offline') signedIn(p);
-    state.eff.set(id, now);
-  }
+  for (const id of friendIds().accepted) { const p = state.profiles.get(id); if (p) checkContact(p, true); }
 }
 
 /* ============ MENUS / TOASTS ============ */
@@ -824,12 +880,7 @@ function subscribe() {
 function onProfile(p) {
   if (p.id === state.uid) return;
   state.profiles.set(p.id, p);
-  const isFriend = friendIds().accepted.includes(p.id);
-  if (isFriend) {
-    const now = effStatus(p), was = state.eff.get(p.id);
-    if (was === 'offline' && now !== 'offline') signedIn(p);
-    state.eff.set(p.id, now);
-  }
+  if (friendIds().accepted.includes(p.id)) checkContact(p, true);
   renderContacts(); updateWinHeader(p.id);
 }
 function onIncoming(m) {
@@ -845,7 +896,7 @@ function onIncoming(m) {
   if (m.kind !== 'nudge') tone(SND.msg);
   const preview = m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.slice(0, 80);
   toast(p.display_name, preview, () => openChat(id), p);
-  if ('Notification' in window && Notification.permission === 'granted' && document.hidden) { try { new Notification(p.display_name, { body: preview }); } catch (e) {} }
+  sysNotify(p.display_name, preview, 'm-' + id);
 }
 let flashT;
 function updateTitle() {
@@ -950,6 +1001,9 @@ function openSettings() {
       chk('Show display pictures in my contact list', state.pics, v => { state.pics = v; localStorage.setItem('brb_pics', v ? 'on' : 'off'); renderContacts(); })),
     sec('Sounds and notifications',
       chk('Play sounds (messages, nudges, contacts signing in)', state.sound, v => { state.sound = v; localStorage.setItem('brb_sound', v ? 'on' : 'off'); }),
+      chk('Pop-up when a contact signs in or signs out', noteOn('inout'), v => localStorage.setItem('brb_n_inout', v ? 'on' : 'off')),
+      chk('Pop-up when a contact changes their status', noteOn('status'), v => localStorage.setItem('brb_n_status', v ? 'on' : 'off')),
+      chk('Pop-up when a contact changes their song', noteOn('song'), v => localStorage.setItem('brb_n_song', v ? 'on' : 'off')),
       el('div', { class: 'row2' }, el('button', { text: '🔔 Allow desktop notifications', onclick: () => { if (!('Notification' in window)) { say('This browser does not support notifications.'); return; } Notification.requestPermission().then(r => say(r === 'granted' ? 'Notifications are on.' : 'Notifications are blocked in your browser settings.', r === 'granted')); } }))),
     sec('Privacy', chk('Show my current song to my contacts', pl.share, v => { pl.share = v; localStorage.setItem('brb_share_music', v ? 'on' : 'off'); if (pl.ui.chk) pl.ui.chk.checked = v; setNow(pl.audio.paused ? '' : curTitle()); updatePlayer(); })),
     sec('My account', el('div', { class: 'hint', text: 'Signed in as ' + me.email }), el('label', { text: 'New password' }), pw,
@@ -1041,6 +1095,7 @@ function buildPlayer() {
 }
 
 /* ============ BOOT ============ */
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 state.recovering = /type=recovery/.test(location.hash);
 sb.auth.onAuthStateChange((ev, session) => {
   setTimeout(() => {
