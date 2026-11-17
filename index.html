@@ -272,6 +272,7 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .rpt{position:absolute;right:.2rem;top:0;width:auto;min-width:0;padding:0 .3rem;border:0;background:none;box-shadow:none;opacity:0;cursor:pointer;font-size:.85rem;color:#a61e12}
 .wlog .msg:hover .rpt{opacity:.7}
 @media (hover:none){.rpt{opacity:.35}}
+@media(max-width:700px){.wtb{flex-wrap:wrap;overflow-x:visible;justify-content:center;gap:.1rem}.wtb .tb{min-width:3.3rem;padding:.15rem .2rem}.wtb .ti{font-size:1.45rem;line-height:1.8rem}}
 .fcode{display:inline-block;font-size:1.5rem;letter-spacing:.15rem;padding:.2rem .6rem;margin:.2rem 0;background:#fff;border:1px dashed #6f93c3;border-radius:.5rem;user-select:all}
 .rcard{border:1px solid #c9d8ee;border-radius:.6rem;padding:.6rem .8rem;margin:.5rem 0;background:#fff}
 .rcard.open{border-color:#e0a030;background:#fffaf0}
@@ -304,14 +305,14 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .confetti i{position:absolute;top:-1.2rem;width:.55rem;height:1rem;animation:cfall linear forwards}
 @keyframes cfall{to{transform:translateY(108vh) rotate(900deg)}}
 
-.arcbox{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.4rem .8rem;background:#eaf6ff;border-bottom:1px solid #9cc3ee;max-height:55%;overflow:auto}
+.arcbox{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.4rem .8rem;background:#eaf6ff;border-bottom:1px solid #9cc3ee;max-height:75%;overflow:auto}
 .arcbody{display:flex;flex-direction:column;gap:.3rem}
 .c4{display:grid;grid-template-columns:repeat(7,1.55rem);gap:.15rem;background:#1c5fb5;padding:.3rem;border-radius:.5rem;width:max-content}
 .c4c{width:1.55rem;height:1.55rem;border-radius:50%;background:#fff;cursor:pointer;display:block}
 .c4c.r{background:#e03131}.c4c.y{background:#fcc419}
 .qopts{display:flex;flex-direction:column;gap:.25rem;align-items:stretch}
 .qopts button{text-align:left}
-.qopts button.ok{background:#b2f2bb!important;border-color:#2f9e44}.qopts button.bad{background:#ffc9c9!important;border-color:#e03131}.qopts button.sel{background:#cfe4fb!important}
+.qopts button.ok{background:#b2f2bb!important;border-color:#2f9e44}.qopts button.bad{background:#ffc9c9!important;border-color:#e03131}.qopts button.sel{background:#ffe08a!important;border-color:#e0a800;font-weight:700}.qopts button:disabled{opacity:.75}
 .abc{display:flex;flex-wrap:wrap;gap:.2rem;max-width:24rem}.abc button{width:1.9rem;padding:.1rem 0}
 </style>
 </head>
@@ -337,6 +338,8 @@ function el(tag, props = {}, ...kids) {
     else if (k === 'text') e.textContent = v;
     else if (k === 'style') e.style.cssText = v;
     else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === false || v == null) continue; // a false/empty flag (e.g. disabled:false) must NOT set the attribute
+    else if (v === true) e.setAttribute(k, '');
     else e.setAttribute(k, v);
   }
   for (const c of kids.flat()) if (c != null) e.append(c.nodeType ? c : document.createTextNode(String(c)));
@@ -622,7 +625,7 @@ async function loadAll() {
   const [f, p, u] = await Promise.all([
     sb.from('friendships').select('*'),
     sb.from('profiles').select('*'),
-    sb.from('messages').select('sender').eq('recipient', state.uid).is('read_at', null).limit(1000)
+    sb.from('messages').select('sender').eq('recipient', state.uid).neq('kind', 'game').is('read_at', null).limit(1000)
   ]);
   if (f.error || p.error) throw (f.error || p.error);
   state.friendships = f.data || [];
@@ -1092,7 +1095,18 @@ function sendLive(id, event, payload) {
   const c = getChan(id), m = { type: 'broadcast', event, payload };
   if (c.brbReady) c.send(m); else { c.brbQ.push(m); if (c.brbQ.length > 20) c.brbQ.shift(); }
 }
-function sendSig(id, p) { sendLive(id, 'sig', { ...p, from: state.uid }); }
+const sigQ = new Map();
+function sendSig(id, p) {
+  if (p && typeof p.t === 'string' && p.t[0] === 'g') { // game moves travel as short-lived database rows: reliable and in order
+    const body = JSON.stringify(p);
+    const nxt = (sigQ.get(id) || Promise.resolve()).then(async () => {
+      const { error } = await sb.from('messages').insert({ sender: state.uid, recipient: id, body, kind: 'game' });
+      if (error) toast('Game', 'Your move did not go through: ' + friendlyErr(error) + ' (run the newest setup.sql once)');
+    }).catch(() => {});
+    sigQ.set(id, nxt); return;
+  }
+  sendLive(id, 'sig', { ...p, from: state.uid });
+}
 function onSig(p) {
   if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
   if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {});
@@ -1108,7 +1122,7 @@ function drawGame(w) {
   let box = w.root.querySelector('.gamebox'); const g = w.game;
   if (!g) { if (box) box.remove(); return; }
   if (!box) { box = el('div', { class: 'gamebox' }); w.log.parentNode.insertBefore(box, w.log); }
-  box.textContent = ''; const nm = pname(w.id);
+  w.gt = Date.now(); box.textContent = ''; const nm = pname(w.id);
   box.append(el('b', { text: '🎮 Tic-Tac-Toe' }));
   const close = el('button', { text: 'Close', onclick: () => { sendSig(w.id, { t: 'g-end' }); w.game = null; drawGame(w); } });
   if (g.st === 'wait') { box.append(el('span', { text: 'Waiting for ' + nm + ' to accept…' }), close); return; }
@@ -1117,14 +1131,16 @@ function drawGame(w) {
   g.b.forEach((v, i) => grid.append(el('button', { text: v, disabled: !!v || !!res || g.turn !== g.me, onclick: () => { g.b[i] = g.me; g.turn = g.me === 'X' ? 'O' : 'X'; sendSig(w.id, { t: 'g-move', i }); drawGame(w); } })));
   box.append(grid, el('span', { text: res ? (res === 'draw' ? "It's a draw!" : res === g.me ? 'You win! 🎉' : nm + ' wins.') : g.turn === g.me ? 'Your turn (' + g.me + ')' : nm + "'s turn" }), close);
 }
+function gameActive(w) { return !!(w.arc || w.game) && Date.now() - (w.gt || 0) < 90000; }
 function startGame(w) {
-  if (w.game) return; const g = w.game = { st: 'wait' }; drawGame(w); sendSig(w.id, { t: 'g-inv' });
+  if (gameActive(w)) { sysLine(w, 'Finish or close the current game first.'); return; }
+  w.arc = null; drawArc(w); const g = w.game = { st: 'wait' }; w.gt = Date.now(); drawGame(w); sendSig(w.id, { t: 'g-inv' });
   setTimeout(() => { if (w.game === g && g.st === 'wait') { sysLine(w, pname(w.id) + ' did not answer. They must be online with the newest BeRightBack page (press Ctrl+Shift+R).'); w.game = null; drawGame(w); sendSig(w.id, { t: 'g-end' }); } }, 25000);
 }
 function onGame(id, p) {
   if (p.t === 'g2') { onArc(id, p); return; }
   let w = state.wins.get(id);
-  if (p.t === 'g-inv') { if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); w.game = { st: 'ask' }; drawGame(w); tone(SND.online); return; }
+  if (p.t === 'g-inv') { if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); w.arc = null; drawArc(w); w.game = { st: 'ask' }; drawGame(w); tone(SND.online); return; }
   if (!w || !w.game) return;
   const g = w.game;
   if (p.t === 'g-acc' && g.st === 'wait') w.game = { st: 'play', b: Array(9).fill(''), me: 'X', turn: 'X' };
@@ -1285,13 +1301,14 @@ function updateWinHeader(id) {
 }
 async function loadHistory(w) {
   const me = state.uid, id = w.id;
-  const { data, error } = await sb.from('messages').select('*').or(`and(sender.eq.${me},recipient.eq.${id}),and(sender.eq.${id},recipient.eq.${me})`).order('created_at', { ascending: false }).limit(100);
+  const { data, error } = await sb.from('messages').select('*').neq('kind', 'game').or(`and(sender.eq.${me},recipient.eq.${id}),and(sender.eq.${id},recipient.eq.${me})`).order('created_at', { ascending: false }).limit(100);
   if (error) { sysLine(w, 'Could not load earlier messages: ' + friendlyErr(error)); return; }
   (data || []).reverse().forEach(m => appendMsg(w, m, true));
   w.log.scrollTop = w.log.scrollHeight;
 }
 function sysLine(w, text) { w.lastSender = null; w.log.append(el('div', { class: 'sys', text })); w.log.scrollTop = w.log.scrollHeight; }
 function appendMsg(w, m, quiet) {
+  if (m.kind === 'game') return;
   if (w.seen.has(m.id)) return; w.seen.add(m.id);
   const mine = m.sender === state.uid;
   const name = mine ? state.me.display_name : (state.profiles.get(w.id) || {}).display_name || 'Contact';
@@ -1364,7 +1381,7 @@ async function sendMedia(w, file) {
   const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: isImg ? '📷 Photo' : '🎬 Video', kind: isImg ? 'image' : 'video', media_path: path, fmt: '' }).select().single();
   note.remove();
   if (error) { await sb.storage.from('chat-media').remove([path]); sysLine(w, 'Not sent: ' + friendlyErr(error)); return; }
-  w.typ.textContent = ''; appendMsg(w, data);
+  w.typ.textContent = ''; appendMsg(w, data); tone(SND.online);
 }
 async function sendMsg(w) {
   const body = expandShort(w.input.value.replace(/\s+$/, '')).slice(0, 2000);
@@ -1429,6 +1446,7 @@ function onProfile(p) {
   renderContacts(); updateWinHeader(p.id);
 }
 function onIncoming(m) {
+  if (m.kind === 'game') { try { const q = JSON.parse(m.body); q.from = m.sender; onSig(q); } catch (e) {} return; }
   const id = m.sender, p = state.profiles.get(id);
   if (!p) { refresh().then(() => onIncoming(m)); return; }
   const w = state.wins.get(id);
@@ -1437,7 +1455,7 @@ function onIncoming(m) {
   if (w) { w.typ.textContent = ''; appendMsg(w, m); }
   if (m.kind === 'nudge') { if (!w) openChat(id); const w2 = state.wins.get(id); if (w2) { w2.root.classList.remove('min'); front(w2); shake(w2); nudgeCombo(w2, 'them'); } tone(SND.nudge); }
   if (m.kind === 'wink') { playWink(m.body); tone(SND.nudge); }
-  if (visible && document.hasFocus()) { sb.rpc('mark_read', { p_from: id }); return; }
+  if (visible && document.hasFocus()) { if (m.kind === 'image' || m.kind === 'video' || m.kind === 'audio') tone(SND.msg); sb.rpc('mark_read', { p_from: id }); return; }
   state.unread.set(id, (state.unread.get(id) || 0) + 1);
   renderContacts(); updateTitle();
   if (m.kind !== 'nudge' && m.kind !== 'wink') tone(SND.msg);
@@ -1564,7 +1582,8 @@ async function leaderboard() {
   data.forEach((r, i) => { const n = el('b'); renderEmo(n, r.nm); box.append(el('div', { class: 'crow' }, (i === 0 && r.w ? '🥇 ' : (i + 1) + '. '), n, el('span', { class: 'hint', text: `  ${r.w} won · ${r.l} lost · ${r.d} drawn` }))); });
 }
 function arcInvite(w, k) {
-  if (w.game || w.arc) { sysLine(w, 'Finish or close the current game first.'); return; }
+  if (gameActive(w)) { sysLine(w, 'Finish or close the current game first.'); return; }
+  w.game = null; drawGame(w);
   const a = w.arc = { k, st: 'wait', host: true }; drawArc(w); sendSig(w.id, { t: 'g2', a: 'inv', k });
   setTimeout(() => { if (w.arc === a && a.st === 'wait') { sysLine(w, pname(w.id) + ' did not answer. They must be online with the newest BeRightBack page.'); arcClose(w, true); } }, 25000);
 }
@@ -1574,7 +1593,7 @@ function onArc(id, p) {
   let w = state.wins.get(id);
   if (p.a === 'inv') {
     if (!w) { openChat(id); w = state.wins.get(id); }
-    if (w.arc || w.game) { sendSig(id, { t: 'g2', a: 'end', k: p.k }); return; }
+    w.game = null; drawGame(w);
     w.root.classList.remove('min'); front(w); w.arc = { k: p.k, st: 'ask', host: false }; drawArc(w); tone(SND.online); return;
   }
   if (!w || !w.arc || w.arc.k !== p.k) return;
@@ -1590,9 +1609,7 @@ function arcInit(w) {
   else if (a.k === 'rps') a.d = { sm: 0, st: 0, round: 1, mine: null, theirs: null, last: '' };
   else if (a.k === 'hang') {
     if (h) {
-      const wd = String(prompt('Type a secret word (3 to 12 letters, a to z) for ' + pname(w.id) + ' to guess:') || '').toLowerCase().trim();
-      if (!/^[a-z]{3,12}$/.test(wd)) { sysLine(w, 'Hangman needs a word of 3 to 12 letters (a to z). Game cancelled.'); arcClose(w, true); return; }
-      a.d = { word: wd, tried: [], wrong: 0, setter: true }; S({ len: wd.length });
+      a.d = { word: null, tried: [], wrong: 0, setter: true };
     } else a.d = { pat: null, tried: [], wrong: 0, setter: false };
   } else if (a.k === 'trivia' || a.k === 'wyr') {
     a.d = { qs: null, n: 0, mine: {}, theirs: {}, sm: 0, st: 0, same: 0, rev: false };
@@ -1654,7 +1671,7 @@ function drawArc(w) {
   let box = w.root.querySelector('.arcbox'); const a = w.arc;
   if (!a) { if (box) box.remove(); return; }
   if (!box) { box = el('div', { class: 'arcbox' }); w.log.parentNode.insertBefore(box, w.log); }
-  box.textContent = ''; const nm = pname(w.id);
+  a.t = w.gt = Date.now(); box.textContent = ''; const nm = pname(w.id);
   const close = el('button', { text: 'Close', onclick: () => arcClose(w, true) });
   box.append(el('b', { text: '🎮 ' + ARC[a.k] }));
   if (a.st === 'wait') { box.append(el('span', { text: 'Waiting for ' + nm + ' to accept…' }), close); return; }
@@ -1672,12 +1689,18 @@ function drawC4(w, body, nm) {
 }
 function drawRPS(w, body, nm) {
   const d = w.arc.d, over = d.sm === 2 || d.st === 2;
-  body.append(el('div', { text: `You ${d.sm} – ${d.st} ${nm}  (first to 2)` }), el('div', { class: 'row2' }, ...['✊', '✋', '✌️'].map((x, i) => el('button', { text: x, style: 'font-size:1.5rem', disabled: over || d.mine !== null, onclick: () => { d.mine = i; sendSig(w.id, { t: 'g2', a: 'mv', k: 'rps', d: { p: i } }); rpsTry(w); drawArc(w); } }))),
-    el('div', { class: 'hint', text: over ? (d.sm > d.st ? 'You win the match! 🎉' : nm + ' wins the match.') : d.mine !== null ? 'Waiting for ' + nm + '…' : d.last || 'Pick one!' }));
+  body.append(el('div', { text: `You ${d.sm} – ${d.st} ${nm}  (first to 2)` }), el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: over ? (d.sm > d.st ? 'You win the match! 🎉' : nm + ' wins the match.') : d.mine !== null ? '⏳ Waiting for ' + nm + '…' : d.last || '👇 Pick one!' }), el('div', { class: 'row2' }, ...['✊', '✋', '✌️'].map((x, i) => el('button', { text: x, style: 'font-size:1.5rem', disabled: over || d.mine !== null, onclick: () => { d.mine = i; sendSig(w.id, { t: 'g2', a: 'mv', k: 'rps', d: { p: i } }); rpsTry(w); drawArc(w); } }))),
+  );
   if (over && d.last) body.append(el('div', { class: 'hint', text: d.last }));
 }
 function drawHang(w, body, nm) {
   const d = w.arc.d, lives = '❤️'.repeat(Math.max(0, 6 - d.wrong)) + '🖤'.repeat(Math.min(6, d.wrong));
+  if (d.setter && !d.word) {
+    const inp = el('input', { type: 'text', maxlength: '12', placeholder: '3 to 12 letters', autocomplete: 'off', style: 'width:10rem' }), msg = el('span', { class: 'hint' });
+    const go = () => { const wd = inp.value.toLowerCase().trim(); if (!/^[a-z]{3,12}$/.test(wd)) { msg.textContent = 'Use 3 to 12 letters, a to z only.'; return; } d.word = wd; sendSig(w.id, { t: 'g2', a: 'mv', k: 'hang', d: { len: wd.length } }); drawArc(w); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    body.append(el('div', { text: 'Type a secret word for ' + nm + ' to guess:', style: 'font-weight:600' }), el('div', { class: 'row2' }, inp, el('button', { class: 'primary', text: 'Start', onclick: go })), msg); return;
+  }
   if (d.setter) { body.append(el('div', { text: 'Your word: ' + [...d.word].map(c => d.tried.includes(c) ? c.toUpperCase() : '_').join(' ') }), el('div', { text: lives }), el('div', { class: 'hint', text: d.over ? (d.over === 'guessed' ? nm + ' guessed it.' : nm + ' ran out of tries. You win! 🎉') : nm + ' is guessing…' })); return; }
   if (!d.pat) { body.append(el('div', { class: 'hint', text: nm + ' is choosing a secret word…' })); return; }
   body.append(el('div', { text: d.pat.map(c => c.toUpperCase()).join(' '), style: 'font-size:1.2rem;letter-spacing:.1rem' }), el('div', { text: lives }));
@@ -1695,8 +1718,8 @@ function drawQuiz(w, body, nm) {
   body.append(el('div', { text: `${n + 1}/${d.qs.length}  ` + (tri ? q[0] : 'Would you rather…'), style: 'font-weight:600' }));
   const row = el('div', { class: 'qopts' });
   opts.forEach((o, i) => { const cls = d.rev ? (tri ? (i === q[2] ? 'ok' : (d.mine[n] === i ? 'bad' : '')) : (d.mine[n] === i || d.theirs[n] === i ? 'ok' : '')) : (d.mine[n] === i ? 'sel' : '');
-    row.append(el('button', { class: cls, text: (tri ? '' : (i ? 'B: ' : 'A: ')) + o, disabled: d.mine[n] !== undefined, onclick: () => { d.mine[n] = i; sendSig(w.id, { t: 'g2', a: 'mv', k: a.k, d: { n, a: i } }); qzTry(w); drawArc(w); } })); });
-  body.append(row, el('div', { class: 'hint', text: d.rev ? (tri ? `Score: You ${d.sm} – ${d.st} ${nm}` : d.mine[n] === d.theirs[n] ? 'You both picked the same! 🎉' : nm + ' picked ' + (d.theirs[n] ? 'B' : 'A') + '.') : d.mine[n] !== undefined ? 'Waiting for ' + nm + '…' : 'Pick an answer' }));
+    row.append(el('button', { class: cls, text: (d.mine[n] === i ? '✔ ' : '') + (tri ? '' : (i ? 'B: ' : 'A: ')) + o, disabled: d.mine[n] !== undefined, onclick: () => { d.mine[n] = i; sendSig(w.id, { t: 'g2', a: 'mv', k: a.k, d: { n, a: i } }); qzTry(w); drawArc(w); } })); });
+  body.append(el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: d.rev ? (tri ? `Score: You ${d.sm} – ${d.st} ${nm}` : d.mine[n] === d.theirs[n] ? 'You both picked the same! 🎉' : nm + ' picked ' + (d.theirs[n] ? 'B' : 'A') + '.') : d.mine[n] !== undefined ? '⏳ Waiting for ' + nm + '…' : '👇 Pick an answer' }), row);
 }
 function drawKnows(w, body, nm) {
   const a = w.arc, d = a.d, host = a.host;
@@ -1711,7 +1734,7 @@ function drawKnows(w, body, nm) {
   if (d.phase !== 'guess') { body.append(el('div', { class: 'hint', text: nm + ' is answering questions about themselves…' })); return; }
   if (d.n >= L) { if (!a.done) { a.done = true; arcRec(w, 'knows_me', d.score >= 3 ? 'win' : 'loss'); } body.append(el('div', { text: `You know ${nm} ${d.score} out of ${L}! ` + (d.score >= 4 ? 'Best friend level! 🥰' : d.score >= 3 ? 'Not bad! 😄' : 'Time to chat more! 😅') })); return; }
   const n = d.n, q = KNOWS[d.qs[n]];
-  body.append(el('div', { text: `Guess ${nm}'s answer (${n + 1}/${L}): ${q[0]}`, style: 'font-weight:600' }), el('div', { class: 'qopts' }, ...q[1].map((o, i) => el('button', { text: o, disabled: d.rev, onclick: () => { sendSig(w.id, { t: 'g2', a: 'mv', k: 'knows', d: { n, g: i } }); d.rev = true; drawArc(w); } }))), el('div', { class: 'hint', text: d.fb || (d.rev ? 'Checking…' : 'Pick your guess') }));
+  body.append(el('div', { text: `Guess ${nm}'s answer (${n + 1}/${L}): ${q[0]}`, style: 'font-weight:600' }), el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: d.fb || (d.rev ? '⏳ Checking…' : '👇 Pick your guess') }), el('div', { class: 'qopts' }, ...q[1].map((o, i) => el('button', { text: o, disabled: d.rev, onclick: () => { sendSig(w.id, { t: 'g2', a: 'mv', k: 'knows', d: { n, g: i } }); d.rev = true; drawArc(w); } }))));
 }
 
 /* ============ PHASE 3: ATTENTION FEATURES ============ */
