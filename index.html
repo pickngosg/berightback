@@ -100,7 +100,7 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .addmsg{padding:0 .8rem .25rem;font-size:.9rem;background:#eaf3fc;min-height:.3rem;border-left:1px solid #a3bfe0;border-right:1px solid #a3bfe0}
 .addbar{display:flex;gap:.45rem;padding:.55rem .6rem;background:linear-gradient(#eef5fd,#d3e4f6);border:1px solid #a3bfe0;border-radius:0 0 .55rem .55rem;margin-bottom:.5rem}
 .addbar input{flex:1;border-radius:1.2rem;padding:.4rem .9rem}
-.win{position:fixed;width:min(43rem,100vw);height:min(31rem,100vh);min-width:22rem;min-height:22rem;resize:both;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(#d3e6f9 0,#abcaec 4rem,#8fb4df);border:1px solid #4d74a8;border-radius:.9rem;box-shadow:0 0 0 1px #ffffffaa inset,0 1.1rem 3rem #12356588;padding:0 .4rem .4rem;z-index:10;animation:winin .28s cubic-bezier(.2,.9,.3,1.1)}
+.win{position:fixed;width:min(46rem,100vw);height:min(37rem,100vh);min-width:22rem;min-height:26rem;resize:both;overflow:hidden;display:flex;flex-direction:column;background:linear-gradient(#d3e6f9 0,#abcaec 4rem,#8fb4df);border:1px solid #4d74a8;border-radius:.9rem;box-shadow:0 0 0 1px #ffffffaa inset,0 1.1rem 3rem #12356588;padding:0 .4rem .4rem;z-index:10;animation:winin .28s cubic-bezier(.2,.9,.3,1.1)}
 @keyframes winin{from{opacity:0;transform:translateY(.8rem) scale(.96)}}
 .win.min{display:none!important}
 .win.shake{animation:shake .6s}
@@ -165,6 +165,35 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 @keyframes wrise{to{transform:translateY(-112vh) rotate(-300deg)}}
 @keyframes wpop{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}15%{transform:translate(-50%,-50%) scale(1.15);opacity:1}25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
 .scrow{display:flex;gap:.4rem;margin:.3rem 0;align-items:center}.scrow span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.menu{z-index:600!important}
+.wmenu{display:flex;gap:.1rem;padding:.15rem .4rem;background:linear-gradient(#fffef7,#ebe8d2);border:1px solid #a3bfe0;border-radius:.4rem .4rem 0 0;font-size:.98rem}
+.wmenu span{padding:.15rem .65rem;border-radius:.3rem;cursor:pointer;color:#1b2f50;user-select:none}
+.wmenu span:hover{background:#cfe2f8}
+.wtb{display:flex;gap:.15rem;padding:.35rem .5rem;background:linear-gradient(#f9fcff,#d4e5f8);border:1px solid #a3bfe0;border-top:0;overflow-x:auto}
+.wtb .tb{display:flex;flex-direction:column;align-items:center;min-width:4.4rem;padding:.2rem .3rem;background:none;border:1px solid transparent;border-radius:.6rem;box-shadow:none;color:#1b2f50;font-size:.95rem;gap:0}
+.wtb .tb:hover{background:linear-gradient(#fff,#cfe2f8);border-color:#7f9fcb}
+.wtb .ti{font-size:1.9rem;line-height:2.3rem;filter:drop-shadow(0 .12rem .15rem #0004)}
+.wsub{font-size:.85rem!important;padding:.45rem .9rem!important}
+.wsub .to{font-size:1.2rem;font-weight:700;color:#1f3d6b;margin-right:.3rem}
+.wbottom .btns{display:flex;flex-direction:column;gap:.3rem}
+.wbottom .btns button{flex:1;align-self:auto;padding:0 1.3rem}
+.sbar{padding:.22rem .8rem;font-size:.86rem;color:#3f5a82;background:linear-gradient(#f3f8ff,#d7e5f6);border:1px solid #a3bfe0;border-top:0;border-radius:0 0 .5rem .5rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.25rem}
+.wside{width:10.5rem!important}
+.pic{width:8.6rem!important;height:8.6rem!important;border-radius:.7rem!important;border-width:4px!important}
+.wsearch{display:flex;gap:.4rem;align-items:center;padding:.25rem .6rem;background:#fff9d8;border-bottom:1px solid #e6d58a}
+.wsearch input{flex:1}
+.gamebox{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.4rem .8rem;background:#fff8d9;border-bottom:1px solid #e6d58a}
+.ttt{display:grid;grid-template-columns:repeat(3,2.3rem);gap:.2rem}
+.ttt button{height:2.3rem;padding:0;font-size:1.25rem;font-weight:700}
+.callbox{position:absolute;inset:0;z-index:5;background:#0b1b33ee;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;font-size:1.15rem}
+.callbox .rv{max-width:92%;max-height:58%;border-radius:.7rem;background:#000}
+.callbox .self{position:absolute;right:.9rem;bottom:.9rem;width:7.5rem;border-radius:.5rem;background:#000}
+.callbox .row{display:flex;gap:.6rem}
+.gmore{float:right;padding:0 .5rem!important;border-color:transparent!important;background:none!important;box-shadow:none!important}
+.ytbox{margin-top:.4rem;border-radius:.5rem;overflow:hidden}
+.newg{color:#2b62b8;font-weight:500;font-size:.92rem}
+.wlog audio{max-width:100%}
 @keyframes toastin{from{transform:translateY(2rem);opacity:0}}
 .toast .tbody{min-width:0}
 .toast b{display:block;color:#10294a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -580,8 +609,8 @@ function renderContacts() {
     reqs.append(el('div', { class: 'req' }, el('div', {}, el('b', { text: p.display_name }), ' (' + p.email + ') wants to add you to their contacts.'),
       el('div', { class: 'row' }, el('button', { text: 'Accept', onclick: act('accept') }), el('button', { text: 'Decline', onclick: act('decline') }), el('button', { text: 'Block', onclick: act('block') }))));
   });
-  const online = [], offline = [];
-  r.accepted.forEach(id => { const p = state.profiles.get(id); if (p) (effStatus(p) === 'offline' ? offline : online).push(p); });
+  const online = [], offline = [], byGroup = {};
+  r.accepted.forEach(id => { const p = state.profiles.get(id); if (!p) return; const gn = state.groups.map[id]; if (gn && state.groups.names.includes(gn)) (byGroup[gn] = byGroup[gn] || []).push(p); else (effStatus(p) === 'offline' ? offline : online).push(p); });
   const byName = (a, b) => a.display_name.localeCompare(b.display_name);
   online.sort(byName); offline.sort(byName);
   const group = (key, label, arr, mk) => {
@@ -603,14 +632,23 @@ function renderContacts() {
     if (n) row.append(el('span', { class: 'badge', text: String(n) }));
     row.append(el('button', { text: '⋯', title: 'More', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, [
       ['Send an instant message', () => openChat(p.id)], '-',
+      ...state.groups.names.map(n => ['Move to ' + n, () => { state.groups.map[p.id] = n; saveGroups(); renderContacts(); }]),
+      ['Move to a new group…', () => newGroup(p.id)],
+      ...(state.groups.map[p.id] ? [['Remove from group', () => { delete state.groups.map[p.id]; saveGroups(); renderContacts(); }]] : []), '-',
       ['Block', async () => { if (confirm('Block ' + p.display_name + '?')) { await sb.rpc('block_user', { p_other: p.id }); closeChat(p.id); await refresh(); } }],
       ['Delete contact', async () => { if (confirm('Delete ' + p.display_name + ' from your contacts?')) { await sb.rpc('remove_friend', { p_other: p.id }); closeChat(p.id); await refresh(); } }]]); } }));
     return row;
   };
+  state.groups.names.forEach(n => {
+    const arr = (byGroup[n] || []).sort((a, b) => (effStatus(a) === 'offline') - (effStatus(b) === 'offline') || byName(a, b)), key = 'g:' + n, col = state.collapsed[key], on = arr.filter(p => effStatus(p) !== 'offline').length;
+    list.append(el('div', { class: 'grp', onclick: () => { state.collapsed[key] = !col; renderContacts(); }, oncontextmenu: ev => { ev.preventDefault(); groupMenu(ev, n); } }, col ? '▸' : '▾', ` ${n} (${on}/${arr.length})`, el('button', { class: 'gmore', text: '⋯', title: 'Group options', onclick: ev => { ev.stopPropagation(); groupMenu(ev, n); } })));
+    if (!col) arr.forEach(p => list.append(contactRow(p)));
+  });
   group('online', 'Online', online, contactRow);
   group('offline', 'Offline', offline, contactRow);
   if (r.outgoing.length) group('pending', 'Waiting for reply', r.outgoing.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name }), el('span', { class: 'm', text: ' - ' + p.email })), el('button', { text: '✕', style: 'padding:0 7px', title: 'Cancel request', onclick: async () => { await sb.rpc('remove_friend', { p_other: p.id }); await refresh(); } })));
   if (r.blocked.length) group('blocked', 'Blocked', r.blocked.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name })), el('button', { text: 'Unblock', onclick: async () => { await sb.rpc('unblock_user', { p_other: p.id }); await refresh(); } })));
+  list.append(el('div', { class: 'grp newg', onclick: () => newGroup(), text: '＋ Create a group or list (Friends, Work…)' }));
   if (!r.accepted.length && !r.incoming.length) list.append(el('div', { style: 'padding:14px;color:#7a869b;text-align:center', text: 'No contacts yet. Type a friend\'s email below and click Add. They need a BeRightBack account.' }));
 }
 let refreshT;
@@ -744,6 +782,187 @@ function expandShort(text) {
   return out;
 }
 
+
+/* ============ CHAT WINDOW EXTRAS ============ */
+function newId() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2); }
+const BGS = { 'White': '#fff', 'Sunny day': 'linear-gradient(#fffbe0,#ffe9a8)', 'Blue sky': 'linear-gradient(#f0f8ff,#bfe0fb)', 'Pink dream': 'linear-gradient(#fff4f9,#ffd3e6)', 'Meadow': 'linear-gradient(#f4fff0,#c9efc0)', 'Lavender': 'linear-gradient(#f8f3ff,#dccbf7)' };
+function applyBg(w) { w.log.style.background = BGS[localStorage.getItem('brb_bg') || 'White'] || '#fff'; }
+function bgMenu(w, ev) { const r = ev.currentTarget.getBoundingClientRect(); showMenu(r.left, r.top - 170, Object.keys(BGS).map(k => [k, () => { localStorage.setItem('brb_bg', k); state.wins.forEach(applyBg); }])); }
+function fmtMenu(w, ev) {
+  const r = ev.currentTarget.getBoundingClientRect(), C = [['Default colour', ''], ['Pink', '#d6336c'], ['Blue', '#1c7ed6'], ['Green', '#2f9e44'], ['Orange', '#f08c00'], ['Purple', '#7048e8']];
+  showMenu(r.left, r.top - 200, [[(w.fmt.b ? '✔ ' : '') + 'Bold', () => { w.fmt.b = !w.fmt.b; }], [(w.fmt.i ? '✔ ' : '') + 'Italic', () => { w.fmt.i = !w.fmt.i; }], '-', ...C.map(([n, c]) => [(w.fmt.c === c ? '✔ ' : '') + n, () => { w.fmt.c = c; }])]);
+}
+function toggleSearch(w) {
+  const old = w.root.querySelector('.wsearch'); if (old) { old.remove(); [...w.log.children].forEach(c => { c.style.display = ''; }); return; }
+  const inp = el('input', { placeholder: 'Search this conversation…', oninput: () => { const q = inp.value.trim().toLowerCase(); [...w.log.children].forEach(c => { c.style.display = !q || c.classList.contains('who') || c.textContent.toLowerCase().includes(q) ? '' : 'none'; }); } });
+  w.log.parentNode.insertBefore(el('div', { class: 'wsearch' }, '🔍', inp, el('button', { text: '✕', onclick: () => toggleSearch(w) })), w.log); inp.focus();
+}
+function saveConv(w) {
+  const p = state.profiles.get(w.id) || {};
+  const a = el('a', { href: URL.createObjectURL(new Blob([`BeRightBack conversation with ${p.display_name}\n\n` + w.log.innerText], { type: 'text/plain' })), download: 'conversation.txt' });
+  document.body.append(a); a.click(); a.remove();
+}
+async function inviteFriend(w) {
+  const txt = 'Join me on BeRightBack, the messenger with nudges and winks: ' + location.origin + location.pathname;
+  try { if (navigator.share) await navigator.share({ title: APP_NAME, text: txt }); else { await navigator.clipboard.writeText(txt); sysLine(w, 'Invitation copied. Paste it to a friend so they can sign up.'); } } catch (e) {}
+}
+async function shareSong(w) {
+  const t = pl.nowTitle; if (!t) { sysLine(w, 'Play a song first, then share it.'); return; }
+  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: '🎵 I am listening to: ' + t, kind: 'text', fmt: '' }).select().single();
+  if (error) sysLine(w, 'Not sent: ' + friendlyErr(error)); else appendMsg(w, data);
+}
+function actMenu(w, ev) { const r = ev.currentTarget.getBoundingClientRect(); showMenu(r.left, r.bottom, [['Send a nudge', () => sendNudge(w)], ['Send a wink…', () => toggleWinks(w)], ['Record a voice clip', () => toggleRec(w)], ['Share the song I am playing', () => shareSong(w)], ['Play Tic-Tac-Toe', () => startGame(w)]]); }
+function buildWinMenus(w) {
+  const M = {
+    File: [['Send files…', () => w.fileIn.click()], ['Save conversation as a text file', () => saveConv(w)], '-', ['Close', () => closeChat(w.id)]],
+    Edit: [['Find in this conversation', () => toggleSearch(w)], ['Select all text', () => { const r = document.createRange(); r.selectNodeContents(w.log); const g = getSelection(); g.removeAllRanges(); g.addRange(r); }], ['Clear this window', () => { w.log.textContent = ''; w.lastSender = null; }]],
+    Actions: [['Send a nudge', () => sendNudge(w)], ['Send a wink…', () => toggleWinks(w)], ['Record a voice clip', () => toggleRec(w)], '-', ['Start a voice call', () => startCall(w, false)], ['Start a video call', () => startCall(w, true)], ['Play Tic-Tac-Toe', () => startGame(w)], '-', ['Invite a friend to BeRightBack', () => inviteFriend(w)]],
+    Tools: [['My settings and emoticon shortcuts', () => openSettings()], ['My music and playlists', () => openMusic()]],
+    Help: [['About BeRightBack', () => sysLine(w, 'BeRightBack - a nostalgic messenger with nudges, winks, voice clips, calls, games and shared music.')]]
+  };
+  return el('div', { class: 'wmenu' }, ...Object.keys(M).map(k => el('span', { text: k, onclick: ev => { ev.stopPropagation(); const r = ev.target.getBoundingClientRect(); showMenu(r.left, r.bottom + 2, M[k]); } })));
+}
+
+/* ---- voice clips ---- */
+const REC = { r: null, t: null };
+async function toggleRec(w) {
+  if (REC.r) { REC.r.stop(); return; }
+  if (!window.MediaRecorder || !navigator.mediaDevices) { sysLine(w, 'Voice clips are not supported by this browser.'); return; }
+  let s; try { s = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { sysLine(w, 'Please allow the microphone to record a voice clip.'); return; }
+  const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4', r = new MediaRecorder(s, { mimeType: mime }), chunks = [], b = w.voiceBtn; let sec = 0;
+  REC.r = r; b.classList.add('on'); b.textContent = '⏹ Stop 0s';
+  REC.t = setInterval(() => { sec++; b.textContent = '⏹ Stop ' + sec + 's'; if (sec >= 60) r.stop(); }, 1000);
+  r.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  r.onstop = () => { clearInterval(REC.t); REC.r = null; s.getTracks().forEach(t => t.stop()); b.classList.remove('on'); b.textContent = '🎙 Voice Clip'; if (sec >= 1) sendAudio(w, new Blob(chunks, { type: mime }), mime); };
+  r.start();
+}
+async function sendAudio(w, blob, mime) {
+  if (blob.size > 5 * 1024 * 1024) { sysLine(w, 'That voice clip is too big.'); return; }
+  const path = `${state.uid}/${newId()}.${mime === 'audio/webm' ? 'webm' : 'm4a'}`;
+  const note = el('div', { class: 'sys', text: 'Sending your voice clip…' }); w.log.append(note);
+  const up = await sb.storage.from('chat-media').upload(path, blob, { contentType: mime, upsert: false });
+  if (up.error) { note.remove(); sysLine(w, 'Upload failed: ' + friendlyErr(up.error) + ' (run the newest setup.sql once)'); return; }
+  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: '🎙 Voice clip', kind: 'audio', media_path: path, fmt: '' }).select().single();
+  note.remove();
+  if (error) { await sb.storage.from('chat-media').remove([path]); sysLine(w, 'Not sent: ' + friendlyErr(error) + ' (run the newest setup.sql once)'); return; }
+  appendMsg(w, data);
+}
+
+/* ---- live signals (games and calls) travel on the same private live channel as "is typing" ---- */
+function sendSig(id, p) {
+  let c = state.tchans[id]; if (!c) { c = state.tchans[id] = sb.channel('typing-' + id); c.subscribe(); }
+  c.send({ type: 'broadcast', event: 'sig', payload: { ...p, from: state.uid } });
+}
+function onSig(p) {
+  if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
+  if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {});
+}
+const pname = id => (state.profiles.get(id) || {}).display_name || 'Contact';
+
+/* ---- Tic-Tac-Toe ---- */
+function tttWinner(b) {
+  for (const [a, c, d] of [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]) if (b[a] && b[a] === b[c] && b[a] === b[d]) return b[a];
+  return b.every(Boolean) ? 'draw' : null;
+}
+function drawGame(w) {
+  let box = w.root.querySelector('.gamebox'); const g = w.game;
+  if (!g) { if (box) box.remove(); return; }
+  if (!box) { box = el('div', { class: 'gamebox' }); w.log.parentNode.insertBefore(box, w.log); }
+  box.textContent = ''; const nm = pname(w.id);
+  box.append(el('b', { text: '🎮 Tic-Tac-Toe' }));
+  const close = el('button', { text: 'Close', onclick: () => { sendSig(w.id, { t: 'g-end' }); w.game = null; drawGame(w); } });
+  if (g.st === 'wait') { box.append(el('span', { text: 'Waiting for ' + nm + ' to accept…' }), close); return; }
+  if (g.st === 'ask') { box.append(el('span', { text: nm + ' invited you to play.' }), el('button', { text: 'Accept', onclick: () => { w.game = { st: 'play', b: Array(9).fill(''), me: 'O', turn: 'X' }; sendSig(w.id, { t: 'g-acc' }); drawGame(w); } }), el('button', { text: 'Decline', onclick: () => { sendSig(w.id, { t: 'g-dec' }); w.game = null; drawGame(w); } })); return; }
+  const res = tttWinner(g.b), grid = el('div', { class: 'ttt' });
+  g.b.forEach((v, i) => grid.append(el('button', { text: v, disabled: !!v || !!res || g.turn !== g.me, onclick: () => { g.b[i] = g.me; g.turn = g.me === 'X' ? 'O' : 'X'; sendSig(w.id, { t: 'g-move', i }); drawGame(w); } })));
+  box.append(grid, el('span', { text: res ? (res === 'draw' ? "It's a draw!" : res === g.me ? 'You win! 🎉' : nm + ' wins.') : g.turn === g.me ? 'Your turn (' + g.me + ')' : nm + "'s turn" }), close);
+}
+function startGame(w) { if (w.game) return; w.game = { st: 'wait' }; drawGame(w); sendSig(w.id, { t: 'g-inv' }); }
+function onGame(id, p) {
+  let w = state.wins.get(id);
+  if (p.t === 'g-inv') { if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); w.game = { st: 'ask' }; drawGame(w); tone(SND.online); return; }
+  if (!w || !w.game) return;
+  const g = w.game;
+  if (p.t === 'g-acc' && g.st === 'wait') w.game = { st: 'play', b: Array(9).fill(''), me: 'X', turn: 'X' };
+  else if (p.t === 'g-move' && g.st === 'play') { const i = +p.i, op = g.me === 'X' ? 'O' : 'X'; if (i >= 0 && i < 9 && !g.b[i] && g.turn === op) { g.b[i] = op; g.turn = g.me; } }
+  else if (p.t === 'g-dec' || p.t === 'g-end') { sysLine(w, 'The game was closed.'); w.game = null; }
+  drawGame(w);
+}
+
+/* ---- voice and video calls (browser to browser, WebRTC) ---- */
+const RTC = { pc: null, id: null, stream: null, q: [], video: false };
+function callUI(w, text, btns) {
+  let box = w.root.querySelector('.callbox');
+  if (!text) { if (box) box.remove(); return null; }
+  if (!box) { box = el('div', { class: 'callbox' }, el('video', { class: 'rv', autoplay: 'autoplay', playsinline: 'playsinline' }), el('video', { class: 'self', autoplay: 'autoplay', playsinline: 'playsinline' }), el('div', { class: 'ctx' }), el('div', { class: 'row' })); box.querySelector('.self').muted = true; w.root.append(box); }
+  box.querySelector('.ctx').textContent = text;
+  const row = box.querySelector('.row'); row.textContent = ''; btns.forEach(([t, f]) => row.append(el('button', { text: t, onclick: f })));
+  box.querySelector('.rv').style.display = RTC.video ? '' : 'none'; box.querySelector('.self').style.display = RTC.video ? '' : 'none';
+  if (RTC.stream) box.querySelector('.self').srcObject = RTC.stream;
+  return box;
+}
+function endCall(w, notify) {
+  const id = RTC.id; if (notify && id) sendSig(id, { t: 'c-end' });
+  try { if (RTC.pc) RTC.pc.close(); } catch (e) {}
+  if (RTC.stream) RTC.stream.getTracks().forEach(t => t.stop());
+  Object.assign(RTC, { pc: null, id: null, stream: null, q: [] });
+  const ww = w || state.wins.get(id); if (ww) callUI(ww, '');
+}
+async function getMedia(w, video) {
+  try { RTC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video }); return true; }
+  catch (e) { sysLine(w, 'Could not start the call. Please allow your microphone' + (video ? ' and camera' : '') + ' in the browser.'); return false; }
+}
+function makePC(w) {
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); RTC.pc = pc;
+  RTC.stream.getTracks().forEach(t => pc.addTrack(t, RTC.stream));
+  pc.onicecandidate = e => { if (e.candidate) sendSig(w.id, { t: 'c-ice', c: e.candidate.toJSON() }); };
+  pc.ontrack = e => { const box = callUI(w, 'Connected with ' + pname(w.id), [['Hang up', () => endCall(w, true)]]); if (box) { const v = box.querySelector('.rv'); v.srcObject = e.streams[0]; v.play().catch(() => {}); if (!RTC.video) { const a = el('audio', { autoplay: 'autoplay' }); a.srcObject = e.streams[0]; box.append(a); } } };
+  pc.onconnectionstatechange = () => { if ((pc.connectionState === 'failed' || pc.connectionState === 'closed') && RTC.pc === pc) { sysLine(w, 'The call ended.'); endCall(w, false); } };
+}
+async function startCall(w, video) {
+  if (RTC.id) { sysLine(w, 'You are already in a call.'); return; }
+  if (!navigator.mediaDevices || !window.RTCPeerConnection) { sysLine(w, 'Calls are not supported by this browser.'); return; }
+  RTC.id = w.id; RTC.video = video;
+  if (!(await getMedia(w, video))) { RTC.id = null; return; }
+  sendSig(w.id, { t: 'c-inv', video });
+  callUI(w, (video ? 'Video' : 'Voice') + ' call - ringing…', [['Cancel', () => endCall(w, true)]]);
+  setTimeout(() => { if (RTC.id === w.id && !RTC.pc) { sysLine(w, 'No answer.'); endCall(w, true); } }, 45000);
+}
+async function onCall(id, p) {
+  let w = state.wins.get(id);
+  if (p.t === 'c-inv') {
+    if (RTC.id) { sendSig(id, { t: 'c-busy' }); return; }
+    if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); tone(SND.nudge);
+    RTC.id = id; RTC.video = !!p.video;
+    callUI(w, (p.video ? '📹 Video' : '🎤 Voice') + ' call from ' + pname(id), [
+      ['Accept', async () => { if (!(await getMedia(w, RTC.video))) { endCall(w, true); return; } makePC(w); sendSig(id, { t: 'c-acc' }); callUI(w, 'Connecting…', [['Hang up', () => endCall(w, true)]]); }],
+      ['Decline', () => endCall(w, true)]]);
+    return;
+  }
+  if (!w || RTC.id !== id) return;
+  const flush = async () => { for (const c of RTC.q.splice(0)) await RTC.pc.addIceCandidate(c).catch(() => {}); };
+  if (p.t === 'c-acc' && RTC.stream && !RTC.pc) { makePC(w); callUI(w, 'Connecting…', [['Hang up', () => endCall(w, true)]]); const o = await RTC.pc.createOffer(); await RTC.pc.setLocalDescription(o); sendSig(id, { t: 'c-off', sdp: o.sdp }); }
+  else if (p.t === 'c-off' && RTC.pc) { await RTC.pc.setRemoteDescription({ type: 'offer', sdp: String(p.sdp) }); await flush(); const a = await RTC.pc.createAnswer(); await RTC.pc.setLocalDescription(a); sendSig(id, { t: 'c-ans', sdp: a.sdp }); }
+  else if (p.t === 'c-ans' && RTC.pc) { await RTC.pc.setRemoteDescription({ type: 'answer', sdp: String(p.sdp) }); await flush(); }
+  else if (p.t === 'c-ice' && p.c) { if (RTC.pc && RTC.pc.remoteDescription) RTC.pc.addIceCandidate(p.c).catch(() => {}); else RTC.q.push(p.c); }
+  else if (p.t === 'c-end' || p.t === 'c-busy') { sysLine(w, p.t === 'c-busy' ? 'They are already in another call.' : 'The call ended.'); endCall(w, false); }
+}
+
+/* ============ CONTACT GROUPS / LISTS (saved on this device) ============ */
+state.groups = (() => { try { const o = JSON.parse(localStorage.getItem('brb_groups') || ''); return o && Array.isArray(o.names) && o.map ? o : { names: [], map: {} }; } catch (e) { return { names: [], map: {} }; } })();
+const saveGroups = () => localStorage.setItem('brb_groups', JSON.stringify(state.groups));
+function newGroup(moveId) {
+  const n = sanitizeName(prompt('Name your new group or list (for example Friends, Family or Work):') || '', 24); if (!n) return;
+  if (state.groups.names.includes(n)) { alert('You already have a group with that name.'); return; }
+  if (state.groups.names.length >= 12) { alert('You can have up to 12 groups.'); return; }
+  state.groups.names.push(n); if (moveId) state.groups.map[moveId] = n; saveGroups(); renderContacts();
+}
+function groupMenu(ev, n) {
+  showMenu(ev.clientX, ev.clientY, [
+    ['Rename group', () => { const v = sanitizeName(prompt('New name for this group:', n) || '', 24); if (!v || v === n || state.groups.names.includes(v)) return; state.groups.names[state.groups.names.indexOf(n)] = v; for (const k in state.groups.map) if (state.groups.map[k] === n) state.groups.map[k] = v; saveGroups(); renderContacts(); }],
+    ['Delete group (contacts are kept)', () => { if (!confirm('Delete the group "' + n + '"? Your contacts will not be deleted.')) return; state.groups.names = state.groups.names.filter(x => x !== n); for (const k in state.groups.map) if (state.groups.map[k] === n) delete state.groups.map[k]; saveGroups(); renderContacts(); }]]);
+}
+
 /* ============ CHAT WINDOWS ============ */
 function openChat(id) {
   const prof = state.profiles.get(id); if (!prof) return;
@@ -761,23 +980,23 @@ function openChat(id) {
   const typ = el('div', { class: 'wtyping' });
   const input = el('textarea', { class: 'winput', maxlength: '2000', placeholder: 'Type a message…' });
   const send = el('button', { text: 'Send', onclick: () => sendMsg(w) });
-  const emoBtn = el('button', { text: '🙂', title: 'Emoticons', onclick: ev => { ev.stopPropagation(); toggleEmo(w); } });
-  const nudgeBtn = el('button', { text: '📳 Nudge', title: 'Get their attention', onclick: () => sendNudge(w) });
-  const winkBtn = el('button', { text: '✨ Wink', title: 'Send a full-screen wink', onclick: ev => { ev.stopPropagation(); toggleWinks(w); } });
-  const bBtn = el('button', { text: 'B', style: 'font-weight:700', onclick: () => { w.fmt.b = !w.fmt.b; bBtn.classList.toggle('on', w.fmt.b); } });
-  const iBtn = el('button', { text: 'I', style: 'font-style:italic', onclick: () => { w.fmt.i = !w.fmt.i; iBtn.classList.toggle('on', w.fmt.i); } });
-  const sws = ['', '#d6336c', '#1c7ed6', '#2f9e44', '#f08c00', '#7048e8'].map(c => el('button', { class: 'sw', title: c ? 'Text colour' : 'Default colour', style: `background:${c || '#222'}`, onclick: () => { w.fmt.c = c; } }));
+  const srch = el('button', { text: 'Search', onclick: () => toggleSearch(w) });
   const fileIn = el('input', { type: 'file', accept: 'image/*,video/*', style: 'display:none' });
   fileIn.onchange = () => { if (fileIn.files[0]) sendMedia(w, fileIn.files[0]); fileIn.value = ''; };
-  const attachBtn = el('button', { text: '📎', title: 'Send a picture or a video', onclick: () => fileIn.click() });
-  const tools = el('div', { class: 'wtools' }, emoBtn, attachBtn, nudgeBtn, winkBtn, bBtn, iBtn, ...sws, fileIn);
-  const bottom = el('div', { class: 'wbottom' }, input, send);
+  const mk = (t, title, fn) => el('button', { text: t, title, onclick: ev => { ev.stopPropagation(); fn(ev); } });
+  const voiceBtn = mk('🎙 Voice Clip', 'Record a voice clip (click again to send)', () => toggleRec(w));
+  const nudgeBtn = mk('📳', 'Nudge - get their attention', () => sendNudge(w)); nudgeBtn.classList.add('on');
+  const tools = el('div', { class: 'wtools' }, mk('A', 'Bold, italic and colour', ev => fmtMenu(w, ev)), mk('🙂▾', 'Emoticons', () => toggleEmo(w)), voiceBtn, mk('✨▾', 'Winks', () => toggleWinks(w)), mk('🖼▾', 'Chat background', ev => bgMenu(w, ev)), nudgeBtn, fileIn);
+  const big = (ico, label, fn) => el('button', { class: 'tb', onclick: ev => { ev.stopPropagation(); fn(ev); } }, el('span', { class: 'ti', text: ico }), el('span', { text: label }));
+  const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', () => inviteFriend(w)), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', () => startGame(w)));
+  const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
+  const sbar = el('div', { class: 'sbar', text: 'Tip: click ✨ to send a wink, or 📳 to nudge your friend.' });
   const picThem = el('div', { class: 'pic' }), picMe = el('div', { class: 'pic' }); picMe.append(avatarEl(state.me, 100, false)); picMe.style.borderColor = STATUS[state.me.status][1];
-  const root = el('div', { class: 'win' }, bar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, typ, tools, bottom), el('div', { class: 'wside' }, picThem, picMe)));
+  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, typ, tools, bottom), el('div', { class: 'wside' }, picThem, picMe)), sbar);
   const n = state.wins.size;
   const mr = document.querySelector('.main'), baseL = (mr ? mr.getBoundingClientRect().right : 350) + 18;
   root.style.left = Math.max(0, Math.min(baseL + n * 28, innerWidth - 20 * parseFloat(getComputedStyle(document.documentElement).fontSize))) + 'px'; root.style.top = (40 + n * 28) + 'px';
-  Object.assign(w, { root, log, input, typ, sub, tt, dot, tools, picThem, picMe, np });
+  Object.assign(w, { root, log, input, typ, sub, tt, dot, tools, picThem, picMe, np, fileIn, voiceBtn, sbar }); applyBg(w);
   document.body.append(root); front(w);
   root.addEventListener('pointerdown', () => front(w));
   root.addEventListener('focusin', () => markRead(id));
@@ -800,7 +1019,7 @@ function openChat(id) {
   loadHistory(w).then(() => { markRead(id); input.focus(); });
 }
 function front(w) { w.root.style.zIndex = ++state.z; }
-function closeChat(id) { const w = state.wins.get(id); if (w) { w.root.remove(); state.wins.delete(id); } }
+function closeChat(id) { const w = state.wins.get(id); if (w) { if (RTC.id === id) endCall(w, true); w.root.remove(); state.wins.delete(id); } }
 function setPic(node, prof, st) {
   node.style.borderColor = STATUS[st][1];
   const k = (prof.avatar || '') + '|' + st;
@@ -812,7 +1031,7 @@ function updateWinHeader(id) {
   const st = effStatus(p);
   w.tt.textContent = `${p.display_name} - Conversation`;
   w.dot.style.background = STATUS[st][1];
-  w.sub.textContent = `To: ${p.display_name} <${p.email}> (${STATUS[st][0]})` + (p.personal_message ? ' - ' + p.personal_message : '');
+  w.sub.textContent = ''; const toN = el('span', { class: 'to' }); renderEmo(toN, p.display_name); w.sub.append('To: ', toN, el('small', { text: ` <${p.email}> (${STATUS[st][0]})` + (p.personal_message ? ' - ' + p.personal_message : '') }));
   w.np.innerHTML = '';
   if (st !== 'offline' && p.now_playing) { w.np.append(eqBars(), ` ${p.display_name} is listening to: ${p.now_playing}`); w.np.style.display = 'flex'; } else w.np.style.display = 'none';
   setPic(w.picThem, p, st); setPic(w.picMe, state.me, state.me.status);
@@ -831,12 +1050,13 @@ function appendMsg(w, m, quiet) {
   const name = mine ? state.me.display_name : (state.profiles.get(w.id) || {}).display_name || 'Contact';
   const stick = w.log.scrollHeight - w.log.scrollTop - w.log.clientHeight < 60;
   const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (!mine && w.sbar) w.sbar.textContent = 'Last message received at ' + time + ' on ' + new Date(m.created_at).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }) + '.';
   if (m.kind === 'nudge') { sysLine(w, mine ? 'You have sent a nudge.' : `${name} has sent you a nudge!`); }
   else if (m.kind === 'wink') { const wk = WINKS[m.body]; sysLine(w, (mine ? 'You sent a wink: ' : `${name} sent you a wink: `) + (wk ? wk[1] + ' ' + wk[0] : '✨')); }
   else {
     if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); renderEmo(who, name); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
-    if (m.kind === 'image' || m.kind === 'video') d.append(mediaNode(m, () => { if (stick) w.log.scrollTop = w.log.scrollHeight; }));
+    if (m.kind === 'image' || m.kind === 'video' || m.kind === 'audio') d.append(mediaNode(m, () => { if (stick) w.log.scrollTop = w.log.scrollHeight; }));
     else { applyFmt(d, m.fmt); renderRich(d, m.body); }
     w.log.append(d);
   }
@@ -861,6 +1081,7 @@ function mediaNode(m, done) {
   mediaUrl(m.media_path).then(u => {
     box.textContent = '';
     if (m.kind === 'image') { const img = el('img', { src: u, alt: 'Picture', loading: 'lazy' }); img.onload = done; img.onclick = () => lightbox(u); box.append(img); }
+    else if (m.kind === 'audio') { box.append(el('audio', { src: u, controls: 'controls', preload: 'metadata' })); if (done) done(); }
     else { const v = el('video', { src: u, controls: 'controls', preload: 'metadata', playsinline: 'playsinline' }); v.onloadedmetadata = done; box.append(v); }
   }).catch(() => { box.textContent = '⚠ Could not load this ' + m.kind + '.'; });
   return box;
@@ -952,7 +1173,7 @@ function subscribe() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => refresh())
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, pl => onProfile(pl.new))
     .subscribe(st => { if (st === 'SUBSCRIBED') refresh(); else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') toast('Connection', 'Live updates are reconnecting…'); });
-  state.myTyping = sb.channel('typing-' + uid).on('broadcast', { event: 'typing' }, ({ payload }) => payload && payload.from && onTyping(payload.from)).subscribe();
+  state.myTyping = sb.channel('typing-' + uid).on('broadcast', { event: 'typing' }, ({ payload }) => payload && payload.from && onTyping(payload.from)).on('broadcast', { event: 'sig' }, ({ payload }) => onSig(payload)).subscribe();
 }
 function onProfile(p) {
   if (p.id === state.uid) return;
@@ -972,7 +1193,7 @@ function onIncoming(m) {
   state.unread.set(id, (state.unread.get(id) || 0) + 1);
   renderContacts(); updateTitle();
   if (m.kind !== 'nudge' && m.kind !== 'wink') tone(SND.msg);
-  const preview = m.kind === 'wink' ? 'sent you a wink ✨' : m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.slice(0, 80);
+  const preview = m.kind === 'audio' ? 'sent you a voice clip 🎙' : m.kind === 'wink' ? 'sent you a wink ✨' : m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.slice(0, 80);
   toast(p.display_name, preview, () => openChat(id), p);
   sysNotify(p.display_name, preview, 'm-' + id);
 }
@@ -1131,8 +1352,74 @@ const pl = { tracks: [], i: -1, audio: new Audio(), share: localStorage.getItem(
 pl.audio.volume = 0.8;
 const cleanName = n => n.replace(/\.[a-z0-9]{2,4}$/i, '').replace(/_+/g, ' ').trim().slice(0, 100);
 const curTitle = () => (pl.tracks[pl.i] ? pl.tracks[pl.i].title : '');
+
+/* ---- playlists (songs are stored on THIS device) and YouTube ---- */
+const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+pl.lib = lsGet('brb_lib', {}); pl.pls = lsGet('brb_pls', []); pl.yt = lsGet('brb_yt', []); pl.nowTitle = '';
+if (!pl.pls.length) pl.pls.push({ id: 'p1', name: 'My songs', songs: [] });
+pl.cur = localStorage.getItem('brb_curpl') || pl.pls[0].id; if (!pl.pls.some(p => p.id === pl.cur)) pl.cur = pl.pls[0].id;
+const savePl = () => { localStorage.setItem('brb_lib', JSON.stringify(pl.lib)); localStorage.setItem('brb_pls', JSON.stringify(pl.pls)); localStorage.setItem('brb_curpl', pl.cur); localStorage.setItem('brb_yt', JSON.stringify(pl.yt)); };
+function loadPl(id, reset) { pl.cur = id; const p = pl.pls.find(x => x.id === id) || pl.pls[0]; pl.tracks = p.songs.filter(x => pl.lib[x]).map(x => ({ id: x, title: pl.lib[x] })); if (reset) pl.i = -1; savePl(); }
+loadPl(pl.cur, true);
+const idbDo = (mode, fn) => new Promise((res, rej) => { const o = indexedDB.open('brb-music', 1); o.onupgradeneeded = () => o.result.createObjectStore('s'); o.onerror = () => rej(o.error); o.onsuccess = () => { const tx = o.result.transaction('s', mode), q = fn(tx.objectStore('s')); tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error); }; });
+const idbPut = (k, b) => idbDo('readwrite', s => s.put(b, k)), idbGet = k => idbDo('readonly', s => s.get(k)), idbDel = k => idbDo('readwrite', s => s.delete(k));
+async function addSongs(files) {
+  const p = pl.pls.find(x => x.id === pl.cur); let n = 0;
+  for (const f of files) {
+    if (!/^audio\//.test(f.type) && !/\.(mp3|m4a|wav|ogg|aac|flac|opus)$/i.test(f.name)) continue;
+    const sid = newId(); try { await idbPut(sid, f); } catch (e) { pl.err = 'This device has no room to store that song.'; break; }
+    pl.lib[sid] = cleanName(f.name); p.songs.push(sid); n++;
+  }
+  const start = pl.tracks.length; savePl(); loadPl(pl.cur);
+  if (n && pl.audio.paused) playIdx(start); else updatePlayer();
+}
+function ytParse(u) {
+  try { const x = new URL(String(u).trim()); if (!/(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/.test(x.hostname)) return null;
+    const list = x.searchParams.get('list'); let v = x.searchParams.get('v'); if (/youtu\.be$/.test(x.hostname)) v = x.pathname.slice(1);
+    if (list && /^[\w-]{10,60}$/.test(list)) return { list }; if (v && /^[\w-]{11}$/.test(v)) return { v };
+  } catch (e) {} return null;
+}
+let ytReady;
+function ytLoad() { if (ytReady) return ytReady; ytReady = new Promise(res => { if (window.YT && YT.Player) return res(true); window.onYouTubeIframeAPIReady = () => res(true); const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => { ytReady = null; res(false); }; document.head.append(sc); }); return ytReady; }
+function stopYT(keepBox) { try { if (pl.ytp) pl.ytp.destroy(); } catch (e) {} pl.ytp = null; pl.ytTitle = ''; if (pl.ui.ytbox && !keepBox) { pl.ui.ytbox.style.display = 'none'; pl.ui.ytbox.textContent = ''; } }
+async function playYT(item) {
+  if (!(await ytLoad()) || !(window.YT && YT.Player)) { pl.err = 'Could not load YouTube. Check your connection.'; updatePlayer(); return; }
+  pl.audio.pause(); stopYT(true); pl.err = '';
+  const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
+  const vars = { playsinline: 1, rel: 0 }; if (item.list) { vars.listType = 'playlist'; vars.list = item.list; }
+  pl.ytp = new YT.Player(d, { width: '100%', height: '170', videoId: item.v || undefined, playerVars: vars, events: {
+    onReady: e => { try { e.target.playVideo(); } catch (x) {} },
+    onStateChange: e => { const S = YT.PlayerState; if (e.data === S.PLAYING) { pl.ytTitle = ((e.target.getVideoData() || {}).title) || 'YouTube'; setNow(pl.ytTitle); updatePlayer(); } else if (e.data === S.PAUSED || e.data === S.ENDED) { setNow(''); updatePlayer(); } },
+    onError: () => { pl.err = 'YouTube could not play that. The playlist or video must be Public or Unlisted (not Private).'; updatePlayer(); } } });
+}
+function openMusic() {
+  closeSettings();
+  const ov = el('div', { class: 'modal', onclick: ev => { if (ev.target === ov) closeSettings(); } }), box = el('div', { class: 'mbox' }); ov.append(box); document.body.append(ov);
+  const draw = () => {
+    box.textContent = ''; const cur = pl.pls.find(p => p.id === pl.cur);
+    const sel = el('select', { onchange: () => { loadPl(sel.value, true); draw(); updatePlayer(); } }, ...pl.pls.map(p => el('option', { value: p.id, text: p.name + ' (' + p.songs.length + ')' }))); sel.value = pl.cur;
+    const file = el('input', { type: 'file', accept: 'audio/*', multiple: 'multiple', style: 'display:none', onchange: async () => { await addSongs([...file.files]); file.value = ''; draw(); } });
+    const songs = el('div'); cur.songs.forEach(sid => { if (!pl.lib[sid]) return; songs.append(el('div', { class: 'scrow' },
+      el('button', { text: '▶', title: 'Play', onclick: () => { loadPl(pl.cur); playIdx(pl.tracks.findIndex(t => t.id === sid)); } }), el('span', { text: pl.lib[sid] }),
+      el('button', { text: '✕', title: 'Remove from this playlist', onclick: () => { cur.songs = cur.songs.filter(x => x !== sid); if (!pl.pls.some(p => p.songs.includes(sid))) { delete pl.lib[sid]; idbDel(sid).catch(() => {}); } savePl(); loadPl(pl.cur); draw(); } }))); });
+    if (!songs.childNodes.length) songs.append(el('div', { class: 'hint', text: 'This playlist is empty. Add songs from your device below.' }));
+    const yn = el('input', { placeholder: 'Name (e.g. My chill mix)', maxlength: '40' }), yl = el('input', { placeholder: 'Paste a YouTube playlist or video link' });
+    const ylist = el('div'); pl.yt.forEach((y, i) => ylist.append(el('div', { class: 'scrow' }, el('button', { text: '▶', title: 'Play', onclick: () => { playYT(y); closeSettings(); } }), el('span', { text: y.name + (y.list ? ' (playlist)' : ' (video)') }), el('button', { text: '✕', title: 'Remove', onclick: () => { pl.yt.splice(i, 1); savePl(); draw(); } }))));
+    box.append(el('div', { class: 'mhd' }, el('h2', { text: '🎵 My music' }), el('button', { text: '✕', onclick: closeSettings })),
+      el('div', { class: 'sec' }, el('h3', { text: 'My playlists (songs from your device)' }), el('div', { class: 'row2' }, sel,
+        el('button', { text: 'New', onclick: () => { const n = sanitizeName(prompt('Name your new playlist:') || '', 30); if (!n) return; const id = newId(); pl.pls.push({ id, name: n, songs: [] }); loadPl(id, true); draw(); } }),
+        el('button', { text: 'Rename', onclick: () => { const n = sanitizeName(prompt('New name:', cur.name) || '', 30); if (n) { cur.name = n; savePl(); draw(); } } }),
+        el('button', { text: 'Delete', onclick: () => { if (pl.pls.length < 2) { alert('You need at least one playlist.'); return; } if (!confirm('Delete the playlist "' + cur.name + '"? Songs only in this playlist are removed from this device.')) return; pl.pls = pl.pls.filter(p => p !== cur); cur.songs.forEach(sid => { if (!pl.pls.some(p => p.songs.includes(sid))) { delete pl.lib[sid]; idbDel(sid).catch(() => {}); } }); loadPl(pl.pls[0].id, true); draw(); } })),
+        songs, el('div', { class: 'row2' }, el('button', { text: '📂 Add songs from this device', onclick: () => file.click() }), file),
+        el('div', { class: 'hint', text: 'Songs stay on this device only. Contacts only see the song name.' })),
+      el('div', { class: 'sec' }, el('h3', { text: 'My YouTube playlists' }), ylist, el('div', { class: 'row2' }, yn, yl, el('button', { text: 'Add', onclick: () => { const q = ytParse(yl.value); if (!q) { alert('That is not a YouTube link. Copy the link of your playlist or video from YouTube.'); return; } if (pl.yt.length >= 30) { alert('You can save up to 30 YouTube items.'); return; } pl.yt.push({ name: sanitizeName(yn.value, 40) || 'My YouTube music', ...q }); savePl(); draw(); } })),
+        el('div', { class: 'hint', text: 'Your YouTube playlist must be set to Public or Unlisted. It plays inside the app, and your contacts can see the song title.' })));
+  };
+  draw();
+}
+
 function setNow(text) {
-  clearTimeout(pl.t);
+  pl.nowTitle = text; clearTimeout(pl.t);
   pl.t = setTimeout(async () => {
     if (!state.uid || !state.me) return;
     const v = pl.share ? text : '';
@@ -1143,19 +1430,21 @@ function setNow(text) {
     updatePlayer();
   }, 600);
 }
-function playIdx(i) {
+async function playIdx(i) {
   if (!pl.tracks.length) return;
-  pl.i = (i + pl.tracks.length) % pl.tracks.length;
-  pl.audio.src = pl.tracks[pl.i].url; pl.audio.play().catch(() => {}); updatePlayer();
+  stopYT();
+  pl.i = (i + pl.tracks.length) % pl.tracks.length; const t = pl.tracks[pl.i];
+  if (!t.url) { const b = await idbGet(t.id).catch(() => null); if (!b) { pl.err = 'That song is no longer stored on this device.'; updatePlayer(); return; } t.url = URL.createObjectURL(b); }
+  pl.err = ''; pl.audio.src = t.url; pl.audio.play().catch(() => {}); updatePlayer();
 }
 function updatePlayer() {
   const u = pl.ui; if (!u.title) return;
-  u.title.textContent = pl.tracks.length ? '♫ ' + curTitle() : 'No song playing - tap 📂 to add songs';
+  u.title.textContent = pl.ytTitle ? '▶ YouTube: ' + pl.ytTitle : pl.tracks.length ? '♫ ' + curTitle() : 'No song playing - tap 📚 to make a playlist';
   u.play.textContent = pl.audio.paused ? '▶' : '⏸';
-  if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (!pl.share ? 'Sharing is off - contacts cannot see your song' : pl.audio.paused ? '' : '✔ Your contacts can see this song'); }
+  if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (!pl.share ? 'Sharing is off - contacts cannot see your song' : (pl.audio.paused && !pl.ytTitle) ? '' : '✔ Your contacts can see this song'); }
   try { if ('mediaSession' in navigator && curTitle()) navigator.mediaSession.metadata = new MediaMetadata({ title: curTitle(), artist: APP_NAME }); } catch (e) {}
 }
-pl.audio.addEventListener('play', () => { setNow(curTitle()); updatePlayer(); });
+pl.audio.addEventListener('play', () => { stopYT(); setNow(curTitle()); updatePlayer(); });
 pl.audio.addEventListener('pause', () => { setNow(''); updatePlayer(); });
 pl.audio.addEventListener('ended', () => playIdx(pl.i + 1));
 function buildPlayer() {
@@ -1164,22 +1453,18 @@ function buildPlayer() {
     showMenu(ev.clientX, ev.clientY - 8, pl.tracks.slice(0, 40).map((t, i) => [(i === pl.i ? '▶ ' : '') + t.title, () => playIdx(i)]));
   } });
   const file = el('input', { type: 'file', accept: 'audio/*', multiple: 'multiple', style: 'display:none' });
-  file.onchange = () => {
-    const start = pl.tracks.length;
-    [...file.files].forEach(f => pl.tracks.push({ title: cleanName(f.name), url: URL.createObjectURL(f) }));
-    file.value = '';
-    if (pl.tracks.length > start && (pl.i < 0 || pl.audio.paused)) playIdx(start); else updatePlayer();
-  };
-  const prev = el('button', { text: '⏮', title: 'Previous', onclick: () => playIdx(pl.i - 1) });
-  const play = el('button', { text: '▶', title: 'Play / pause', onclick: () => { if (!pl.tracks.length) { file.click(); return; } if (pl.audio.paused) { if (pl.i < 0) playIdx(0); else pl.audio.play().catch(() => {}); } else pl.audio.pause(); } });
-  const next = el('button', { text: '⏭', title: 'Next', onclick: () => playIdx(pl.i + 1) });
+  file.onchange = () => { addSongs([...file.files]); file.value = ''; };
+  const prev = el('button', { text: '⏮', title: 'Previous', onclick: () => { if (pl.ytp) pl.ytp.previousVideo(); else playIdx(pl.i - 1); } });
+  const play = el('button', { text: '▶', title: 'Play / pause', onclick: () => { if (pl.ytp) { if (pl.ytp.getPlayerState() === 1) pl.ytp.pauseVideo(); else pl.ytp.playVideo(); return; } if (!pl.tracks.length) { openMusic(); return; } if (pl.audio.paused) { if (pl.i < 0) playIdx(0); else pl.audio.play().catch(() => {}); } else pl.audio.pause(); } });
+  const next = el('button', { text: '⏭', title: 'Next', onclick: () => { if (pl.ytp) pl.ytp.nextVideo(); else playIdx(pl.i + 1); } });
   const add = el('button', { text: '📂', title: 'Add songs from this device', onclick: () => file.click() });
   const vol = el('input', { type: 'range', min: '0', max: '1', step: '0.05', value: String(pl.audio.volume), title: 'Volume', oninput: ev => { pl.audio.volume = +ev.target.value; } });
   const chk = el('input', { type: 'checkbox' }); chk.checked = pl.share;
   chk.onchange = () => { pl.share = chk.checked; localStorage.setItem('brb_share_music', pl.share ? 'on' : 'off'); setNow(pl.audio.paused ? '' : curTitle()); };
   const status = el('div', { class: 'pstat' });
-  Object.assign(pl.ui, { title, play, status, chk });
-  const box = el('div', { class: 'player' }, title, el('div', { class: 'prow' }, prev, play, next, vol, add, file), el('label', { class: 'pshare' }, chk, 'Show my song to my contacts'), status);
+  const plb = el('button', { text: '📚', title: 'My playlists and YouTube', onclick: () => openMusic() }), ytbox = el('div', { class: 'ytbox', style: 'display:none' });
+  Object.assign(pl.ui, { title, play, status, chk, ytbox });
+  const box = el('div', { class: 'player' }, title, el('div', { class: 'prow' }, prev, play, next, vol, add, plb, file), el('label', { class: 'pshare' }, chk, 'Show my song to my contacts'), status, ytbox);
   setTimeout(updatePlayer, 0);
   return box;
 }
