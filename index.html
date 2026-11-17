@@ -194,6 +194,15 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .ytbox{margin-top:.4rem;border-radius:.5rem;overflow:hidden}
 .newg{color:#2b62b8;font-weight:500;font-size:.92rem}
 .wlog audio{max-width:100%}
+
+.winkov span.bst{position:absolute;animation:wburst 1.5s ease-out forwards;opacity:0}
+.winkov span.fl{position:absolute;left:-6rem;animation:wfly linear forwards}
+.winkov.disco{animation:wdisco .5s linear infinite}
+.winkpop{max-width:19rem;grid-template-columns:repeat(8,1fr)!important}
+.bodyshake{animation:shake .45s 2}
+@keyframes wburst{0%{opacity:0;transform:translate(0,0) scale(.3)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.3) rotate(200deg)}}
+@keyframes wfly{0%{transform:translateX(0) translateY(0) rotate(0)}50%{transform:translateX(60vw) translateY(-2.5rem) rotate(8deg)}100%{transform:translateX(125vw) translateY(1.5rem) rotate(-6deg)}}
+@keyframes wdisco{0%{background:#ff2d8a33}25%{background:#2d9bff33}50%{background:#39e07033}75%{background:#ffd62d33}100%{background:#ff2d8a33}}
 @keyframes toastin{from{transform:translateY(2rem);opacity:0}}
 .toast .tbody{min-width:0}
 .toast b{display:block;color:#10294a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -741,22 +750,43 @@ const WINKS = {
   snow: ['Snow', '❄️', ['❄️','❄️','⛄','✨'], 'p', 'Let it snow'],
   stars: ['Stars', '🌟', ['⭐','🌟','💫','✨'], 'r', 'Wish upon a star'],
   ghosts: ['Spooky', '👻', ['👻','🎃','🦇','💀'], 'p', 'Boo!'],
-  bubbles: ['Bubbles', '🫧', ['🫧','🐠','🐟','🫧'], 'r', 'Blub blub']
+  bubbles: ['Bubbles', '🫧', ['🫧','🐠','🐟','🫧'], 'r', 'Blub blub'],
+  fireworks: ['Fireworks', '🎆', ['✨','💥','⭐','🌟','🎇'], 'x', 'Boom! Happy celebration'],
+  balloons: ['Balloons', '🎈', ['🎈','🎈','🎀','🎁'], 'r', 'Pop pop hooray'],
+  rain: ['Rain', '☔', ['💧','🌧️','💧','💦'], 'p', 'Rainy day'],
+  blossom: ['Blossom', '🌸', ['🌸','🌺','🌷','🌼'], 'p', 'Spring has arrived'],
+  fire: ['On fire', '🔥', ['🔥','🔥','✨','💥'], 'r', 'You are on fire!'],
+  butterflies: ['Butterflies', '🦋', ['🦋','🦋','🌸','✨'], 'f', 'Butterflies for you'],
+  money: ['Money rain', '🤑', ['💸','💰','💵','🪙'], 'p', 'Make it rain!'],
+  kisses: ['Kisses', '😘', ['💋','😘','😚','💖'], 'x', 'Mwah!'],
+  laugh: ['LOL', '😂', ['😂','🤣','😹','😆'], 'r', 'Hahahaha!'],
+  cats: ['Cat party', '😻', ['🐱','😻','🐾','🐟'], 'f', 'Meow!'],
+  rocket: ['Rocket', '🚀', ['🚀','✨','🌟','☄️'], 'f', 'To the moon!'],
+  plane: ['Fly past', '✈️', ['✈️','☁️','☁️','🛫'], 'f', 'Cleared for take-off'],
+  ufo: ['Aliens', '👽', ['🛸','👽','🌌','⭐'], 'f', 'We come in peace'],
+  rainbow: ['Rainbow', '🌈', ['🌈','☀️','✨','🦄'], 'r', 'Over the rainbow'],
+  disco: ['Disco', '🪩', ['🎵','🎶','💃','🕺','🪩'], 'x', 'Dance dance dance!', 'disco'],
+  boom: ['Boom', '💥', ['💥','⚡','🔥','💢'], 'x', 'BOOM!', 'shake'],
+  poo: ['Stinky', '💩', ['💩','💨','🤢','🪰'], 'p', 'Phew, what a stink'],
+  thumbs: ['Thumbs up', '👍', ['👍','👏','🙌','💯'], 'x', 'Well done!']
 };
 function playWink(key) {
   const w = WINKS[key]; if (!w) return;
   document.querySelectorAll('.winkov').forEach(o => o.remove());
-  const ov = el('div', { class: 'winkov' });
+  const ov = el('div', { class: 'winkov' + (w[5] === 'disco' ? ' disco' : '') });
   ov.append(el('div', { class: 'big', text: w[1] }), el('div', { class: 'cap', text: w[4] }));
-  for (let i = 0; i < 46; i++) {
-    const sp = el('span', { class: w[3], text: w[2][i % w[2].length] });
-    sp.style.left = Math.random() * 96 + '%';
-    sp.style.fontSize = (1.4 + Math.random() * 2.6) + 'rem';
-    sp.style.animationDuration = (2.2 + Math.random() * 2.4) + 's';
-    sp.style.animationDelay = (Math.random() * 1.6) + 's';
-    ov.append(sp);
+  const R = Math.random, mode = w[3];
+  if (mode === 'x') {
+    for (let b = 0; b < 7; b++) { const cx = 12 + R() * 76, cy = 12 + R() * 66, dl = b * 0.45;
+      for (let i = 0; i < 14; i++) { const sp = el('span', { class: 'bst', text: w[2][i % w[2].length] }), an = (i / 14) * 6.283 + R() * 0.4, d = 5 + R() * 9;
+        sp.style.left = cx + '%'; sp.style.top = cy + '%'; sp.style.fontSize = (1.2 + R() * 1.6) + 'rem'; sp.style.setProperty('--dx', Math.cos(an) * d + 'rem'); sp.style.setProperty('--dy', Math.sin(an) * d + 'rem'); sp.style.animationDelay = dl + 's'; ov.append(sp); } }
+  } else if (mode === 'f') {
+    for (let i = 0; i < 22; i++) { const sp = el('span', { class: 'fl', text: w[2][i % w[2].length] }); sp.style.top = (R() * 86) + '%'; sp.style.fontSize = (1.6 + R() * 3) + 'rem'; sp.style.animationDuration = (3 + R() * 2.5) + 's'; sp.style.animationDelay = (R() * 1.8) + 's'; ov.append(sp); }
+  } else {
+    for (let i = 0; i < 46; i++) { const sp = el('span', { class: mode, text: w[2][i % w[2].length] }); sp.style.left = R() * 96 + '%'; sp.style.fontSize = (1.4 + R() * 2.6) + 'rem'; sp.style.animationDuration = (2.2 + R() * 2.4) + 's'; sp.style.animationDelay = (R() * 1.6) + 's'; ov.append(sp); }
   }
-  document.body.append(ov); setTimeout(() => ov.remove(), 5200);
+  document.body.append(ov); setTimeout(() => ov.remove(), 5600);
+  if (w[5] === 'shake') { document.body.classList.add('bodyshake'); setTimeout(() => document.body.classList.remove('bodyshake'), 900); try { if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 160]); } catch (e) {} }
 }
 function toggleWinks(w) {
   const old = w.tools.querySelector('.winkpop'); if (old) { old.remove(); return; }
@@ -849,10 +879,19 @@ async function sendAudio(w, blob, mime) {
 }
 
 /* ---- live signals (games and calls) travel on the same private live channel as "is typing" ---- */
-function sendSig(id, p) {
-  let c = state.tchans[id]; if (!c) { c = state.tchans[id] = sb.channel('typing-' + id); c.subscribe(); }
-  c.send({ type: 'broadcast', event: 'sig', payload: { ...p, from: state.uid } });
+function getChan(id) {
+  let c = state.tchans[id];
+  if (!c) {
+    c = state.tchans[id] = sb.channel('typing-' + id); c.brbReady = false; c.brbQ = [];
+    c.subscribe(st => { if (st === 'SUBSCRIBED') { c.brbReady = true; c.brbQ.splice(0).forEach(m => c.send(m)); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { c.brbReady = false; } });
+  }
+  return c;
 }
+function sendLive(id, event, payload) {
+  const c = getChan(id), m = { type: 'broadcast', event, payload };
+  if (c.brbReady) c.send(m); else { c.brbQ.push(m); if (c.brbQ.length > 20) c.brbQ.shift(); }
+}
+function sendSig(id, p) { sendLive(id, 'sig', { ...p, from: state.uid }); }
 function onSig(p) {
   if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
   if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {});
@@ -877,7 +916,10 @@ function drawGame(w) {
   g.b.forEach((v, i) => grid.append(el('button', { text: v, disabled: !!v || !!res || g.turn !== g.me, onclick: () => { g.b[i] = g.me; g.turn = g.me === 'X' ? 'O' : 'X'; sendSig(w.id, { t: 'g-move', i }); drawGame(w); } })));
   box.append(grid, el('span', { text: res ? (res === 'draw' ? "It's a draw!" : res === g.me ? 'You win! 🎉' : nm + ' wins.') : g.turn === g.me ? 'Your turn (' + g.me + ')' : nm + "'s turn" }), close);
 }
-function startGame(w) { if (w.game) return; w.game = { st: 'wait' }; drawGame(w); sendSig(w.id, { t: 'g-inv' }); }
+function startGame(w) {
+  if (w.game) return; const g = w.game = { st: 'wait' }; drawGame(w); sendSig(w.id, { t: 'g-inv' });
+  setTimeout(() => { if (w.game === g && g.st === 'wait') { sysLine(w, pname(w.id) + ' did not answer. They must be online with the newest BeRightBack page (press Ctrl+Shift+R).'); w.game = null; drawGame(w); sendSig(w.id, { t: 'g-end' }); } }, 25000);
+}
 function onGame(id, p) {
   let w = state.wins.get(id);
   if (p.t === 'g-inv') { if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); w.game = { st: 'ask' }; drawGame(w); tone(SND.online); return; }
@@ -1155,9 +1197,7 @@ async function markRead(id) {
 /* ============ TYPING ============ */
 function sendTyping(id) {
   const now = Date.now(); if (now - (state.lastTyping[id] || 0) < 2500) return; state.lastTyping[id] = now;
-  let c = state.tchans[id];
-  if (!c) { c = state.tchans[id] = sb.channel('typing-' + id); c.subscribe(); }
-  c.send({ type: 'broadcast', event: 'typing', payload: { from: state.uid } });
+  sendLive(id, 'typing', { from: state.uid });
 }
 function onTyping(from) {
   const w = state.wins.get(from), p = state.profiles.get(from); if (!w || !p) return;
@@ -1384,13 +1424,16 @@ function ytLoad() { if (ytReady) return ytReady; ytReady = new Promise(res => { 
 function stopYT(keepBox) { try { if (pl.ytp) pl.ytp.destroy(); } catch (e) {} pl.ytp = null; pl.ytTitle = ''; if (pl.ui.ytbox && !keepBox) { pl.ui.ytbox.style.display = 'none'; pl.ui.ytbox.textContent = ''; } }
 async function playYT(item) {
   if (!(await ytLoad()) || !(window.YT && YT.Player)) { pl.err = 'Could not load YouTube. Check your connection.'; updatePlayer(); return; }
-  pl.audio.pause(); stopYT(true); pl.err = '';
+  pl.audio.pause(); stopYT(true); pl.err = ''; pl.skips = 0; pl.info = 'Loading YouTube…'; updatePlayer();
   const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
   const vars = { playsinline: 1, rel: 0 }; if (item.list) { vars.listType = 'playlist'; vars.list = item.list; }
   pl.ytp = new YT.Player(d, { width: '100%', height: '170', videoId: item.v || undefined, playerVars: vars, events: {
-    onReady: e => { try { e.target.playVideo(); } catch (x) {} },
+    onReady: e => { try { e.target.playVideo(); } catch (x) {} pl.err = ''; pl.info = 'Loading your YouTube music…'; updatePlayer(); setTimeout(() => { if (pl.ytp === e.target && !pl.ytTitle) { pl.info = 'If the video is not playing, tap the ▶ on the video above (your browser may block auto-play).'; updatePlayer(); } }, 4000); },
     onStateChange: e => { const S = YT.PlayerState; if (e.data === S.PLAYING) { pl.ytTitle = ((e.target.getVideoData() || {}).title) || 'YouTube'; setNow(pl.ytTitle); updatePlayer(); } else if (e.data === S.PAUSED || e.data === S.ENDED) { setNow(''); updatePlayer(); } },
-    onError: () => { pl.err = 'YouTube could not play that. The playlist or video must be Public or Unlisted (not Private).'; updatePlayer(); } } });
+    onError: e => {
+      const c = e.data, noEmbed = (c === 101 || c === 150 || c === 153);
+      if (noEmbed && item.list && pl.ytp) { pl.skips = (pl.skips || 0) + 1; if (pl.skips < 30) { pl.info = 'Skipped a video whose owner does not allow it to play outside YouTube.'; updatePlayer(); try { pl.ytp.nextVideo(); } catch (x) {} return; } }
+      pl.err = noEmbed ? 'The owner of this video does not allow it to be played outside YouTube (error ' + c + '). Pick a playlist of videos that allow embedding, or use songs from your device.' : 'YouTube could not play this (error ' + c + '). The playlist must be Public or Unlisted.'; updatePlayer(); } } });
 }
 function openMusic() {
   closeSettings();
@@ -1441,7 +1484,7 @@ function updatePlayer() {
   const u = pl.ui; if (!u.title) return;
   u.title.textContent = pl.ytTitle ? '▶ YouTube: ' + pl.ytTitle : pl.tracks.length ? '♫ ' + curTitle() : 'No song playing - tap 📚 to make a playlist';
   u.play.textContent = pl.audio.paused ? '▶' : '⏸';
-  if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (!pl.share ? 'Sharing is off - contacts cannot see your song' : (pl.audio.paused && !pl.ytTitle) ? '' : '✔ Your contacts can see this song'); }
+  if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (pl.info && pl.ytp && !pl.ytTitle ? pl.info : '') || (!pl.share ? 'Sharing is off - contacts cannot see your song' : (pl.audio.paused && !pl.ytTitle) ? '' : '✔ Your contacts can see this song'); }
   try { if ('mediaSession' in navigator && curTitle()) navigator.mediaSession.metadata = new MediaMetadata({ title: curTitle(), artist: APP_NAME }); } catch (e) {}
 }
 pl.audio.addEventListener('play', () => { stopYT(); setNow(curTitle()); updatePlayer(); });
