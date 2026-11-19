@@ -16,6 +16,16 @@ else {
   app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
   app.setAppUserModelId('com.berightback.app');
   app.whenReady().then(() => {
+    app.on('web-contents-created', (_e, wc) => {
+      wc.setWindowOpenHandler(({ url }) => {
+        if (url.startsWith(START) && /[?&]pop=/.test(url)) {   // a chat opened in its own window
+          return { action: 'allow', overrideBrowserWindowOptions: { width: 900, height: 680, minWidth: 340, minHeight: 420, autoHideMenuBar: true, backgroundColor: '#abcaec', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'),
+            webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } } };
+        }
+        shell.openExternal(url); return { action: 'deny' };
+      });
+      wc.on('will-navigate', (e, url) => { if (!url.startsWith(SITE)) { e.preventDefault(); shell.openExternal(url); } });
+    });
     applyAutoStart();
     session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
       cb(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission) && wc.getURL().startsWith(SITE));
@@ -26,8 +36,7 @@ else {
     win.once('ready-to-show', () => win.show());
     setTimeout(() => { if (win && !win.isVisible()) win.show(); }, 6000);   // safety: never stay hidden
     win.loadURL(START);
-    win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
-    win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(SITE)) { e.preventDefault(); shell.openExternal(url); } });
+    win.webContents.setUserAgent(win.webContents.getUserAgent() + ' BRBpop');   // tells the site this program can open chats in their own windows
     win.on('close', e => { if (!quitting) { e.preventDefault(); win.hide(); } });   // closing the window keeps BeRightBack running in the tray
     tray = new Tray(path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'));
     tray.setToolTip('BeRightBack');

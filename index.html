@@ -41,6 +41,9 @@ button.link{border:0;background:none;color:#2b62b8;padding:.2rem;text-decoration
 .ok{color:#1a7f37}
 .center{text-align:center;margin-top:.6rem}
 .main{position:fixed;left:1.4rem;top:1.4rem;bottom:1.4rem;width:min(25rem,calc(100vw - 2.8rem));display:flex;flex-direction:column;background:linear-gradient(#d3e6f9 0,#abcaec 4rem,#8fb4df);border:1px solid #4d74a8;border-radius:.9rem;box-shadow:0 0 0 1px #ffffffaa inset,0 1rem 3rem #12356588;overflow:hidden;animation:pop .4s cubic-bezier(.2,.9,.3,1.1)}
+html.pop .main{display:none!important}
+html.pop .win{inset:0!important;width:auto!important;height:auto!important;border-radius:0;resize:none;border:0}
+html.pop .wtitle button,html.pop .rzy{display:none!important}
 html.appwin body,html.appwin body::before{background:#e6eefa}
 html.appwin .main{left:0;top:0;bottom:0;width:min(25rem,100vw);border-radius:0;border-width:0 1px 0 0;box-shadow:none}
 @media(max-width:700px){html.appwin .main{inset:0!important;width:auto!important;border-width:0}
@@ -81,6 +84,8 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bd{flex:none;display:inline-flex}
 .bd svg{width:1.3rem;height:1.3rem}
 .badge{background:#e8590c;color:#fff;border-radius:1rem;padding:0 .5rem;font-size:.85rem;font-weight:700;animation:pulse 1.4s infinite}
+@keyframes lgspin{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.12)}100%{transform:rotate(360deg) scale(1)}}
+.lgspin>*{animation:lgspin 2.6s ease-in-out infinite;transform-origin:50% 50%}
 @keyframes pulse{50%{transform:scale(1.15)}}
 .ct button{padding:0 .5rem;border-color:transparent;background:none;box-shadow:none;visibility:hidden}
 .ct:hover button{visibility:visible}
@@ -323,7 +328,7 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .qopts button.ok{background:#b2f2bb!important;border-color:#2f9e44}.qopts button.bad{background:#ffc9c9!important;border-color:#e03131}.qopts button.sel{background:#ffe08a!important;border-color:#e0a800;font-weight:700}.qopts button:disabled{opacity:.75}
 .abc{display:flex;flex-wrap:wrap;gap:.2rem;max-width:24rem}.abc button{width:1.9rem;padding:.1rem 0}
 </style>
-<script>try{if(/Electron/.test(navigator.userAgent)){document.documentElement.classList.add('appwin')}}catch(e){}</script>
+<script>try{if(/Electron/.test(navigator.userAgent)){document.documentElement.classList.add('appwin');if(new URLSearchParams(location.search).get('pop'))document.documentElement.classList.add('pop')}}catch(e){}</script>
 </head>
 <body>
 <div id="app"></div>
@@ -528,6 +533,7 @@ function teardown() {
   try { pl.audio.pause(); pl.tracks.forEach(t => URL.revokeObjectURL(t.url)); pl.tracks = []; pl.i = -1; } catch (e) {}
 }
 function showLogin(msg) {
+  if (POP) { window.close(); return; }
   teardown(); document.body.className = 'login';
   const app = $('#app'); app.innerHTML = '';
   let mode = 'in';
@@ -563,6 +569,7 @@ function showLogin(msg) {
     if (mode === 'up' && p.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
     if (mode === 'up' && !agree.checked) { err.textContent = 'Please tick the box to confirm you are 13 or older and agree to the Community rules and Privacy policy.'; return; }
     go.disabled = true;
+    if (mode === 'in') { lg.classList.add('lgspin'); err.className = 'err ok'; err.textContent = 'Signing in…'; }
     localStorage.setItem('brb_pre_status', st.value);
     if (rem.checked) localStorage.setItem('brb_email', e); else localStorage.removeItem('brb_email');
     try {
@@ -575,7 +582,7 @@ function showLogin(msg) {
         else if (!data.session) { err.className = 'err ok'; err.textContent = 'Account created. Check your email and click the confirmation link, then sign in.'; }
       }
     } catch (x) { err.textContent = friendlyErr(x); }
-    go.disabled = false;
+    if (err.textContent !== 'Signing in…') { lg.classList.remove('lgspin'); go.disabled = false; } else setTimeout(() => { if (document.body.classList.contains('login') && lg.isConnected) { lg.classList.remove('lgspin'); go.disabled = false; err.textContent = ''; } }, 20000);
   }
   const form = el('form', { onsubmit: submit }, el('label', { text: 'Email' }), email, el('label', { text: 'Password' }), pass, nameRow,
     agreeRow, el('label', { text: 'Sign in as' }), st,
@@ -616,15 +623,16 @@ async function startApp(user) {
     state.me = p;
     const pre = localStorage.getItem('brb_pre_status');
     const wantStatus = ['online', 'busy', 'away', 'invisible'].includes(pre) ? pre : 'online';
-    const { data: up } = await sb.from('profiles').update({ status: wantStatus, last_seen: new Date().toISOString() }).eq('id', user.id).select().single();
+    const { data: up } = POP ? { data: null } : await sb.from('profiles').update({ status: wantStatus, last_seen: new Date().toISOString() }).eq('id', user.id).select().single();
     if (up) state.me = up;
-    if (await syncPull()) { const lr = +sessionStorage.getItem('brb_syncreload') || 0; if (Date.now() - lr > 30000) { sessionStorage.setItem('brb_syncreload', String(Date.now())); location.reload(); return; } }
+    if (!POP && await syncPull()) { const lr = +sessionStorage.getItem('brb_syncreload') || 0; if (Date.now() - lr > 30000) { sessionStorage.setItem('brb_syncreload', String(Date.now())); location.reload(); return; } }
     await loadAll();
     try { const ra = await sb.rpc('is_admin'); state.isAdmin = ra.data === true; } catch (e) { state.isAdmin = false; }
     buildMain(); renderContacts();
-    setTimeout(handleInviteLink, 800); loadStreaks(); setTimeout(checkBirthdays, 2500); setTimeout(checkAdmirers, 3500);
-    if (state.me.suspended) setTimeout(() => alert('Your account is paused because of reports, so sending is switched off. Open Settings and use Contact the admin to ask about it.'), 900);
+    if (!POP) { setTimeout(handleInviteLink, 800); loadStreaks(); setTimeout(checkBirthdays, 2500); setTimeout(checkAdmirers, 3500); }
+    if (state.me.suspended && !POP) setTimeout(() => alert('Your account is paused because of reports, so sending is switched off. Open Settings and use Contact the admin to ask about it.'), 900);
     subscribe(); startTimers();
+    if (POP) popInit();
     document.addEventListener('click', () => { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }, { once: true });
   } catch (e) {
     state.uid = null; showLogin(friendlyErr(e));
@@ -1118,6 +1126,7 @@ function sendSig(id, p) {
   sendLive(id, 'sig', { ...p, from: state.uid });
 }
 function onSig(p) {
+  if (p && p.from && (POP ? p.from !== POP : (CAN_POP && isPopped(p.from)))) return;
   if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
   if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {});
 }
@@ -1235,8 +1244,29 @@ function groupMenu(ev, n) {
 }
 
 /* ============ CHAT WINDOWS ============ */
+/* ---- Laptop program: each chat can open as its own real Windows window ("pop-out") ---- */
+const POP = (/Electron/.test(navigator.userAgent) && new URLSearchParams(location.search).get('pop')) || '';
+const CAN_POP = /Electron/.test(navigator.userAgent) && /BRBpop/.test(navigator.userAgent) && !POP && 'BroadcastChannel' in window;
+const popBC = (POP || CAN_POP) ? new BroadcastChannel('brb-pop') : null;
+state.popped = new Map(); let popOK = false;
+const isPopped = id => { const t = state.popped.get(id); return !!t && Date.now() - t < 9000; };
+const baseTitle = () => POP ? (((state.profiles.get(POP) || {}).display_name || 'Chat') + ' - ' + APP_NAME) : APP_NAME;
+function popInit() {
+  const id = POP; let tries = 0;
+  const go = () => { if (state.profiles.get(id)) { openChat(id); document.title = baseTitle(); } else if (++tries < 5) setTimeout(go, 800); else window.close(); };
+  go();
+  const hello = () => popBC.postMessage({ t: 'alive', id }); hello(); setInterval(hello, 3000);
+  popBC.onmessage = e => { if (e.data && e.data.t === 'focus' && e.data.id === id) window.focus(); };
+  addEventListener('pagehide', () => popBC.postMessage({ t: 'gone', id }));
+  let la = 0; ['mousemove', 'keydown', 'click'].forEach(ev => addEventListener(ev, () => { if (Date.now() - la > 5000) { la = Date.now(); popBC.postMessage({ t: 'act' }); } }, { passive: true }));
+}
 function openChat(id) {
   const prof = state.profiles.get(id); if (!prof) return;
+  if (CAN_POP) {
+    if (isPopped(id)) { popBC.postMessage({ t: 'focus', id }); return; }
+    let o = null; try { o = window.open(location.pathname + '?pop=' + encodeURIComponent(id), 'brb-pop-' + id); } catch (e) {}
+    if (o) { state.popped.set(id, Date.now()); markRead(id); return; }
+  }
   let w = state.wins.get(id);
   if (w) { w.root.classList.remove('min'); front(w); w.input.focus(); markRead(id); return; }
   w = { id, seen: new Set(), lastSender: null, fmt: { b: false, i: false, c: '' }, typingT: null };
@@ -1457,6 +1487,7 @@ function onProfile(p) {
   renderContacts(); updateWinHeader(p.id);
 }
 function onIncoming(m) {
+  if (POP ? m.sender !== POP : (CAN_POP && isPopped(m.sender))) return;
   if (m.kind === 'game') { try { const q = JSON.parse(m.body); q.from = m.sender; onSig(q); } catch (e) {} return; }
   const id = m.sender, p = state.profiles.get(id);
   if (!p) { refresh().then(() => onIncoming(m)); return; }
@@ -1478,9 +1509,9 @@ let flashT;
 function updateTitle() {
   clearInterval(flashT);
   const n = [...state.unread.values()].reduce((a, b) => a + b, 0);
-  if (!n) { document.title = APP_NAME; return; }
+  if (!n) { document.title = baseTitle(); return; }
   let on = false;
-  flashT = setInterval(() => { on = !on; document.title = on ? `💬 (${n}) New message` : APP_NAME; }, 1000);
+  flashT = setInterval(() => { on = !on; document.title = on ? `💬 (${n}) New message` : baseTitle(); }, 1000);
 }
 addEventListener('focus', () => { if (state.wins.size) { const w = [...state.wins.values()].sort((a, b) => b.root.style.zIndex - a.root.style.zIndex)[0]; if (w) markRead(w.id); } });
 
@@ -1491,6 +1522,11 @@ let lastAct = Date.now();
   if (state.autoAway && state.uid) { state.autoAway = false; setStatus('online', true); }
 }, { passive: true }));
 function startTimers() {
+  if (POP) {
+    state.timers.push(setInterval(() => { if (state.uid) { detectOnline(); state.wins.forEach((w, id) => updateWinHeader(id)); } }, 30000));
+    state.timers.push(setInterval(() => { if (state.uid) refresh(); }, 40000));
+    return;
+  }
   state.timers.push(setInterval(async () => {
     if (!state.uid) return;
     await sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', state.uid);
@@ -1878,7 +1914,7 @@ function roomsInit() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members' }, () => { loadRooms(); state.roomWins.forEach(rw => rw.people && roomPeople(rw, true)); })
     .subscribe();
 }
-const _subscribe6 = subscribe; subscribe = function () { _subscribe6(); roomsInit(); };
+const _subscribe6 = subscribe; subscribe = function () { _subscribe6(); if (!POP) roomsInit(); else sb.from('app_config').select('value').eq('key', 'turn').maybeSingle().then(r => { if (r && r.data) state.turn = r.data.value; }, () => {}); };
 const _renderContacts6 = renderContacts;
 renderContacts = function () {
   _renderContacts6();
@@ -2611,6 +2647,18 @@ function buildPlayer() {
 /* ============ BOOT ============ */
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 state.recovering = /type=recovery/.test(location.hash);
+/* pop-out windows stay silent except for their own contact; the main window ignores contacts that are popped out */
+{
+  const _oi = onIncoming; onIncoming = function (m) { popOK = true; try { return _oi(m); } finally { popOK = false; } };
+  const _os = onSig; onSig = function (p) { popOK = true; try { return _os(p); } finally { popOK = false; } };
+  if (POP) {
+    const _t = tone; tone = function (q) { if (popOK) return _t(q); };
+    const _to = toast; toast = function () { if (popOK) return _to.apply(this, arguments); };
+    const _sn = sysNotify; sysNotify = function () { if (popOK) return _sn.apply(this, arguments); };
+  } else if (CAN_POP) {
+    popBC.onmessage = e => { const d = e.data || {}; if (d.t === 'alive') state.popped.set(d.id, Date.now()); else if (d.t === 'gone') state.popped.delete(d.id); else if (d.t === 'act') { lastAct = Date.now(); if (state.autoAway && state.uid) { state.autoAway = false; setStatus('online', true); } } };
+  }
+}
 sb.auth.onAuthStateChange((ev, session) => {
   setTimeout(() => {
     if (ev === 'PASSWORD_RECOVERY') { state.recovering = true; showRecovery(); }
