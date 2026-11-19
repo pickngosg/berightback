@@ -321,7 +321,10 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .qopts button.ok{background:#b2f2bb!important;border-color:#2f9e44}.qopts button.bad{background:#ffc9c9!important;border-color:#e03131}.qopts button.sel{background:#ffe08a!important;border-color:#e0a800;font-weight:700}.qopts button:disabled{opacity:.75}
 .abc{display:flex;flex-wrap:wrap;gap:.2rem;max-width:24rem}.abc button{width:1.9rem;padding:.1rem 0}
 </style>
-<script>try{if(/Electron/.test(navigator.userAgent))document.documentElement.classList.add('appwin')}catch(e){}</script>
+<script>try{if(/Electron/.test(navigator.userAgent)){document.documentElement.classList.add('appwin');
+/* In the desktop program the contact list always fills the whole window (same layout as on a phone), whatever size the window is */
+const _mm=window.matchMedia.bind(window);window.matchMedia=q=>/max-width:\s*700px/.test(q)?{matches:true,media:q,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}}:_mm(q);
+document.addEventListener('DOMContentLoaded',()=>{for(const sh of document.styleSheets){let rs;try{rs=sh.cssRules}catch(e){continue}for(const r of rs){if(r.type===CSSRule.MEDIA_RULE&&/max-width:\s*700px/.test(r.media.mediaText))r.media.mediaText='all'}}})}}catch(e){}</script>
 </head>
 <body>
 <div id="app"></div>

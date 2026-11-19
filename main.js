@@ -20,10 +20,9 @@ else {
     session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
       cb(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission) && wc.getURL().startsWith(SITE));
     });
-    win = new BrowserWindow({ useContentSize: true, width: 425, minWidth: 425, maxWidth: 425, height: 780, minHeight: 500, maximizable: false, center: true, title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'), autoHideMenuBar: true,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    win = new BrowserWindow({ useContentSize: true, width: 425, height: 780, minWidth: 340, minHeight: 500, center: true, title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'), autoHideMenuBar: true,
+      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
     win.setTitle('BeRightBack');
-    win.on('resize', () => { if (!win.isMaximized() && !win.isFullScreen()) { const [w, h] = win.getContentSize(); if (w !== 425) win.setContentSize(425, h); } });   // keep the window exactly as wide as the contact list
     win.loadURL(START);
     win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
     win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(SITE)) { e.preventDefault(); shell.openExternal(url); } });
