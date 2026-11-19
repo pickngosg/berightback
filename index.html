@@ -522,6 +522,7 @@ const friendlyErr = e => {
 function teardown() {
   state.timers.forEach(clearInterval); state.timers = [];
   if (state.chan) { sb.removeChannel(state.chan); state.chan = null; }
+  if (state.roomCh) { try { sb.removeChannel(state.roomCh); } catch (e) {} state.roomCh = null; }
   Object.values(state.tchans).forEach(c => sb.removeChannel(c)); state.tchans = {};
   if (state.myTyping) { sb.removeChannel(state.myTyping); state.myTyping = null; }
   state.wins.forEach(w => w.root.remove()); state.wins.clear();
@@ -1842,7 +1843,8 @@ function roomsInit() {
   sb.from('app_config').select('value').eq('key', 'turn').maybeSingle().then(r => { if (r && r.data) state.turn = r.data.value; }, () => {});
   loadRooms(); cleanMyMedia(); setTimeout(pushRefresh, 2000);
   if (state.me && state.me.now_playing && !pl.ytTitle && pl.audio.paused) { state.me.now_playing = ''; sb.from('profiles').update({ now_playing: '' }).eq('id', state.uid).then(() => {}, () => {}); try { renderHeader(); } catch (e) {} }   // forget the song from last time
-  sb.channel('rooms-' + state.uid)
+  if (state.roomCh) { try { sb.removeChannel(state.roomCh); } catch (e) {} state.roomCh = null; }
+  state.roomCh = sb.channel('rooms-' + state.uid + '-' + Date.now())
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, pl => onRoomMsg(pl.new))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members' }, () => { loadRooms(); state.roomWins.forEach(rw => rw.people && roomPeople(rw, true)); })
     .subscribe();
