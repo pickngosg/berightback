@@ -195,9 +195,11 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .gamebox{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding:.4rem .8rem;background:#fff8d9;border-bottom:1px solid #e6d58a}
 .ttt{display:grid;grid-template-columns:repeat(3,2.3rem);gap:.2rem}
 .ttt button{height:2.3rem;padding:0;font-size:1.25rem;font-weight:700}
-.callbox{position:absolute;inset:0;z-index:5;background:#0b1b33ee;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;font-size:1.15rem}
-.callbox .rv{max-width:92%;max-height:58%;border-radius:.7rem;background:#000}
-.callbox .self{position:absolute;right:.9rem;bottom:.9rem;width:7.5rem;border-radius:.5rem;background:#000}
+.callbox{position:fixed;inset:0;z-index:60;background:#0b1b33ee;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;font-size:1.15rem}
+.callbox .rv{width:96%;flex:1 1 auto;min-height:0;max-height:none;object-fit:contain;border-radius:.7rem;background:#000;cursor:zoom-in}
+.callbox .ctx,.callbox .row{flex:none}
+.callbox{padding:.6rem;box-sizing:border-box;gap:.5rem}
+.callbox .self{position:absolute;right:1rem;bottom:5.2rem;width:clamp(7rem,24vw,14rem);border-radius:.5rem;background:#000;z-index:2;border:2px solid #fff8}
 .callbox .row{display:flex;gap:.6rem}
 .gmore{float:right;padding:0 .5rem!important;border-color:transparent!important;background:none!important;box-shadow:none!important}
 .ytbox{margin-top:.4rem;border-radius:.5rem;overflow:hidden}
@@ -333,8 +335,8 @@ document.addEventListener('DOMContentLoaded',()=>{for(const sh of document.style
 <script>
 'use strict';
 /* ============ SETTINGS (public values - safe to be in the file) ============ */
-const SUPABASE_URL = 'https://xywwszouhnsfhxvqqznj.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_dWBLivsjPyvIXZanR9xeXA_4WuiWgXT'; // publishable key ONLY. Never put the secret/service_role key here.
+const SUPABASE_URL = 'https://mzijzbkotfcimueyecin.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_UwdFy7WPB-YGuurepN7rxQ_3Z34w0Xc'; // publishable key ONLY. Never put the secret/service_role key here.
 const APP_NAME = 'BeRightBack';
 const STALE_MS = 150000;   // no heartbeat for this long = shown offline
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1163,9 +1165,9 @@ function onGame(id, p) {
 /* ---- voice and video calls (browser to browser, WebRTC) ---- */
 const RTC = { pc: null, id: null, stream: null, q: [], video: false };
 function callUI(w, text, btns) {
-  let box = w.root.querySelector('.callbox');
+  let box = [...document.querySelectorAll('.callbox')].find(b => b.dataset.cid === String(w.id));
   if (!text) { if (box) box.remove(); return null; }
-  if (!box) { box = el('div', { class: 'callbox' }, el('video', { class: 'rv', autoplay: 'autoplay', playsinline: 'playsinline' }), el('video', { class: 'self', autoplay: 'autoplay', playsinline: 'playsinline' }), el('div', { class: 'ctx' }), el('div', { class: 'row' })); box.querySelector('.self').muted = true; w.root.append(box); }
+  if (!box) { box = el('div', { class: 'callbox', 'data-cid': String(w.id) }, el('video', { class: 'rv', title: 'Tap to go full screen', autoplay: 'autoplay', playsinline: 'playsinline', onclick: ev => { const v = ev.currentTarget; try { if (document.fullscreenElement) document.exitFullscreen(); else if (v.requestFullscreen) v.requestFullscreen(); else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); } catch (e) {} } }), el('video', { class: 'self', autoplay: 'autoplay', playsinline: 'playsinline' }), el('div', { class: 'ctx' }), el('div', { class: 'row' })); box.querySelector('.self').muted = true; document.body.append(box); }
   box.querySelector('.ctx').textContent = text;
   const row = box.querySelector('.row'); row.textContent = ''; btns.forEach(([t, f]) => row.append(el('button', { text: t, onclick: f })));
   box.querySelector('.rv').style.display = RTC.video ? '' : 'none'; box.querySelector('.self').style.display = RTC.video ? '' : 'none';
@@ -1779,8 +1781,29 @@ function drawKnows(w, body, nm) {
 /* ============ PHASE 7: PUSH NOTIFICATIONS (messages arrive even when the app is closed) ============ */
 const VAPID_PUBLIC = 'BHzMzg6KvnVPaG2PlfalwqOgb6iRkimC5dTa2nFYzz3lC8Dzelps1RMxeMbb8J1bCdh00A1xkcbZ0PGV_rKY8pI';
 const b64u = t => { const raw = atob((t + '='.repeat((4 - t.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
-const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const isApp = () => !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());   // true inside the Android app
+const pushSupported = () => isApp() || ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+async function enableNative() {   // Android app: Firebase push with the BRB sound
+  const P = Capacitor.Plugins && Capacitor.Plugins.PushNotifications;
+  if (!P) throw new Error('Push is not available in this app build.');
+  let perm = await P.checkPermissions();
+  if (perm.receive !== 'granted') perm = await P.requestPermissions();
+  if (perm.receive !== 'granted') throw new Error('Notifications are blocked. Open your phone Settings, Apps, BeRightBack, Notifications and allow them.');
+  try { await P.createChannel({ id: 'brb_messages', name: 'Messages', description: 'New BeRightBack messages', importance: 5, visibility: 1, sound: 'brb_message.wav', vibration: true }); } catch (e) {}
+  try { await P.removeAllListeners(); } catch (e) {}
+  P.addListener('pushNotificationActionPerformed', a => { const o = a && a.notification && a.notification.data && a.notification.data.open; if (o && state.uid) openChat(o); });
+  const token = await new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error('Could not reach the notification service. Check your internet and try again.')), 20000);
+    P.addListener('registration', r => { clearTimeout(t); res(r.value); });
+    P.addListener('registrationError', e => { clearTimeout(t); rej(new Error('Notification setup failed: ' + ((e && e.error) || 'unknown'))); });
+    P.register();
+  });
+  const { error } = await sb.rpc('save_fcm', { p_token: token });
+  if (error) throw error;
+  localStorage.setItem('brb_fcm', token); localStorage.setItem('brb_push', 'on');
+}
 async function enablePush() {
+  if (isApp()) return enableNative();
   if (!pushSupported()) throw new Error('This browser cannot receive push notifications. On an iPhone, first add the app to your Home Screen (iOS 16.4 or newer) and open it from there.');
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error('Notifications are blocked. Allow them for this site in your browser or phone settings, then try again.');
@@ -1793,10 +1816,14 @@ async function enablePush() {
 }
 async function disablePush() {
   localStorage.setItem('brb_push', 'off');
+  if (isApp()) { try { const t = localStorage.getItem('brb_fcm'); if (t) await sb.rpc('drop_fcm', { p_token: t }); } catch (e) {} return; }
   try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await sb.rpc('drop_push', { p_endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch (e) {}
 }
 async function pushRefresh() { // keeps this device's subscription attached to whoever is signed in
-  try { if (localStorage.getItem('brb_push') === 'on' && pushSupported() && Notification.permission === 'granted') await enablePush(); } catch (e) {}
+  try {
+    if (isApp()) { if (localStorage.getItem('brb_push') !== 'off') await enableNative(); return; }   // in the app, notifications are on by default
+    if (localStorage.getItem('brb_push') === 'on' && pushSupported() && Notification.permission === 'granted') await enablePush();
+  } catch (e) {}
 }
 if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.open && state.uid) openChat(e.data.open); });
 
@@ -2333,7 +2360,7 @@ function openSettings() {
       chk('Pop-up when a contact signs in or signs out', noteOn('inout'), v => localStorage.setItem('brb_n_inout', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their status', noteOn('status'), v => localStorage.setItem('brb_n_status', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their song', noteOn('song'), v => localStorage.setItem('brb_n_song', v ? 'on' : 'off')),
-      (() => { const c = el('input', { type: 'checkbox', style: 'width:auto' }), out = el('div', { class: 'hint' }); c.checked = localStorage.getItem('brb_push') === 'on';
+      (() => { const c = el('input', { type: 'checkbox', style: 'width:auto' }), out = el('div', { class: 'hint' }); c.checked = isApp() ? localStorage.getItem('brb_push') !== 'off' : localStorage.getItem('brb_push') === 'on';
         c.onchange = async () => { out.textContent = ''; try { if (c.checked) { await enablePush(); out.textContent = '✓ On for this device. You will get messages even when the app is closed.'; } else { await disablePush(); out.textContent = 'Off for this device.'; } } catch (e) { c.checked = false; out.textContent = e.message || 'Could not switch on.'; } };
         return el('div', {}, el('label', { class: 'crow' }, c, 'Notify me of new messages when the app is closed (this device)'), out); })(),
       el('div', { class: 'row2' }, el('button', { text: '🔔 Allow desktop notifications', onclick: () => { if (!('Notification' in window)) { say('This browser does not support notifications.'); return; } Notification.requestPermission().then(r => say(r === 'granted' ? 'Notifications are on.' : 'Notifications are blocked in your browser settings.', r === 'granted')); } }))),
