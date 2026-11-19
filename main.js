@@ -20,13 +20,13 @@ else {
     session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
       cb(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission) && wc.getURL().startsWith(SITE));
     });
-    win = new BrowserWindow({ useContentSize: true, width: 425, minWidth: 425, maxWidth: 425, height: 780, minHeight: 500, maximizable: false, center: true, title: 'BeRightBack', icon: path.join(__dirname, 'icon-512.png'), autoHideMenuBar: true,
+    win = new BrowserWindow({ useContentSize: true, width: 425, minWidth: 425, maxWidth: 425, height: 780, minHeight: 500, maximizable: false, center: true, title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'), autoHideMenuBar: true,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
     win.loadURL(START);
     win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
     win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(SITE)) { e.preventDefault(); shell.openExternal(url); } });
     win.on('close', e => { if (!quitting) { e.preventDefault(); win.hide(); } });   // closing the window keeps BeRightBack running in the tray
-    tray = new Tray(path.join(__dirname, 'icon-512.png').replace('app.asar', 'app.asar'));
+    tray = new Tray(path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'));
     tray.setToolTip('BeRightBack');
     const buildMenu = () => tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Open BeRightBack', click: () => { win.show(); win.focus(); } },
       { label: 'Start with my computer', type: 'checkbox', checked: autoStart(), click: i => { setPref('autoStart', i.checked); applyAutoStart(); } },
