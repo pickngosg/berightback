@@ -1824,6 +1824,38 @@ async function pushRefresh() { // keeps this device's subscription attached to w
   try {
     if (isApp()) { if (localStorage.getItem('brb_push') !== 'off') await enableNative(); return; }   // in the app, notifications are on by default
     if (localStorage.getItem('brb_push') === 'on' && pushSupported() && Notification.permission === 'granted') await enablePush();
+    askNotifyOnce();
+  } catch (e) {}
+}
+function notifyHelp() {   // exact steps if pop-ups do not show, for this device
+  const ua = navigator.userAgent;
+  if (isIOS()) return 'iPhone/iPad: first add BeRightBack to your Home Screen and open it from there. Then open Settings, Notifications, BeRightBack and allow notifications.';
+  if (/Android/.test(ua)) return 'Android: open Settings, Apps, your browser (or BeRightBack), Notifications, and switch them On. Also turn off Do Not Disturb.';
+  if (/Macintosh/.test(ua)) return 'Mac: open System Settings, Notifications, choose your browser (for example Google Chrome) and switch Allow notifications On. Also turn off Focus.';
+  return 'Windows: open Settings, System, Notifications. Switch Notifications On, turn Do not disturb Off, then find Google Chrome (or Edge) in the app list and switch it On, with banners and sound On. Also check that Focus is not running.';
+}
+async function testNotify(out) {
+  out.textContent = '';
+  try {
+    if (isApp()) { out.textContent = 'In the app: close it, then ask a contact to send you a message. You should hear the BeRightBack sound. If not, open Android Settings, Apps, BeRightBack, Notifications.'; return; }
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) throw new Error('This browser does not support notifications. ' + notifyHelp());
+    if (Notification.permission !== 'granted') { const r = await Notification.requestPermission(); if (r !== 'granted') throw new Error('Notifications are blocked for this site. Click the icon at the left of the address bar, set Notifications to Allow, then try again.'); }
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('BeRightBack test', { body: 'If you can see this, notifications work on this device.', icon: 'icon-192.png', tag: 'brb-test' });
+    out.textContent = 'Test sent. If nothing popped up in the next few seconds: ' + notifyHelp();
+  } catch (e) { out.textContent = e.message || 'Could not send a test.'; }
+}
+function askNotifyOnce() {   // first sign-in: offer to turn notifications on (the browser needs a click from the person)
+  try {
+    if (isApp() || /Electron/.test(navigator.userAgent) || !pushSupported()) return;
+    if (localStorage.getItem('brb_push') !== null || localStorage.getItem('brb_push_asked') || Notification.permission !== 'default') return;
+    localStorage.setItem('brb_push_asked', '1');
+    const ov = el('div', { class: 'modal' }), box = el('div', { class: 'mbox' }), msg = el('div', { class: 'hint' });
+    const go = el('button', { text: '🔔 Turn on notifications', onclick: async () => { try { await enablePush(); const t = el('div'); ov.remove(); testNotify(t); } catch (e) { msg.textContent = (e.message || 'Could not switch on.') + ' ' + notifyHelp(); } } });
+    box.append(el('div', { class: 'mhd' }, el('h2', { text: '🔔 Get your messages' })),
+      el('div', { class: 'hint', text: 'Turn on notifications so you hear about new messages even when BeRightBack is closed. You can change this later in Settings.' }),
+      el('div', { class: 'row2' }, go, el('button', { text: 'Not now', onclick: () => ov.remove() })), msg);
+    ov.append(box); document.body.append(ov);
   } catch (e) {}
 }
 if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.open && state.uid) openChat(e.data.open); });
@@ -2364,7 +2396,7 @@ function openSettings() {
       chk('Pop-up when a contact changes their song', noteOn('song'), v => localStorage.setItem('brb_n_song', v ? 'on' : 'off')),
       (() => { const c = el('input', { type: 'checkbox', style: 'width:auto' }), out = el('div', { class: 'hint' }); c.checked = isApp() ? localStorage.getItem('brb_push') !== 'off' : localStorage.getItem('brb_push') === 'on';
         c.onchange = async () => { out.textContent = ''; try { if (c.checked) { await enablePush(); out.textContent = '✓ On for this device. You will get messages even when the app is closed.'; } else { await disablePush(); out.textContent = 'Off for this device.'; } } catch (e) { c.checked = false; out.textContent = e.message || 'Could not switch on.'; } };
-        return el('div', {}, el('label', { class: 'crow' }, c, 'Notify me of new messages when the app is closed (this device)'), out); })(),
+        return el('div', {}, el('label', { class: 'crow' }, c, 'Notify me of new messages when the app is closed (this device)'), el('div', { class: 'row2' }, el('button', { text: '🔔 Send me a test notification', onclick: () => testNotify(out) })), out); })(),
       el('div', { class: 'row2' }, el('button', { text: '🔔 Allow desktop notifications', onclick: () => { if (!('Notification' in window)) { say('This browser does not support notifications.'); return; } Notification.requestPermission().then(r => say(r === 'granted' ? 'Notifications are on.' : 'Notifications are blocked in your browser settings.', r === 'granted')); } }))),
     sec('Privacy and safety', ...privItems(say), chk('Show my current song to my contacts', pl.share, v => { pl.share = v; localStorage.setItem('brb_share_music', v ? 'on' : 'off'); if (pl.ui.chk) pl.ui.chk.checked = v; setNow(pl.audio.paused ? '' : curTitle()); updatePlayer(); })),
     sec('Help, rules and reports', ...helpItems()),
