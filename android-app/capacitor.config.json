@@ -1,0 +1,13 @@
+{
+  "appId": "sg.pickngosg.berightback",
+  "appName": "BeRightBack",
+  "webDir": "www",
+  "server": {
+    "url": "https://pickngosg.github.io/berightback/",
+    "cleartext": false,
+    "allowNavigation": ["pickngosg.github.io", "*.supabase.co"]
+  },
+  "plugins": {
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}
