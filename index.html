@@ -1814,6 +1814,7 @@ async function loadRooms() {
 function roomsInit() {
   sb.from('app_config').select('value').eq('key', 'turn').maybeSingle().then(r => { if (r && r.data) state.turn = r.data.value; }, () => {});
   loadRooms(); cleanMyMedia(); setTimeout(pushRefresh, 2000);
+  if (state.me && state.me.now_playing && !pl.ytTitle && pl.audio.paused) { state.me.now_playing = ''; sb.from('profiles').update({ now_playing: '' }).eq('id', state.uid).then(() => {}, () => {}); try { renderHeader(); } catch (e) {} }   // forget the song from last time
   sb.channel('rooms-' + state.uid)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, pl => onRoomMsg(pl.new))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members' }, () => { loadRooms(); state.roomWins.forEach(rw => rw.people && roomPeople(rw, true)); })
@@ -2520,7 +2521,7 @@ async function playIdx(i) {
 function updatePlayer() {
   const u = pl.ui; if (!u.title) return;
   u.title.textContent = pl.ytTitle ? '▶ ' + pl.ytTitle : pl.tracks.length ? '♫ ' + curTitle() : 'No song playing - tap 📚 to make a playlist';
-  u.play.textContent = pl.audio.paused ? '▶' : '⏸';
+  u.play.textContent = (!pl.audio.paused || pl.ytTitle) ? '⏸' : '▶';
   if (u.status) { u.status.className = 'pstat' + (pl.err ? ' bad' : ''); u.status.textContent = pl.err || (pl.info && pl.ytp && !pl.ytTitle ? pl.info : '') || (!pl.share ? 'Sharing is off - contacts cannot see your song' : (pl.audio.paused && !pl.ytTitle) ? '' : (state.me && state.me.now_playing ? '✔ Your contacts can see this song' : 'Sharing with your contacts…')); }
   try { if ('mediaSession' in navigator && curTitle()) navigator.mediaSession.metadata = new MediaMetadata({ title: curTitle(), artist: APP_NAME }); } catch (e) {}
 }
@@ -2535,7 +2536,7 @@ function buildPlayer() {
   const file = el('input', { type: 'file', accept: 'audio/*', multiple: 'multiple', style: 'display:none' });
   file.onchange = () => { addSongs([...file.files]); file.value = ''; };
   const prev = el('button', { text: '⏮', title: 'Previous', onclick: () => { if (pl.ytp) pl.ytp.previousVideo(); else playIdx(pl.i - 1); } });
-  const play = el('button', { text: '▶', title: 'Play / pause', onclick: () => { if (pl.ytp) { if (pl.ytp.getPlayerState() === 1) pl.ytp.pauseVideo(); else pl.ytp.playVideo(); return; } if (!pl.tracks.length) { openMusic(); return; } if (pl.audio.paused) { if (pl.i < 0) playIdx(0); else pl.audio.play().catch(() => {}); } else pl.audio.pause(); } });
+  const play = el('button', { text: '▶', title: 'Play / pause', onclick: () => { if (pl.spc && !pl.ytp) { try { pl.spc.togglePlay(); } catch (e) {} return; } if (pl.ytp) { if (pl.ytp.getPlayerState() === 1) pl.ytp.pauseVideo(); else pl.ytp.playVideo(); return; } if (!pl.tracks.length) { openMusic(); return; } if (pl.audio.paused) { if (pl.i < 0) playIdx(0); else pl.audio.play().catch(() => {}); } else pl.audio.pause(); } });
   const next = el('button', { text: '⏭', title: 'Next', onclick: () => { if (pl.ytp) pl.ytp.nextVideo(); else playIdx(pl.i + 1); } });
   const add = el('button', { text: '📂', title: 'Add songs from this device', onclick: () => file.click() });
   const vol = el('input', { type: 'range', min: '0', max: '1', step: '0.05', value: String(pl.audio.volume), title: 'Volume', oninput: ev => { pl.audio.volume = +ev.target.value; } });

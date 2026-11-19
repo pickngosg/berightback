@@ -20,9 +20,11 @@ else {
     session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
       cb(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission) && wc.getURL().startsWith(SITE));
     });
-    win = new BrowserWindow({ useContentSize: true, width: 425, height: 780, minWidth: 340, minHeight: 500, center: true, title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'), autoHideMenuBar: true,
+    win = new BrowserWindow({ useContentSize: true, width: 425, height: 780, minWidth: 340, minHeight: 500, center: true, show: false, backgroundColor: '#abcaec', title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'), autoHideMenuBar: true,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
     win.setTitle('BeRightBack');
+    win.once('ready-to-show', () => win.show());
+    setTimeout(() => { if (win && !win.isVisible()) win.show(); }, 6000);   // safety: never stay hidden
     win.loadURL(START);
     win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
     win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(SITE)) { e.preventDefault(); shell.openExternal(url); } });
