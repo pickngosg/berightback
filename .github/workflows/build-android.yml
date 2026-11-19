@@ -1,0 +1,54 @@
+name: Build Android app
+on:
+  workflow_dispatch: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+      KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+      RUN_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the three secrets exist
+        run: |
+          for v in GSJ KS_B64 KS_PASS; do
+            if [ -z "${!v}" ]; then echo "MISSING SECRET for $v (GSJ=GOOGLE_SERVICES_JSON, KS_B64=KEYSTORE_BASE64, KS_PASS=KEYSTORE_PASSWORD)"; exit 1; fi
+          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+      - name: Create Android project
+        working-directory: android-app
+        run: |
+          npm install
+          npx cap add android
+      - name: Add Firebase file
+        run: printf '%s' "$GSJ" > android-app/android/app/google-services.json
+      - name: Add sound, icon, permissions
+        run: bash android-app/prepare.sh
+      - name: Sync
+        working-directory: android-app
+        run: npx cap sync android
+      - name: Build
+        working-directory: android-app/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Sign the app
+        run: |
+          cd android-app/android/app/build/outputs/apk/release
+          echo "$KS_B64" | base64 -d > /tmp/brb.keystore
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          $BT/zipalign -f -p 4 app-release-unsigned.apk aligned.apk
+          $BT/apksigner sign --ks /tmp/brb.keystore --ks-pass env:KS_PASS --key-pass env:KS_PASS --ks-key-alias brb --out BeRightBack.apk aligned.apk
+          $BT/apksigner verify BeRightBack.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BeRightBack-Android
+          path: android-app/android/app/build/outputs/apk/release/BeRightBack.apk
