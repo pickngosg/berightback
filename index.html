@@ -174,8 +174,10 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .mban{padding:.3rem .8rem;font-size:.8rem;color:#4b6285;text-align:center;border-top:1px solid #c5d4e8;background:linear-gradient(#f4f9fe,#dbe8f6)}
 .pwrap{position:relative;display:flex;justify-content:center;width:100%}
 .pwrap .pic{margin:0 auto}
-.pwrap.collapsed .pic,.pwrap.collapsed .pdrop{display:none}
-.pwrap.collapsed{min-height:1.6rem}
+.win.sidehid .wside{width:1.2rem!important;padding:.3rem 0;justify-content:flex-start}
+.win.sidehid .pic,.win.sidehid .pdrop,.win.sidehid .vsplit{display:none!important}
+.win.sidehid .pwrap+.pwrap{display:none}
+.win.sidehid .ptab{right:0;top:0;position:static}
 .ptab{position:absolute;right:0;top:.2rem;z-index:3;min-width:0!important;width:.8rem;height:1.7rem;padding:0!important;border-radius:.35rem 0 0 .35rem!important;font-size:.65rem!important;line-height:1.5rem!important}
 .pdrop{position:absolute;right:.9rem;bottom:.2rem;z-index:3;min-width:0!important;width:1.3rem;height:1.2rem;padding:0!important;font-size:.7rem!important;line-height:1rem!important;border-radius:.3rem!important}
 .winfo{display:flex;gap:.45rem;align-items:center;background:#fff7c9;border:1px solid #e3d27a;border-radius:.3rem;padding:.3rem .55rem;margin:.2rem .2rem 0;font-size:.88rem;color:#4a3f00}
@@ -1410,8 +1412,10 @@ function openChat(id) {
   const sbar = el('div', { class: 'sbar', text: 'Tip: click ✨ to send a wink, or 📳 to nudge your friend.' });
   const picThem = el('div', { class: 'pic' }), picMe = el('div', { class: 'pic' }); picMe.append(avatarEl(state.me, 100, false)); picMe.style.borderColor = STATUS[state.me.status][1];
   const mkPW = (pic, key, items) => {
-    const wrap = el('div', { class: 'pwrap' + (localStorage.getItem('brb_hide' + key) === '1' ? ' collapsed' : '') });
-    const tab = el('button', { class: 'ptab', text: wrap.classList.contains('collapsed') ? '▸' : '◂', title: 'Hide or show this picture', onclick: ev => { ev.stopPropagation(); const on = wrap.classList.toggle('collapsed'); tab.textContent = on ? '▸' : '◂'; localStorage.setItem('brb_hide' + key, on ? '1' : '0'); } });
+    const wrap = el('div', { class: 'pwrap' });
+    const hid = () => localStorage.getItem('brb_sidehid') === '1';
+    const tab = el('button', { class: 'ptab', text: hid() ? '◂' : '▸', title: 'Hide or show the pictures', onclick: ev => { ev.stopPropagation(); const on = w.root.classList.toggle('sidehid'); localStorage.setItem('brb_sidehid', on ? '1' : '0'); w.root.querySelectorAll('.ptab').forEach(t => t.textContent = on ? '◂' : '▸'); } });
+    setTimeout(() => { if (hid()) w.root.classList.add('sidehid'); }, 0);
     const dd = el('button', { class: 'pdrop', text: '▾', title: 'Picture options', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, items(() => tab.click())); } });
     wrap.append(pic, dd, tab); return wrap;
   };
