@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="format-detection" content="telephone=no">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23283a8c'/%3E%3Ctext x='32' y='42' font-size='26' font-weight='900' text-anchor='middle' fill='%23fff' font-family='Arial'%3EBRB%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="favicon-64.png">
 <style>
 *{box-sizing:border-box}
 html{font-size:17px}
@@ -1259,7 +1259,8 @@ function onGame(id, p) {
 }
 
 /* ---- voice and video calls (browser to browser, WebRTC) ---- */
-const RTC = { pc: null, id: null, stream: null, q: [], video: false };
+const RTC = { pc: null, id: null, stream: null, q: [], video: false, caller: false, tries: 0, timers: [] };
+const rtcClear = () => { RTC.timers.forEach(clearTimeout); RTC.timers = []; };
 function callUI(w, text, btns) {
   let box = [...document.querySelectorAll('.callbox')].find(b => b.dataset.cid === String(w.id));
   if (!text) { if (box) box.remove(); return null; }
@@ -1274,37 +1275,50 @@ function endCall(w, notify) {
   const id = RTC.id; if (notify && id) sendSig(id, { t: 'c-end' });
   try { if (RTC.pc) RTC.pc.close(); } catch (e) {}
   if (RTC.stream) RTC.stream.getTracks().forEach(t => t.stop());
-  Object.assign(RTC, { pc: null, id: null, stream: null, q: [] });
+  rtcClear(); Object.assign(RTC, { pc: null, id: null, stream: null, q: [], caller: false, tries: 0 });
   const ww = w || state.wins.get(id); if (ww) callUI(ww, '');
 }
 async function getMedia(w, video) {
-  try { RTC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video }); return true; }
-  catch (e) { sysLine(w, 'Could not start the call. Please allow your microphone' + (video ? ' and camera' : '') + ' in the browser.'); return false; }
+  try { RTC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } : false }); return true; }
+  catch (e) {
+    if (video) { try { RTC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); RTC.video = false; sysLine(w, 'No camera was found, so this call is voice only.'); return true; } catch (e2) {} } sysLine(w, 'Could not start the call. Please allow your microphone' + (video ? ' and camera' : '') + ' in the browser.'); return false; }
 }
 function makePC(w) {
   const pc = new RTCPeerConnection({ iceServers: iceList() }); RTC.pc = pc;
   RTC.stream.getTracks().forEach(t => pc.addTrack(t, RTC.stream));
   pc.onicecandidate = e => { if (e.candidate) sendSig(w.id, { t: 'c-ice', c: e.candidate.toJSON() }); };
-  pc.ontrack = e => { const box = callUI(w, 'Connected with ' + pname(w.id), [['Hang up', () => endCall(w, true)]]); if (box) { const v = box.querySelector('.rv'); v.srcObject = e.streams[0]; v.play().catch(() => {}); if (!RTC.video) { const a = el('audio', { autoplay: 'autoplay' }); a.srcObject = e.streams[0]; box.append(a); } } };
-  pc.onconnectionstatechange = () => { if ((pc.connectionState === 'failed' || pc.connectionState === 'closed') && RTC.pc === pc) { sysLine(w, 'The call ended.'); endCall(w, false); } };
+  pc.ontrack = e => { const box = callUI(w, 'Connected with ' + pname(w.id), [['Hang up', () => endCall(w, true)]]); if (box) { const v = box.querySelector('.rv'); v.srcObject = e.streams[0]; v.play().catch(() => { v.muted = true; v.play().catch(() => {}); callUI(w, 'Connected with ' + pname(w.id) + ' - tap here if you cannot hear them', [['Turn sound on', () => { v.muted = false; v.play().catch(() => {}); a2 && a2.play().catch(() => {}); }], ['Hang up', () => endCall(w, true)]]); }); var a2 = box.querySelector('audio'); if (!RTC.video && !a2) { a2 = el('audio', { autoplay: 'autoplay' }); a2.srcObject = e.streams[0]; box.append(a2); a2.play().catch(() => {}); } } };
+  const fail = () => { if (RTC.pc !== pc) return; const v = RTC.video, caller = RTC.caller; endCall(w, false);
+    callUI(w, 'The call could not connect. This is usually the network (strict wifi or phone data).', caller ? [['Try again', () => { callUI(w, ''); startCall(w, v); }], ['Close', () => callUI(w, '')]] : [['Close', () => callUI(w, '')]]); };
+  pc.onconnectionstatechange = () => {
+    if (RTC.pc !== pc) return; const st = pc.connectionState;
+    if (st === 'connected') { rtcClear(); RTC.tries = 0; }
+    else if (st === 'disconnected' || st === 'failed') {
+      if (RTC.caller && RTC.tries < 2) { RTC.tries++; callUI(w, 'Reconnecting…', [['Hang up', () => endCall(w, true)]]); pc.createOffer({ iceRestart: true }).then(o => pc.setLocalDescription(o).then(() => sendSig(w.id, { t: 'c-off', sdp: o.sdp }))).catch(() => {}); RTC.timers.push(setTimeout(() => { if (RTC.pc === pc && pc.connectionState !== 'connected') fail(); }, 12000)); }
+      else if (st === 'failed') fail();
+      else if (!RTC.caller) RTC.timers.push(setTimeout(() => { if (RTC.pc === pc && pc.connectionState !== 'connected') fail(); }, 15000));
+    } else if (st === 'closed') endCall(w, false);
+  };
+  RTC.timers.push(setTimeout(() => { if (RTC.pc === pc && pc.connectionState !== 'connected') fail(); }, 25000));
 }
 async function startCall(w, video) {
   if (RTC.id) { sysLine(w, 'You are already in a call.'); return; }
   if (!navigator.mediaDevices || !window.RTCPeerConnection) { sysLine(w, 'Calls are not supported by this browser.'); return; }
-  RTC.id = w.id; RTC.video = video;
+  RTC.id = w.id; RTC.video = video; RTC.caller = true;
   if (!(await getMedia(w, video))) { RTC.id = null; return; }
-  sendSig(w.id, { t: 'c-inv', video });
+  sendSig(w.id, { t: 'c-inv', video }); { let n = 0; const rep = () => { if (RTC.id === w.id && !RTC.pc && n++ < 8) { sendSig(w.id, { t: 'c-inv', video: RTC.video }); RTC.timers.push(setTimeout(rep, 4000)); } }; RTC.timers.push(setTimeout(rep, 4000)); }
   callUI(w, (video ? 'Video' : 'Voice') + ' call - ringing…', [['Cancel', () => endCall(w, true)]]);
   setTimeout(() => { if (RTC.id === w.id && !RTC.pc) { sysLine(w, 'No answer.'); endCall(w, true); } }, 45000);
 }
 async function onCall(id, p) {
   let w = state.wins.get(id);
   if (p.t === 'c-inv') {
+    if (RTC.id === id && !RTC.caller) return;   // the same invitation sent again
     if (RTC.id) { sendSig(id, { t: 'c-busy' }); return; }
     if (!w) { openChat(id); w = state.wins.get(id); } w.root.classList.remove('min'); front(w); tone(SND.nudge);
-    RTC.id = id; RTC.video = !!p.video;
+    RTC.id = id; RTC.video = !!p.video; RTC.caller = false;
     callUI(w, (p.video ? '📹 Video' : '🎤 Voice') + ' call from ' + pname(id), [
-      ['Accept', async () => { if (!(await getMedia(w, RTC.video))) { endCall(w, true); return; } makePC(w); sendSig(id, { t: 'c-acc' }); callUI(w, 'Connecting…', [['Hang up', () => endCall(w, true)]]); }],
+      ['Accept', async () => { if (!(await getMedia(w, RTC.video))) { endCall(w, true); return; } makePC(w); sendSig(id, { t: 'c-acc' }); { let n = 0; const rp = () => { if (RTC.id === id && RTC.pc && !RTC.pc.remoteDescription && n++ < 6) { sendSig(id, { t: 'c-acc' }); RTC.timers.push(setTimeout(rp, 3000)); } }; RTC.timers.push(setTimeout(rp, 3000)); } callUI(w, 'Connecting…', [['Hang up', () => endCall(w, true)]]); }],
       ['Decline', () => endCall(w, true)]]);
     return;
   }
@@ -2048,8 +2062,9 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
 const MEDIA_DAYS = 30;
 state.rooms = []; state.roomWins = new Map(); state.roomUnread = new Map(); state.turn = null;
 function iceList() {
-  const l = [{ urls: 'stun:stun.l.google.com:19302' }], t = state.turn;
+  const l = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }], t = state.turn;
   if (t && Array.isArray(t.urls) && t.urls.length && t.username) l.push({ urls: t.urls, username: t.username, credential: t.credential });
+  else l.push({ urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' });   // free shared relay, only until your own TURN account is added
   return l;
 }
 async function loadRooms() {
