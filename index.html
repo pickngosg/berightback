@@ -169,6 +169,17 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard.off .bpic{filter:grayscale(.85)}
 .bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
 .bigcard .btxt b{font-size:1.45rem}
+.winfo{display:flex;gap:.45rem;align-items:center;background:#fff7c9;border:1px solid #e3d27a;border-radius:.3rem;padding:.3rem .55rem;margin:.2rem .2rem 0;font-size:.88rem;color:#4a3f00}
+.winfo b{display:inline-grid;place-items:center;width:1.05rem;height:1.05rem;flex:none;border-radius:50%;background:#2f6fd0;color:#fff;font-size:.75rem;font-style:italic}
+.safe{font-size:.8rem;color:#5c6b82;border-bottom:1px solid #c5d4e8;padding:.25rem .1rem .35rem;margin-bottom:.3rem}
+.rq{border-left:3px solid #7fa6dc;background:#eef4fc;color:#41567a;font-size:.82rem;padding:.15rem .5rem;margin-bottom:.15rem;border-radius:0 .3rem .3rem 0}
+.rbar{align-items:center;justify-content:space-between;gap:.5rem;background:#eef4fc;border:1px solid #b7cbe6;border-left:3px solid #4f7db8;padding:.2rem .5rem;font-size:.85rem;color:#2c4670;margin:.15rem .2rem 0}
+.rbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbar button{min-width:0;padding:0 .4rem}
+.wlog .msg .rpl{right:1.5rem;color:#1a4fa0}
+.wbody{position:relative}
+.pictog{position:absolute;right:0;top:.2rem;z-index:3;min-width:0;padding:0 .3rem;font-size:.8rem;line-height:1.2rem}
+.win.nopics .wside,.win.nopics .vsplit{display:none}
 .bigcard .bopt{float:right;color:#1a4fa0;text-decoration:underline;margin-left:1rem}
 .lgpic{width:max-content;max-width:100%;margin:0 auto .6rem;padding:.55rem;border-radius:1rem;background:linear-gradient(#fff,#cfe2f8);border:1px solid #8fb0dc;box-shadow:0 .3rem .9rem #0003;text-align:center}
 .lgpic .av{margin:0 auto;border-radius:.7rem;border:2px solid #fff}
@@ -1328,7 +1339,7 @@ function openChat(id) {
   }
   let w = state.wins.get(id);
   if (w) { w.root.classList.remove('min'); front(w); w.input.focus(); markRead(id); return; }
-  w = { id, seen: new Set(), lastSender: null, fmt: { b: false, i: false, c: '' }, typingT: null };
+  w = { id, seen: new Set(), msgs: new Map(), replyTo: null, lastSender: null, fmt: { b: false, i: false, c: '' }, typingT: null };
   const dot = el('span', { style: 'width:10px;height:10px;border-radius:50%;display:inline-block' });
   const tt = el('div', { class: 'tt' });
   const min = el('button', { text: '–', title: 'Minimise', onclick: () => w.root.classList.add('min') });
@@ -1351,15 +1362,21 @@ function openChat(id) {
   const big = (ico, label, fn) => el('button', { class: 'tb', onclick: ev => { ev.stopPropagation(); fn(ev); } }, el('span', { class: 'ti', text: ico }), el('span', { text: label }));
   const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', () => inviteFriend(w)), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', ev => gamesMenu(w, ev)), big('🎁', 'Gift', ev => giftMenu(w, ev)));
   const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
+  const rbar = el('div', { class: 'rbar', style: 'display:none' });
+  const info = el('div', { class: 'winfo', style: 'display:none' });
+  const pictog = el('button', { class: 'pictog', text: '◂', title: 'Hide or show the pictures', onclick: ev => { ev.stopPropagation(); const on = w.root.classList.toggle('nopics'); pictog.textContent = on ? '▸' : '◂'; localStorage.setItem('brb_nopics', on ? '1' : '0'); } });
   const vsp = el('div', { class: 'vsplit', title: 'Drag to resize the pictures column (double-click to reset)', ondblclick: () => { document.documentElement.style.removeProperty('--sw'); localStorage.removeItem('brb_sidew'); } });
   const sbar = el('div', { class: 'sbar', text: 'Tip: click ✨ to send a wink, or 📳 to nudge your friend.' });
   const picThem = el('div', { class: 'pic' }), picMe = el('div', { class: 'pic' }); picMe.append(avatarEl(state.me, 100, false)); picMe.style.borderColor = STATUS[state.me.status][1];
-  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, log, typ, tools, bottom), vsp, el('div', { class: 'wside' }, picThem, picMe)), sbar);
+  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, info, log, typ, tools, rbar, bottom), vsp, el('div', { class: 'wside' }, picThem, picMe), pictog), sbar);
   dragSize(vsp, e => { const r = root.querySelector('.wbody').getBoundingClientRect(); document.documentElement.style.setProperty('--sw', clampN(r.right - e.clientX, 96, 320) + 'px'); }, () => localStorage.setItem('brb_sidew', parseInt(getComputedStyle(root.querySelector('.wside')).width)));
   const n = state.wins.size;
   const mr = document.querySelector('.main'), baseL = (mr ? mr.getBoundingClientRect().right : 350) + 18;
   root.style.left = Math.max(0, Math.min(baseL + n * 28, innerWidth - 20 * parseFloat(getComputedStyle(document.documentElement).fontSize))) + 'px'; root.style.top = (40 + n * 28) + 'px';
-  Object.assign(w, { root, log, input, typ, sub, tt, dot, tools, picThem, picMe, np, fileIn, voiceBtn, sbar }); applyBg(w);
+  Object.assign(w, { root, log, input, typ, sub, tt, dot, tools, picThem, picMe, np, fileIn, voiceBtn, sbar, rbar, info }); applyBg(w);
+  log.append(el('div', { class: 'safe', text: 'Never give out your password or credit card number in an instant message conversation.' }));
+  picThem.style.cursor = 'pointer'; picThem.title = 'View profile'; picThem.addEventListener('click', () => profileCard(id));
+  if (localStorage.getItem('brb_nopics') === '1') { root.classList.add('nopics'); pictog.textContent = '▸'; }
   document.body.append(root); front(w);
   root.addEventListener('pointerdown', () => front(w));
   root.addEventListener('focusin', () => markRead(id));
@@ -1392,7 +1409,8 @@ function setPic(node, prof, st) {
 function updateWinHeader(id) {
   const w = state.wins.get(id), p = state.profiles.get(id); if (!w || !p) return;
   const st = effStatus(p);
-  w.tt.textContent = `${p.display_name} - Conversation`;
+  w.tt.textContent = `${p.display_name} (${STATUS[st][0]}) - Conversation`;
+  if (w.info) { const away = ['busy', 'brb', 'away', 'phone', 'lunch'].includes(st); const t = st === 'offline' ? `${p.display_name} appears to be offline. Your messages will be delivered when they sign in.` : away ? `${p.display_name} may not reply because their status is set to ${STATUS[st][0]}.` : ''; w.info.style.display = t ? 'flex' : 'none'; w.info.textContent = ''; if (t) w.info.append(el('b', { text: 'i' }), t); }
   w.dot.style.background = STATUS[st][1];
   w.sub.textContent = ''; const toN = el('span', { class: 'to', style: 'cursor:pointer', title: 'View profile', onclick: () => profileCard(p.id) }); renderEmo(toN, p.display_name); decorName(toN, p); w.sub.append('To: ', toN, el('small', { text: ` (${STATUS[st][0]})` + (p.personal_message && !p.anon ? ' - ' + p.personal_message : '') }));
   w.np.innerHTML = '';
@@ -1406,10 +1424,25 @@ async function loadHistory(w) {
   (data || []).reverse().forEach(m => appendMsg(w, m, true));
   w.log.scrollTop = w.log.scrollHeight;
 }
+const msgSnip = m => m.kind === 'image' ? '📷 Photo' : m.kind === 'video' ? '🎬 Video' : m.kind === 'audio' ? '🎙 Voice clip' : String(m.body || '').slice(0, 90);
+function replyQuote(w, rid) {
+  const q = el('div', { class: 'rq' });
+  const fill = m => { q.textContent = ''; const nm = m.sender === state.uid ? 'You' : ((state.profiles.get(m.sender) || {}).display_name || 'Contact'); q.append(el('b', { text: nm + ': ' }), msgSnip(m)); q.onclick = () => { const t = w.log.querySelectorAll('.msg'); }; };
+  const m = w.msgs.get(rid);
+  if (m) fill(m); else { q.textContent = '↩ Earlier message'; sb.from('messages').select('sender,body,kind').eq('id', rid).maybeSingle().then(r => { if (r && r.data) fill(r.data); }, () => {}); }
+  return q;
+}
+function setReply(w, m) {
+  w.replyTo = m.id; const nm = m.sender === state.uid ? 'yourself' : ((state.profiles.get(m.sender) || {}).display_name || 'Contact');
+  w.rbar.textContent = ''; w.rbar.style.display = 'flex';
+  w.rbar.append(el('span', { text: 'Replying to ' + nm + ': ' + msgSnip(m) }), el('button', { text: '✕', title: 'Cancel the reply', onclick: () => clearReply(w) }));
+  w.input.focus();
+}
+function clearReply(w) { w.replyTo = null; w.rbar.style.display = 'none'; w.rbar.textContent = ''; }
 function sysLine(w, text) { w.lastSender = null; w.log.append(el('div', { class: 'sys', text })); w.log.scrollTop = w.log.scrollHeight; }
 function appendMsg(w, m, quiet) {
   if (m.kind === 'game') return;
-  if (w.seen.has(m.id)) return; w.seen.add(m.id);
+  if (w.seen.has(m.id)) return; w.seen.add(m.id); w.msgs.set(m.id, m);
   const mine = m.sender === state.uid;
   const name = mine ? state.me.display_name : (state.profiles.get(w.id) || {}).display_name || 'Contact';
   const stick = w.log.scrollHeight - w.log.scrollTop - w.log.clientHeight < 60;
@@ -1420,8 +1453,10 @@ function appendMsg(w, m, quiet) {
   else {
     if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); const wn = el('span'); renderEmo(wn, name); decorName(wn, mine ? state.me : state.profiles.get(w.id)); who.append(wn); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
+    if (m.reply_to) d.append(replyQuote(w, m.reply_to));
     if (m.kind === 'image' || m.kind === 'video' || m.kind === 'audio') d.append(mediaNode(m, () => { if (stick) w.log.scrollTop = w.log.scrollHeight; }));
     else { applyFmt(d, m.fmt); renderRich(d, m.body); }
+    d.append(el('button', { class: 'rpt rpl', text: '↩', title: 'Reply to this message', onclick: () => setReply(w, m) }));
     if (!mine) d.append(el('button', { class: 'rpt', text: '⚑', title: 'Report this message', onclick: () => reportDialog(w.id, m.id) }));
     w.log.append(d);
   }
@@ -1467,7 +1502,7 @@ async function sendMedia(w, file) {
   const isImg = /^image\//.test(file.type), isVid = /^video\//.test(file.type);
   if (!isImg && !isVid) { sysLine(w, 'Only pictures and videos can be sent.'); return; }
   if (isVid && !/^video\/(mp4|webm|quicktime)$/.test(file.type)) { sysLine(w, 'That video type is not supported. Use MP4, WebM or MOV.'); return; }
-  if (isVid && file.size > 20 * 1024 * 1024) { sysLine(w, 'That video is too big. Videos must be under 20 MB (about 20-30 seconds).'); return; }
+  if (isVid && file.size > 50 * 1024 * 1024) { sysLine(w, 'That video is too big. Videos must be under 50 MB (about 2-3 minutes at normal phone quality).'); return; }
   if (isImg && file.type === 'image/gif' && file.size > 10 * 1024 * 1024) { sysLine(w, 'That GIF is too big. GIFs must be under 10 MB.'); return; }
   const note = el('div', { class: 'sys', text: 'Sending your ' + (isImg ? 'picture' : 'video') + '…' }); w.log.append(note); w.log.scrollTop = w.log.scrollHeight;
   let blob = file, type = file.type;
@@ -1478,19 +1513,20 @@ async function sendMedia(w, file) {
   const path = `${state.uid}/${uid}.${ext}`;
   const up = await sb.storage.from('chat-media').upload(path, blob, { contentType: type, upsert: false });
   if (up.error) { note.remove(); sysLine(w, 'Upload failed: ' + friendlyErr(up.error)); return; }
-  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: isImg ? '📷 Photo' : '🎬 Video', kind: isImg ? 'image' : 'video', media_path: path, fmt: '' }).select().single();
+  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: isImg ? '📷 Photo' : '🎬 Video', kind: isImg ? 'image' : 'video', media_path: path, fmt: '', ...(w.replyTo ? { reply_to: w.replyTo } : {}) }).select().single();
   note.remove();
   if (error) { await sb.storage.from('chat-media').remove([path]); sysLine(w, 'Not sent: ' + friendlyErr(error)); return; }
-  w.typ.textContent = ''; appendMsg(w, data); tone(SND.online);
+  clearReply(w); w.typ.textContent = ''; appendMsg(w, data); tone(SND.online);
 }
 async function sendMsg(w) {
   const body = expandShort(w.input.value.replace(/\s+$/, '')).slice(0, 2000);
   if (!body.trim()) return;
   const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.c || '');
   w.input.value = '';
-  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body, kind: 'text', fmt }).select().single();
+  const row = { sender: state.uid, recipient: w.id, body, kind: 'text', fmt }; if (w.replyTo) row.reply_to = w.replyTo;
+  const { data, error } = await sb.from('messages').insert(row).select().single();
   if (error) { w.input.value = body; sysLine(w, 'Message not sent: ' + friendlyErr(error)); return; }
-  w.typ.textContent = ''; appendMsg(w, data); w.input.focus();
+  clearReply(w); w.typ.textContent = ''; appendMsg(w, data); w.input.focus();
 }
 async function sendNudge(w) {
   const nowN = Date.now(); state.nudgeLog = (state.nudgeLog || []).filter(t => nowN - t < 10000);
