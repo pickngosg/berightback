@@ -169,6 +169,15 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard.off .bpic{filter:grayscale(.85)}
 .bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
 .bigcard .btxt b{font-size:1.45rem}
+.mmenu{display:flex}
+.mcol{min-width:0!important;width:1.5rem;height:1.5rem;padding:0!important;border-radius:50%!important;font-size:.75rem!important;line-height:1.4rem!important;flex:none}
+.mban{padding:.3rem .8rem;font-size:.8rem;color:#4b6285;text-align:center;border-top:1px solid #c5d4e8;background:linear-gradient(#f4f9fe,#dbe8f6)}
+.pwrap{position:relative;display:flex;justify-content:center;width:100%}
+.pwrap .pic{margin:0 auto}
+.pwrap.collapsed .pic,.pwrap.collapsed .pdrop{display:none}
+.pwrap.collapsed{min-height:1.6rem}
+.ptab{position:absolute;right:0;top:.2rem;z-index:3;min-width:0!important;width:.8rem;height:1.7rem;padding:0!important;border-radius:.35rem 0 0 .35rem!important;font-size:.65rem!important;line-height:1.5rem!important}
+.pdrop{position:absolute;right:.9rem;bottom:.2rem;z-index:3;min-width:0!important;width:1.3rem;height:1.2rem;padding:0!important;font-size:.7rem!important;line-height:1rem!important;border-radius:.3rem!important}
 .winfo{display:flex;gap:.45rem;align-items:center;background:#fff7c9;border:1px solid #e3d27a;border-radius:.3rem;padding:.3rem .55rem;margin:.2rem .2rem 0;font-size:.88rem;color:#4a3f00}
 .winfo b{display:inline-grid;place-items:center;width:1.05rem;height:1.05rem;flex:none;border-radius:50%;background:#2f6fd0;color:#fff;font-size:.75rem;font-style:italic}
 .safe{font-size:.8rem;color:#5c6b82;border-bottom:1px solid #c5d4e8;padding:.25rem .1rem .35rem;margin-bottom:.3rem}
@@ -722,7 +731,21 @@ function buildMain() {
   }
   const rzx = el('div', { class: 'rzx', title: 'Drag to make this window wider or narrower', ondblclick: () => { main.style.width = ''; localStorage.removeItem('brb_mainw'); } });
   const hs = el('div', { class: 'hsplit', title: 'Drag to resize the contact list and the music player (double-click to reset)', ondblclick: () => { list.style.flex = ''; list.style.height = ''; main.classList.remove('fixedlist'); localStorage.removeItem('brb_listh'); } });
-  const main = el('div', { class: 'main' }, title, head, notifyBar(), reqs, list, hs, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn), rzx);
+  const mbar = el('div', { class: 'wmenu mmenu' });
+  { const M = {
+      File: [['Sign out', () => signOut()]],
+      Contacts: [['Add a contact…', () => { const i = document.querySelector('.addbar input'); if (i) i.focus(); }], ['Create a group or list…', () => newGroup()], ['Create a group chat…', () => newRoomDialog()], '-', ['Make someone a favourite…', () => favMenu()]],
+      Actions: [...STATUS_LIST.map(k => [STATUS[k][0], () => setStatus(k), k === 'invisible' ? 'offline' : k]), '-', ['Change my display picture…', () => openSettings()], ['My music and playlists', () => openMusic()], ["What's new with my contacts", () => openNews()]],
+      Tools: [['Options…', () => openSettings()], ...(isStandalone() ? [] : [['Install BeRightBack as an app', () => installApp()]])],
+      Help: [['Community rules', () => legalModal('rules')], ['Privacy and terms', () => legalModal('privacy')], ['About BeRightBack', () => toast('BeRightBack', 'A nostalgic messenger with nudges, winks, calls, games and shared music.')]]
+    };
+    Object.keys(M).forEach(k => mbar.append(el('span', { text: k, onclick: ev => { ev.stopPropagation(); const r = ev.target.getBoundingClientRect(); showMenu(r.left, r.bottom + 2, M[k]); } })));
+    const hide = localStorage.getItem('brb_mbar') === '0' || (localStorage.getItem('brb_mbar') === null && matchMedia('(max-width:700px)').matches);
+    mbar.style.display = hide ? 'none' : '';
+    var mcol = el('button', { class: 'mcol', title: 'Show or hide the menu bar', text: hide ? '▾' : '▴', onclick: ev => { ev.stopPropagation(); const on = mbar.style.display === 'none'; mbar.style.display = on ? '' : 'none'; mcol.textContent = on ? '▴' : '▾'; localStorage.setItem('brb_mbar', on ? '1' : '0'); } });
+    title.prepend(mcol); }
+  const ban = el('div', { class: 'mban' }); { const tips = ['Tip: click ✨ in a chat to send a wink, or 📳 to nudge your friend.', 'Tip: change your status from the Actions menu.', 'Tip: click a picture in a chat for the profile. Use the small arrows to hide it.', 'Tip: point at a contact to see their status and message.']; let ti = 0; ban.textContent = tips[0]; state.timers.push(setInterval(() => { ti = (ti + 1) % tips.length; ban.textContent = tips[ti]; }, 20000)); }
+  const main = el('div', { class: 'main' }, title, mbar, head, notifyBar(), reqs, list, hs, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn), ban, rzx);
   const sw = +localStorage.getItem('brb_mainw'), shh = +localStorage.getItem('brb_listh');
   if (sw) main.style.width = clampN(sw, 280, innerWidth * 0.85) + 'px';
   if (shh) { main.classList.add('fixedlist'); list.style.flex = 'none'; list.style.height = clampN(shh, 80, innerHeight - 250) + 'px'; }
@@ -839,9 +862,10 @@ function renderContacts() {
     const icon = state.pics ? avatarEl(p, 40, true, st) : buddy(st);
     const row = el('div', { class: 'ct' + (st === 'offline' ? ' off' : '') + (state.flash.has(p.id) ? ' flash' : ''), ondblclick: () => openChat(p.id), onclick: () => { if (matchMedia('(max-width:700px)').matches || n) openChat(p.id); } },
       icon, el('div', { class: 'txt' }, l1, l2));
+    row.title = p.display_name + ' (' + STATUS[st][0] + ')' + (p.personal_message && !p.anon ? '\n' + p.personal_message : '') + (st !== 'offline' && p.now_playing ? '\n♫ ' + p.now_playing : '');
     if (n) row.append(el('span', { class: 'badge', text: String(n) }));
     row.append(el('button', { text: '⋯', title: 'More', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, [
-      ['Send an instant message', () => openChat(p.id)], ['View profile', () => profileCard(p.id)], '-',
+      ['Send an instant message', () => openChat(p.id)], ['View profile', () => profileCard(p.id)], ['Add to Favourites', () => addFav(p.id)], '-',
       ...state.groups.names.map(n => ['Move to ' + n, () => { state.groups.map[p.id] = n; saveGroups(); renderContacts(); }]),
       ['Move to a new group…', () => newGroup(p.id)],
       ...(state.groups.map[p.id] ? [['Remove from group', () => { delete state.groups.map[p.id]; saveGroups(); renderContacts(); }]] : []), '-',
@@ -1294,6 +1318,24 @@ async function onCall(id, p) {
 /* ============ CONTACT GROUPS / LISTS (saved on this device) ============ */
 state.groups = (() => { try { const o = JSON.parse(localStorage.getItem('brb_groups') || ''); return o && Array.isArray(o.names) && o.map ? o : { names: [], map: {} }; } catch (e) { return { names: [], map: {} }; } })();
 const saveGroups = () => localStorage.setItem('brb_groups', JSON.stringify(state.groups));
+function addFav(id) { if (!state.groups.names.includes('Favourites')) state.groups.names.unshift('Favourites'); state.groups.map[id] = 'Favourites'; saveGroups(); renderContacts(); }
+function favMenu() { const ids = friendIds().accepted.map(id => state.profiles.get(id)).filter(Boolean); if (!ids.length) { toast('Favourites', 'Add a contact first.'); return; } const r = document.querySelector('.mmenu').getBoundingClientRect(); showMenu(r.left + 60, r.bottom + 2, ids.map(p => [p.display_name, () => addFav(p.id)])); }
+/* ---- What's new: changes your contacts made (picture, personal message, song) ---- */
+function newsCapture(old, p) {
+  if (!old || p.id === state.uid || p.anon) return;
+  const out = []; if (old.avatar !== p.avatar) out.push('changed their picture'); if (old.personal_message !== p.personal_message && p.personal_message) out.push('changed their personal message to: ' + p.personal_message); if (old.now_playing !== p.now_playing && p.now_playing) out.push('is listening to ♫ ' + p.now_playing);
+  if (!out.length) return;
+  let n; try { n = JSON.parse(localStorage.getItem('brb_news') || '[]'); } catch (e) { n = []; }
+  out.forEach(t => n.unshift({ t: Date.now(), id: p.id, name: p.display_name, text: t }));
+  try { localStorage.setItem('brb_news', JSON.stringify(n.slice(0, 60))); } catch (e) {}
+}
+function openNews() {
+  let n; try { n = JSON.parse(localStorage.getItem('brb_news') || '[]'); } catch (e) { n = []; }
+  const box = el('div', { style: 'max-height:60vh;overflow:auto' });
+  if (!n.length) box.append(el('p', { text: 'Nothing new yet. Changes your contacts make to their picture, personal message or song will show here.' }));
+  n.forEach(x => box.append(el('div', { style: 'padding:.35rem 0;border-bottom:1px solid #d6e2f2' }, el('b', { text: x.name }), ' ' + x.text + ' ', el('small', { style: 'color:#6b7a90', text: new Date(x.t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }))));
+  miniModal("What's new", box);
+}
 function newGroup(moveId) {
   const n = sanitizeName(prompt('Name your new group or list (for example Friends, Family or Work):') || '', 24); if (!n) return;
   if (state.groups.names.includes(n)) { alert('You already have a group with that name.'); return; }
@@ -1364,11 +1406,21 @@ function openChat(id) {
   const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
   const rbar = el('div', { class: 'rbar', style: 'display:none' });
   const info = el('div', { class: 'winfo', style: 'display:none' });
-  const pictog = el('button', { class: 'pictog', text: '◂', title: 'Hide or show the pictures', onclick: ev => { ev.stopPropagation(); const on = w.root.classList.toggle('nopics'); pictog.textContent = on ? '▸' : '◂'; localStorage.setItem('brb_nopics', on ? '1' : '0'); } });
   const vsp = el('div', { class: 'vsplit', title: 'Drag to resize the pictures column (double-click to reset)', ondblclick: () => { document.documentElement.style.removeProperty('--sw'); localStorage.removeItem('brb_sidew'); } });
   const sbar = el('div', { class: 'sbar', text: 'Tip: click ✨ to send a wink, or 📳 to nudge your friend.' });
   const picThem = el('div', { class: 'pic' }), picMe = el('div', { class: 'pic' }); picMe.append(avatarEl(state.me, 100, false)); picMe.style.borderColor = STATUS[state.me.status][1];
-  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, info, log, typ, tools, rbar, bottom), vsp, el('div', { class: 'wside' }, picThem, picMe), pictog), sbar);
+  const mkPW = (pic, key, items) => {
+    const wrap = el('div', { class: 'pwrap' + (localStorage.getItem('brb_hide' + key) === '1' ? ' collapsed' : '') });
+    const tab = el('button', { class: 'ptab', text: wrap.classList.contains('collapsed') ? '▸' : '◂', title: 'Hide or show this picture', onclick: ev => { ev.stopPropagation(); const on = wrap.classList.toggle('collapsed'); tab.textContent = on ? '▸' : '◂'; localStorage.setItem('brb_hide' + key, on ? '1' : '0'); } });
+    const dd = el('button', { class: 'pdrop', text: '▾', title: 'Picture options', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, items(() => tab.click())); } });
+    wrap.append(pic, dd, tab); return wrap;
+  };
+  const picUrl = p => { const a = (p && p.avatar) || ''; return a.startsWith('img:') ? avatarUrl(a.slice(4)) : ''; };
+  const pwThem = mkPW(picThem, 'them', hideIt => [['View larger', () => { const u = picUrl(state.profiles.get(id)); if (u) lightbox(u); else profileCard(id); }],
+    ['Save picture…', async () => { const u = picUrl(state.profiles.get(id)); if (!u) { sysLine(w, 'This picture is a built-in one, so there is nothing to save.'); return; } try { const b = await (await fetch(u)).blob(), a = el('a', { href: URL.createObjectURL(b), download: 'BRB-picture.jpg' }); document.body.append(a); a.click(); a.remove(); } catch (e) { sysLine(w, 'Could not save the picture.'); } }],
+    ['Hide picture', hideIt]]);
+  const pwMe = mkPW(picMe, 'me', hideIt => [['Change my display picture…', () => openSettings()], ['Hide my picture', hideIt]]);
+  const root = el('div', { class: 'win' }, bar, buildWinMenus(w), toolbar, sub, np, el('div', { class: 'wbody' }, el('div', { class: 'wleft' }, info, log, typ, tools, rbar, bottom), vsp, el('div', { class: 'wside' }, pwThem, pwMe)), sbar);
   dragSize(vsp, e => { const r = root.querySelector('.wbody').getBoundingClientRect(); document.documentElement.style.setProperty('--sw', clampN(r.right - e.clientX, 96, 320) + 'px'); }, () => localStorage.setItem('brb_sidew', parseInt(getComputedStyle(root.querySelector('.wside')).width)));
   const n = state.wins.size;
   const mr = document.querySelector('.main'), baseL = (mr ? mr.getBoundingClientRect().right : 350) + 18;
@@ -1376,7 +1428,6 @@ function openChat(id) {
   Object.assign(w, { root, log, input, typ, sub, tt, dot, tools, picThem, picMe, np, fileIn, voiceBtn, sbar, rbar, info }); applyBg(w);
   log.append(el('div', { class: 'safe', text: 'Never give out your password or credit card number in an instant message conversation.' }));
   picThem.style.cursor = 'pointer'; picThem.title = 'View profile'; picThem.addEventListener('click', () => profileCard(id));
-  if (localStorage.getItem('brb_nopics') === '1') { root.classList.add('nopics'); pictog.textContent = '▸'; }
   document.body.append(root); front(w);
   root.addEventListener('pointerdown', () => front(w));
   root.addEventListener('focusin', () => markRead(id));
@@ -1577,6 +1628,7 @@ function subscribe() {
 }
 function onProfile(p) {
   if (p.id === state.uid) return;
+  try { newsCapture(state.profiles.get(p.id), p); } catch (e) {}
   state.profiles.set(p.id, p);
   if (friendIds().accepted.includes(p.id)) checkContact(p, true);
   renderContacts(); updateWinHeader(p.id);

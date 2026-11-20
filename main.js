@@ -42,6 +42,9 @@ else {
     tray.setToolTip('BeRightBack');
     const buildMenu = () => tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Open BeRightBack', click: () => { win.show(); win.focus(); } },
       { label: 'Start with my computer', type: 'checkbox', checked: autoStart(), click: i => { setPref('autoStart', i.checked); applyAutoStart(); } },
+      { label: 'Status', submenu: [['online', 'Online'], ['busy', 'Busy'], ['brb', 'Be Right Back'], ['away', 'Away'], ['phone', 'On The Phone'], ['lunch', 'Out To Lunch'], ['invisible', 'Appear Offline']].map(([k, l]) => ({ label: l, click: () => { try { win.webContents.executeJavaScript("typeof setStatus==='function'&&setStatus('" + k + "')").catch(() => {}); } catch (e) {} } })) },
+      { label: 'Sign out', click: () => { try { win.webContents.executeJavaScript("typeof signOut==='function'&&signOut()").catch(() => {}); } catch (e) {} win.show(); win.focus(); } },
+      { type: 'separator' },
       { label: 'Quit', click: () => { quitting = true; app.quit(); } }]));
     buildMenu();
     tray.on('click', () => { win.show(); win.focus(); });
