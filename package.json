@@ -21,8 +21,9 @@
     },
     "files": [
       "main.js",
-      "icon-512.png",
-      "icon.ico",
+      "person-512.png",
+      "person-tray.png",
+      "person.ico",
       "package.json"
     ],
     "win": {
@@ -30,7 +31,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "icon.ico"
+      "icon": "person.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -46,7 +47,7 @@
           ]
         }
       ],
-      "icon": "icon-512.png",
+      "icon": "person-512.png",
       "category": "public.app-category.social-networking"
     }
   }

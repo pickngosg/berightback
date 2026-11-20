@@ -19,7 +19,7 @@ else {
     app.on('web-contents-created', (_e, wc) => {
       wc.setWindowOpenHandler(({ url }) => {
         if (url.startsWith(START) && /[?&]pop=/.test(url)) {   // a chat opened in its own window
-          return { action: 'allow', overrideBrowserWindowOptions: { width: 900, height: 680, minWidth: 340, minHeight: 420, autoHideMenuBar: true, backgroundColor: '#abcaec', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'),
+          return { action: 'allow', overrideBrowserWindowOptions: { width: 900, height: 680, minWidth: 340, minHeight: 420, autoHideMenuBar: true, backgroundColor: '#abcaec', icon: path.join(__dirname, process.platform === 'win32' ? 'person.ico' : 'person-512.png'),
             webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } } };
         }
         shell.openExternal(url); return { action: 'deny' };
@@ -30,7 +30,7 @@ else {
     session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
       cb(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission) && wc.getURL().startsWith(SITE));
     });
-    win = new BrowserWindow({ useContentSize: true, width: 1100, height: 780, minWidth: 340, minHeight: 500, center: true, show: false, backgroundColor: '#abcaec', title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'), autoHideMenuBar: true,
+    win = new BrowserWindow({ useContentSize: true, width: 1100, height: 780, minWidth: 340, minHeight: 500, center: true, show: false, backgroundColor: '#abcaec', title: 'BeRightBack', icon: path.join(__dirname, process.platform === 'win32' ? 'person.ico' : 'person-512.png'), autoHideMenuBar: true,
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
     win.setTitle('BeRightBack');
     win.once('ready-to-show', () => win.show());
@@ -38,7 +38,7 @@ else {
     win.loadURL(START);
     win.webContents.setUserAgent(win.webContents.getUserAgent() + ' BRBpop');   // tells the site this program can open chats in their own windows
     win.on('close', e => { if (!quitting) { e.preventDefault(); win.hide(); } });   // closing the window keeps BeRightBack running in the tray
-    tray = new Tray(path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'));
+    tray = new Tray(require('electron').nativeImage.createFromPath(path.join(__dirname, process.platform === 'win32' ? 'person.ico' : 'person-tray.png')).resize({ width: 18, height: 18 }));
     tray.setToolTip('BeRightBack');
     const buildMenu = () => tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Open BeRightBack', click: () => { win.show(); win.focus(); } },
       { label: 'Start with my computer', type: 'checkbox', checked: autoStart(), click: i => { setPref('autoStart', i.checked); applyAutoStart(); } },
