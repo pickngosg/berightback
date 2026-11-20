@@ -341,6 +341,9 @@ const SUPABASE_URL = 'https://mzijzbkotfcimueyecin.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_UwdFy7WPB-YGuurepN7rxQ_3Z34w0Xc'; // publishable key ONLY. Never put the secret/service_role key here.
 const APP_NAME = 'BeRightBack';
 const STALE_MS = 150000;   // no heartbeat for this long = shown offline
+/* Sign in automatically: if the person unticked it, a new start of the app begins signed out (shared-computer safety) */
+try { if (!(/Electron/.test(navigator.userAgent) && new URLSearchParams(location.search).get('pop')) && localStorage.getItem('brb_auto') === '0' && !sessionStorage.getItem('brb_live')) Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+const TURNSTILE_KEY = '';   // Cloudflare Turnstile site key (public). Empty = no bot check yet.
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ============ HELPERS ============ */
@@ -525,6 +528,7 @@ function teardown() {
   state.timers.forEach(clearInterval); state.timers = [];
   if (state.chan) { sb.removeChannel(state.chan); state.chan = null; }
   if (state.roomCh) { try { sb.removeChannel(state.roomCh); } catch (e) {} state.roomCh = null; }
+  if (state.sessCh) { try { sb.removeChannel(state.sessCh); } catch (e) {} state.sessCh = null; }
   Object.values(state.tchans).forEach(c => sb.removeChannel(c)); state.tchans = {};
   if (state.myTyping) { sb.removeChannel(state.myTyping); state.myTyping = null; }
   state.wins.forEach(w => w.root.remove()); state.wins.clear();
@@ -546,6 +550,12 @@ function showLogin(msg) {
   const st = el('select', {}, ...['online', 'busy', 'away', 'invisible'].map(k => el('option', { value: k, text: STATUS[k][0] })));
   st.value = localStorage.getItem('brb_pre_status') || 'online';
   const rem = el('input', { type: 'checkbox', style: 'width:auto', checked: 'checked' });
+  const isAppish = /Electron/.test(navigator.userAgent) || (typeof isApp === 'function' && isApp()) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  const _au = localStorage.getItem('brb_auto');
+  const auto = el('input', { type: 'checkbox', style: 'width:auto' }); auto.checked = _au === '1' || (_au === null && isAppish);
+  const kick = el('input', { type: 'checkbox', style: 'width:auto' });
+  const capRow = el('div', { style: 'display:none;margin-top:10px' }); let capTok = '', capId = null;
+  const showCap = () => { if (!TURNSTILE_KEY) return; capRow.style.display = 'block'; const draw = () => { if (capId === null && window.turnstile) capId = window.turnstile.render(capRow, { sitekey: TURNSTILE_KEY, callback: t => { capTok = t; }, 'expired-callback': () => { capTok = ''; } }); }; if (window.turnstile) draw(); else { const sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.onload = draw; document.head.append(sc); } };
   const err = el('div', { class: 'err', text: msg || '' });
   const go = el('button', { class: 'primary', text: 'Sign in' });
   const toggle = el('button', { class: 'link', text: 'No account? Sign up' });
@@ -553,6 +563,7 @@ function showLogin(msg) {
   toggle.onclick = () => {
     mode = mode === 'in' ? 'up' : 'in'; err.textContent = '';
     nameRow.style.display = mode === 'up' ? 'block' : 'none'; agreeRow.style.display = mode === 'up' ? 'flex' : 'none';
+    if (mode === 'up') showCap(); else capRow.style.display = 'none';
     go.textContent = mode === 'up' ? 'Create account' : 'Sign in';
     toggle.textContent = mode === 'up' ? 'Already have an account? Sign in' : 'No account? Sign up';
     pass.autocomplete = mode === 'up' ? 'new-password' : 'current-password';
@@ -568,7 +579,9 @@ function showLogin(msg) {
     if (!e || !p) { err.textContent = 'Enter your email and password.'; return; }
     if (mode === 'up' && p.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
     if (mode === 'up' && !agree.checked) { err.textContent = 'Please tick the box to confirm you are 13 or older and agree to the Community rules and Privacy policy.'; return; }
+    if (mode === 'up' && TURNSTILE_KEY && !capTok) { err.textContent = 'Please complete the robot check first.'; return; }
     go.disabled = true;
+    localStorage.setItem('brb_auto', auto.checked ? '1' : '0'); try { sessionStorage.setItem('brb_live', '1'); if (mode === 'in' && kick.checked) sessionStorage.setItem('brb_kick', '1'); } catch (x) {}
     if (mode === 'in') { lg.classList.add('lgspin'); err.className = 'err ok'; err.textContent = 'Signing in…'; }
     localStorage.setItem('brb_pre_status', st.value);
     if (rem.checked) localStorage.setItem('brb_email', e); else localStorage.removeItem('brb_email');
@@ -577,16 +590,20 @@ function showLogin(msg) {
         const { error } = await sb.auth.signInWithPassword({ email: e, password: p });
         if (error) err.textContent = /Invalid login/i.test(error.message) ? 'Wrong email or password.' : /not confirmed/i.test(error.message) ? 'Please confirm your email first (check your inbox).' : friendlyErr(error);
       } else {
-        const { data, error } = await sb.auth.signUp({ email: e, password: p, options: { data: { display_name: name.value.trim() || ('User' + Math.floor(1000 + Math.random() * 9000)), accepted_terms: new Date().toISOString() }, emailRedirectTo: location.href.split('#')[0] } });
+        const { data, error } = await sb.auth.signUp({ email: e, password: p, options: { captchaToken: capTok || undefined, data: { display_name: name.value.trim() || ('User' + Math.floor(1000 + Math.random() * 9000)), accepted_terms: new Date().toISOString() }, emailRedirectTo: location.href.split('#')[0] } });
         if (error) err.textContent = friendlyErr(error);
         else if (!data.session) { err.className = 'err ok'; err.textContent = 'Account created. Check your email and click the confirmation link, then sign in.'; }
       }
     } catch (x) { err.textContent = friendlyErr(x); }
+    if (capId !== null && window.turnstile) { try { window.turnstile.reset(capId); } catch (x) {} capTok = ''; }
     if (err.textContent !== 'Signing in…') { lg.classList.remove('lgspin'); go.disabled = false; } else setTimeout(() => { if (document.body.classList.contains('login') && lg.isConnected) { lg.classList.remove('lgspin'); go.disabled = false; err.textContent = ''; } }, 20000);
   }
   const form = el('form', { onsubmit: submit }, el('label', { text: 'Email' }), email, el('label', { text: 'Password' }), pass, nameRow,
     agreeRow, el('label', { text: 'Sign in as' }), st,
-    el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:10px' }, rem, 'Remember my email'), go, err);
+    el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:10px' }, rem, 'Remember my email'),
+    el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px' }, auto, 'Sign me in automatically next time'),
+    el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px' }, kick, 'Sign me out of my other devices'),
+    el('div', { style: 'font-size:.78rem;opacity:.75;margin-top:4px', text: 'Untick automatic sign-in on a shared computer.' }), capRow, go, err);
   const card = el('div', { class: 'card' });
   const lg = el('div'); lg.innerHTML = LOGO;
   card.append(lg, el('h2', { text: 'Sign in to ' + APP_NAME }), form, el('div', { class: 'center' }, toggle), el('div', { class: 'center' }, forgot), el('div', { class: 'center', style: 'font-size:.85rem' }, el('button', { class: 'link', type: 'button', text: 'Community rules', onclick: () => legalModal('rules') }), ' · ', el('button', { class: 'link', type: 'button', text: 'Privacy and terms', onclick: () => legalModal('privacy') })), isStandalone() ? '' : el('div', { class: 'center' }, el('button', { class: 'link', type: 'button', text: '📲 Install BeRightBack on this device', onclick: installApp })));
@@ -632,7 +649,7 @@ async function startApp(user) {
     if (!POP) { setTimeout(handleInviteLink, 800); loadStreaks(); setTimeout(checkBirthdays, 2500); setTimeout(checkAdmirers, 3500); }
     if (state.me.suspended && !POP) setTimeout(() => alert('Your account is paused because of reports, so sending is switched off. Open Settings and use Contact the admin to ask about it.'), 900);
     subscribe(); startTimers();
-    if (POP) popInit();
+    if (POP) popInit(); else sessInit();
     document.addEventListener('click', () => { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }, { once: true });
   } catch (e) {
     state.uid = null; showLogin(friendlyErr(e));
@@ -1251,6 +1268,13 @@ const popBC = (POP || CAN_POP) ? new BroadcastChannel('brb-pop') : null;
 state.popped = new Map(); let popOK = false;
 const isPopped = id => { const t = state.popped.get(id); return !!t && Date.now() - t < 9000; };
 const baseTitle = () => POP ? (((state.profiles.get(POP) || {}).display_name || 'Chat') + ' - ' + APP_NAME) : APP_NAME;
+const SID = Math.random().toString(36).slice(2);
+function sessInit() {   // "You signed in at another location"
+  if (state.sessCh) { try { sb.removeChannel(state.sessCh); } catch (e) {} }
+  state.sessCh = sb.channel('sess-' + state.uid).on('broadcast', { event: 'kick' }, ({ payload }) => {
+    if (payload && payload.sid && payload.sid !== SID && state.uid) { state.uid = null; sb.auth.signOut({ scope: 'local' }).then(() => showLogin('You signed in at another location, so this device was signed out.')); }
+  }).subscribe(st => { if (st === 'SUBSCRIBED') { try { sessionStorage.setItem('brb_live', '1'); if (sessionStorage.getItem('brb_kick')) { sessionStorage.removeItem('brb_kick'); state.sessCh.send({ type: 'broadcast', event: 'kick', payload: { sid: SID } }); } } catch (e) {} } });
+}
 function popInit() {
   const id = POP; let tries = 0;
   const go = () => { if (state.profiles.get(id)) { openChat(id); document.title = baseTitle(); } else if (++tries < 5) setTimeout(go, 800); else window.close(); };
