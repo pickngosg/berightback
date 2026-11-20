@@ -169,6 +169,11 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard.off .bpic{filter:grayscale(.85)}
 .bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
 .bigcard .btxt b{font-size:1.45rem}
+.bigcard .bopt{float:right;color:#1a4fa0;text-decoration:underline;margin-left:1rem}
+.lgpic{width:max-content;max-width:100%;margin:0 auto .6rem;padding:.55rem;border-radius:1rem;background:linear-gradient(#fff,#cfe2f8);border:1px solid #8fb0dc;box-shadow:0 .3rem .9rem #0003;text-align:center}
+.lgpic .av{margin:0 auto;border-radius:.7rem;border:2px solid #fff}
+.lgname{font-weight:700;margin-top:.35rem;color:#10294a}
+.rqpop .row{display:flex;gap:.4rem;margin-top:.5rem}
 .bigcard .bsub{display:block;font-size:.85rem;color:#4b6285;margin-top:.3rem}
 .winkov{position:fixed;inset:0;z-index:420;overflow:hidden;pointer-events:none;background:radial-gradient(#ffffff22,#0000)}
 .winkov span.p{position:absolute;top:-4rem;animation:wfall linear forwards}
@@ -451,7 +456,9 @@ const SND = {
   nudge: [[150, 0, 0.09, 'buzz'], [115, 0.1, 0.09, 'buzz'], [150, 0.2, 0.09, 'buzz'], [115, 0.3, 0.09, 'buzz'], [150, 0.4, 0.14, 'buzz']]
 };
 
-const STATUS = { online: ['Online', '#2fb344'], busy: ['Busy', '#e03131'], away: ['Away', '#f59f00'], invisible: ['Appear offline', '#868e96'], offline: ['Offline', '#868e96'] };
+const STATUS = { online: ['Online', '#2fb344'], busy: ['Busy', '#e03131'], brb: ['Be right back', '#f2711c'], away: ['Away', '#f59f00'], phone: ['On the phone', '#2f7de1'], lunch: ['Out to lunch', '#8e44ad'], invisible: ['Appear offline', '#868e96'], offline: ['Offline', '#868e96'] };
+const STATUS_LIST = ['online', 'busy', 'brb', 'away', 'phone', 'lunch', 'invisible'];
+const DEFPIC = 'data:image/webp;base64,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';
 const AVATARS = ['🙂','😎','🤓','😺','🐶','🐱','🦊','🐼','🐸','🦁','🐧','🐢','🦄','🚀','✈️','⚽','🎮','🎧','🌸','🌈','⭐','🔥','🍕','☕'];
 
 function applyPrefs() { document.documentElement.dataset.size = localStorage.getItem('brb_size') || 'normal'; }
@@ -463,8 +470,12 @@ const state = {
   sound: localStorage.getItem('brb_sound') !== 'off', collapsed: {}, pics: localStorage.getItem('brb_pics') !== 'off', autoAway: false, nudgeAt: 0
 };
 function buddy(st) {
-  const c = { online: '#45a81c', busy: '#d9302a', away: '#f2a30f', offline: '#a9b3c1' }[st] || '#a9b3c1';
-  const x = st === 'busy' ? '<rect x="5.5" y="12.2" width="7" height="2.2" rx="1.1" fill="#fff"/>' : st === 'away' ? '<circle cx="9" cy="13" r="2.5" fill="#fff"/><path d="M9 11.7V13h1.3" stroke="#f2a30f" fill="none" stroke-width="1.1"/>' : '';
+  const c = { online: '#45a81c', busy: '#d9302a', brb: '#f2711c', away: '#f2a30f', phone: '#2f7de1', lunch: '#8e44ad', offline: '#a9b3c1' }[st] || '#a9b3c1';
+  const clock = col => `<circle cx="9" cy="13" r="2.6" fill="#fff"/><path d="M9 11.6V13h1.4" stroke="${col}" fill="none" stroke-width="1.1"/>`;
+  const x = { busy: '<rect x="5.5" y="12.2" width="7" height="2.2" rx="1.1" fill="#fff"/>', away: clock('#f2a30f'),
+    brb: `<path d="M6.5 13.2a2.5 2.5 0 1 0 .9-1.9" stroke="#fff" fill="none" stroke-width="1.3" stroke-linecap="round"/><path d="M5.6 10.9l2.4.5-1 1.9z" fill="#fff"/>`,
+    phone: '<path d="M6.2 12.3c.9 2.5 3 3.4 5.4 2.5" stroke="#fff" fill="none" stroke-width="1.7" stroke-linecap="round"/><circle cx="6.2" cy="12.1" r="1" fill="#fff"/><circle cx="11.9" cy="14.7" r="1" fill="#fff"/>',
+    lunch: '<path d="M7 11.4v4M9 11.4v4M11 11.4v4M7 13h4" stroke="#fff" fill="none" stroke-width="1" stroke-linecap="round"/>' }[st] || '';
   const s = el('span', { class: 'bd' });
   s.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="5" r="3.7" fill="${c}"/><path d="M2.4 16.6c0-4.3 3-6.4 6.6-6.4s6.6 2.1 6.6 6.4z" fill="${c}"/>${x}</svg>`;
   return s;
@@ -494,6 +505,7 @@ function fillAvatar(node, p) {
   node.textContent = ''; node.style.background = '';
   if (a.startsWith('preset:')) { const d = PRESETS[parseInt(a.slice(7), 10) - 1]; if (d) { node.style.background = d.bg; node.innerHTML = d.svg; return; } }
   if (a.startsWith('img:') && /^[0-9a-f-]{36}\/[\w.-]+$/.test(a.slice(4))) { node.append(el('img', { src: avatarUrl(a.slice(4)), alt: '', loading: 'lazy' })); node.style.background = '#e6eef9'; return; }
+  if (a === '🙂') { node.style.background = '#c3dff5'; node.append(el('img', { src: DEFPIC, alt: '' })); return; }   // the default BRB picture
   node.style.background = `hsl(${hue(p.id || 'x')},70%,88%)`; node.textContent = a.startsWith('preset:') || a.startsWith('img:') ? '🙂' : a;
 }
 function avatarEl(p, size = 40, showDot = true, st) {
@@ -547,8 +559,9 @@ function showLogin(msg) {
   const nameRow = el('div', { style: 'display:none' }, el('label', { text: 'Nickname (no need to use your real name)' }), name);
   const agree = el('input', { type: 'checkbox', style: 'width:auto' });
   const agreeRow = el('label', { style: 'display:none;gap:6px;align-items:flex-start;margin-top:10px;font-size:.9rem' }, agree, el('span', {}, 'I am 13 or older. I agree to the ', el('a', { href: '#', text: 'Community rules', onclick: ev => { ev.preventDefault(); legalModal('rules'); } }), ' and the ', el('a', { href: '#', text: 'Privacy policy', onclick: ev => { ev.preventDefault(); legalModal('privacy'); } }), '.'));
-  const st = el('select', {}, ...['online', 'busy', 'away', 'invisible'].map(k => el('option', { value: k, text: STATUS[k][0] })));
+  const st = el('select', {}, ...STATUS_LIST.map(k => el('option', { value: k, text: STATUS[k][0] })));
   st.value = localStorage.getItem('brb_pre_status') || 'online';
+  const stRow = el('div', { style: 'display:flex;gap:8px;align-items:center' }); const setIco = () => { stRow.replaceChildren(buddy(st.value === 'invisible' ? 'offline' : st.value), st); }; st.onchange = setIco; setIco();
   const rem = el('input', { type: 'checkbox', style: 'width:auto', checked: 'checked' });
   const isAppish = /Electron/.test(navigator.userAgent) || (typeof isApp === 'function' && isApp()) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   const _au = localStorage.getItem('brb_auto');
@@ -599,13 +612,13 @@ function showLogin(msg) {
     if (err.textContent !== 'Signing in…') { lg.classList.remove('lgspin'); go.disabled = false; } else setTimeout(() => { if (document.body.classList.contains('login') && lg.isConnected) { lg.classList.remove('lgspin'); go.disabled = false; err.textContent = ''; } }, 20000);
   }
   const form = el('form', { onsubmit: submit }, el('label', { text: 'Email' }), email, el('label', { text: 'Password' }), pass, nameRow,
-    agreeRow, el('label', { text: 'Sign in as' }), st,
+    agreeRow, el('label', { text: 'Sign in as' }), stRow,
     el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:10px' }, rem, 'Remember my email'),
     el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px' }, auto, 'Sign me in automatically next time'),
     el('label', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px' }, kick, 'Sign me out of my other devices'),
     el('div', { style: 'font-size:.78rem;opacity:.75;margin-top:4px', text: 'Untick automatic sign-in on a shared computer.' }), capRow, go, err);
   const card = el('div', { class: 'card' });
-  const lg = el('div'); lg.innerHTML = LOGO;
+  const lg = el('div', { class: 'lgpic' }); { let lm = null; try { lm = JSON.parse(localStorage.getItem('brb_lastme') || 'null'); } catch (e) {} lg.append(avatarEl(lm ? { avatar: lm.avatar, id: lm.id } : { avatar: '🙂', id: 'x' }, 120, false)); if (lm && lm.name) lg.append(el('div', { class: 'lgname', text: lm.name })); }
   card.append(lg, el('h2', { text: 'Sign in to ' + APP_NAME }), form, el('div', { class: 'center' }, toggle), el('div', { class: 'center' }, forgot), el('div', { class: 'center', style: 'font-size:.85rem' }, el('button', { class: 'link', type: 'button', text: 'Community rules', onclick: () => legalModal('rules') }), ' · ', el('button', { class: 'link', type: 'button', text: 'Privacy and terms', onclick: () => legalModal('privacy') })), isStandalone() ? '' : el('div', { class: 'center' }, el('button', { class: 'link', type: 'button', text: '📲 Install BeRightBack on this device', onclick: installApp })));
   app.append(card);
 }
@@ -638,8 +651,9 @@ async function startApp(user) {
     }
     if (!p) throw new Error('Your profile could not be loaded. Has setup.sql been run?');
     state.me = p;
+    if (!POP) { try { localStorage.setItem('brb_lastme', JSON.stringify({ id: p.id, name: p.display_name, avatar: p.avatar })); } catch (e) {} }
     const pre = localStorage.getItem('brb_pre_status');
-    const wantStatus = ['online', 'busy', 'away', 'invisible'].includes(pre) ? pre : 'online';
+    const wantStatus = STATUS_LIST.includes(pre) ? pre : 'online';
     const { data: up } = POP ? { data: null } : await sb.from('profiles').update({ status: wantStatus, last_seen: new Date().toISOString() }).eq('id', user.id).select().single();
     if (up) state.me = up;
     if (!POP && await syncPull()) { const lr = +sessionStorage.getItem('brb_syncreload') || 0; if (Date.now() - lr > 30000) { sessionStorage.setItem('brb_syncreload', String(Date.now())); location.reload(); return; } }
@@ -751,7 +765,7 @@ function renderHeader() {
   else pm.textContent = '<Type a personal message>';
   nm.onclick = () => editInline(nm, me.display_name, 40, 'display_name');
   pm.onclick = () => editInline(pm, me.personal_message, 100, 'personal_message');
-  const stb = el('button', { class: 'stbtn', text: '(' + STATUS[me.status][0] + ') ▾', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, ['online', 'busy', 'away', 'invisible'].map(k => [STATUS[k][0], () => setStatus(k)])); } });
+  const stb = el('button', { class: 'stbtn', text: '(' + STATUS[me.status][0] + ') ▾', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, STATUS_LIST.map(k => [STATUS[k][0], () => setStatus(k)])); } });
   const fun = el('div', { class: 'funrow' },
     el('button', { class: 'funbtn', text: me.mood || '😊 Mood', title: 'Set your mood', onclick: moodMenu }),
     el('button', { class: 'funbtn', text: '📣', title: 'Look at me! Send a wink to everyone online', onclick: lookAtMe }),
@@ -843,6 +857,7 @@ function refresh() {
   return new Promise(res => { clearTimeout(refreshT); refreshT = setTimeout(async () => {
     try {
       await loadAll();
+      try { reqPopups(); } catch (e) {}
       detectOnline(); renderContacts(); renderHeader();
       state.wins.forEach((w, id) => updateWinHeader(id));
     } catch (e) {}
@@ -865,7 +880,7 @@ function bigCard(p, text, off) {
   const c = el('div', { class: 'bigcard' + (off ? ' off' : ''), onclick: () => { c.remove(); openChat(p.id); } });
   const pic = el('div', { class: 'bpic' }); pic.append(avatarEl(p, 96, false));
   const nm = el('b'); renderEmo(nm, p.display_name); decorName(nm, p);
-  const sub = el('span', { class: 'bsub', text: 'Click to chat' });
+  const sub = el('span', { class: 'bsub' }, 'Click to chat   ', el('a', { class: 'bopt', href: '#', text: 'Options', onclick: ev => { ev.preventDefault(); ev.stopPropagation(); c.remove(); openSettings(); } }));
   c.append(pic, el('div', { class: 'btxt' }, nm, ' ' + text, sub));
   c.style.bottom = (1.1 + document.querySelectorAll('.bigcard').length * 9) + 'rem';
   document.body.append(c); setTimeout(() => c.remove(), 8000);
@@ -873,11 +888,31 @@ function bigCard(p, text, off) {
 function announce(p, text, key, chime) {
   if (!noteOn(key) || isMuted(p.id)) return;
   if (chime) tone(SND.online);
-  if (key === 'inout') bigCard(p, text, text.includes('off')); else toast(p.display_name, text, () => openChat(p.id), p);
+  if (key === 'inout') bigCard(p, text, /signed out/.test(text)); else toast(p.display_name, text, () => openChat(p.id), p);
   sysNotify(p.display_name, text, 'c-' + p.id);
 }
+function reqPopups() {   // MSN-style pop-up when someone adds you: Allow or Block
+  if (POP) return;
+  let seen; try { seen = new Set(JSON.parse(localStorage.getItem('brb_reqseen') || '[]')); } catch (e) { seen = new Set(); }
+  let ch = false;
+  friendIds().incoming.forEach(id => {
+    const p = state.profiles.get(id); if (!p || seen.has(id)) return;
+    seen.add(id); ch = true;
+    const c = el('div', { class: 'bigcard rqpop' });
+    const act = a => async () => { c.remove(); await sb.rpc('respond_friend_request', { p_requester: id, p_action: a }); await refresh(); };
+    const pic = el('div', { class: 'bpic' }); pic.append(avatarEl(p, 80, false));
+    const nm = el('b'); renderEmo(nm, p.display_name);
+    c.append(pic, el('div', { class: 'btxt', style: 'font-size:1.05rem' }, nm, ' has added you to their contact list. Allow them to see when you are online?',
+      el('div', { class: 'row' }, el('button', { text: 'Allow', onclick: act('accept') }), el('button', { text: 'Block', onclick: act('block') }), el('button', { text: 'Not now', onclick: () => c.remove() }))));
+    c.style.bottom = (1.1 + document.querySelectorAll('.bigcard').length * 9) + 'rem';
+    document.body.append(c); setTimeout(() => c.remove(), 60000);
+    if (noteOn('inout')) tone(SND.online);
+    sysNotify(p.display_name, 'has added you to their contact list', 'r-' + id);
+  });
+  if (ch) { try { localStorage.setItem('brb_reqseen', JSON.stringify([...seen].slice(-300))); } catch (e) {} }
+}
 function signedIn(p) {
-  announce(p, 'has logged in', 'inout', true);
+  announce(p, 'has just signed in.', 'inout', true);
   state.flash.add(p.id); renderContacts();
   setTimeout(() => { state.flash.delete(p.id); renderContacts(); }, 5000);
 }
@@ -888,7 +923,7 @@ function checkContact(p, say) {
   if (!say || was === undefined) return;
   const t = Date.now(), last = state.lastNote.get(p.id) || 0;
   if (was === 'offline' && now !== 'offline') { signedIn(p); state.lastNote.set(p.id, t); }
-  else if (was !== 'offline' && now === 'offline') { announce(p, 'has logged off', 'inout', false); state.lastNote.set(p.id, t); }
+  else if (was !== 'offline' && now === 'offline') { announce(p, 'has just signed out.', 'inout', false); state.lastNote.set(p.id, t); }
   else if (was !== now) { announce(p, 'is now ' + STATUS[now][0], 'status', false); state.lastNote.set(p.id, t); }
   else if (np && np !== wasNp && t - last > 8000) { announce(p, 'is listening to ♫ ' + np, 'song', false); state.lastNote.set(p.id, t); }
 }
