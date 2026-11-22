@@ -316,6 +316,12 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .toast b{display:block;color:#10294a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modal{position:fixed;inset:0;z-index:300;background:#0a1f4466;backdrop-filter:blur(4px);display:grid;place-items:center;animation:slide .2s}
 .mbox{width:min(36rem,94vw);max-height:92vh;overflow:auto;background:linear-gradient(#fff,#eef5fd);border:1px solid #6f93c3;border-radius:1rem;box-shadow:0 1.2rem 3.5rem #0007;padding:1.1rem 1.4rem 1.4rem}
+.latest .mbox{padding:0;overflow:hidden;border-radius:.7rem}
+.latest .lhd{background:linear-gradient(#5b8fd0,#2f64a8);color:#fff;padding:.45rem .9rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;text-shadow:0 1px 1px #0005}
+.latest .lhd button{background:#c9462f;color:#fff;border:1px solid #fff8;border-radius:.3rem;cursor:pointer;padding:0 .5rem}
+.latest .lbd{padding:1rem 1.3rem 1.2rem}
+.latest .lrel{margin:.7rem 0;padding:.6rem .8rem;background:#fff;border:1px solid #bcd0ea;border-radius:.6rem}
+.latest .lrel b{color:#1f4170}.latest .lrel div{margin:.25rem 0;line-height:1.4}
 .mhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
 .mhd h2{margin:0;font-size:1.3rem;color:#1f4170}
 .setmsg{min-height:1.4rem;font-size:.95rem;margin-bottom:.3rem}
@@ -787,7 +793,7 @@ async function startApp(user) {
     await loadAll();
     try { const ra = await sb.rpc('is_admin'); state.isAdmin = ra.data === true; } catch (e) { state.isAdmin = false; }
     buildMain(); renderContacts();
-    if (!POP) { setTimeout(handleInviteLink, 800); loadStreaks(); setTimeout(checkBirthdays, 2500); setTimeout(checkAdmirers, 3500); }
+    if (!POP) { setTimeout(() => { try { if (Date.now() - new Date(state.me.created_at || 0).getTime() > 10 * 60 * 1000) showLatest(false); else localStorage.setItem('brb_seen_ver', APP_VER); } catch (e) {} }, 3000); setTimeout(handleInviteLink, 800); loadStreaks(); setTimeout(checkBirthdays, 2500); setTimeout(checkAdmirers, 3500); }
     if (state.me.suspended && !POP) setTimeout(() => alert('Your account is paused because of reports, so sending is switched off. Open Settings and use Contact the admin to ask about it.'), 900);
     subscribe(); startTimers();
     if (POP) popInit(); else sessInit();
@@ -849,7 +855,7 @@ function buildMain() {
       Contacts: [['Add a contact…', () => { const i = document.querySelector('.addbar input'); if (i) i.focus(); }], ['Create a group or list…', () => newGroup()], ['Create a group chat…', () => newRoomDialog()], '-', ['Make someone a favourite…', () => favMenu()], '-', ['Sort contacts: by name / by status', () => { localStorage.setItem('brb_sort', localStorage.getItem('brb_sort') === 'status' ? 'name' : 'status'); renderContacts(); }], ['Block list…', () => blockList()]],
       Actions: [...STATUS_LIST.map(k => [STATUS[k][0], () => setStatus(k), k === 'invisible' ? 'offline' : k]), '-', ['Change my display picture…', () => openSettings()], ['My music and playlists', () => openMusic()], ["What's new with my contacts", () => openNews()]],
       Tools: [['Options…', () => openSettings()], ...(isStandalone() ? [] : [['Install BeRightBack as an app', () => installApp()]])],
-      Help: [['Community rules', () => legalModal('rules')], ['Privacy and terms', () => legalModal('privacy')], ['Check for updates', () => checkUpdate(true)], ['About BeRightBack', () => toast('BeRightBack', 'A nostalgic messenger with nudges, winks, calls, games and shared music. Version ' + APP_VER)]]
+      Help: [['Community rules', () => legalModal('rules')], ['Privacy and terms', () => legalModal('privacy')], ['Latest from BRB', () => showLatest(true)], ['Check for updates', () => checkUpdate(true)], ['About BeRightBack', () => toast('BeRightBack', 'A nostalgic messenger with nudges, winks, calls, games and shared music. Version ' + APP_VER)]]
     };
     Object.keys(M).forEach(k => mbar.append(el('span', { text: k, onclick: ev => { ev.stopPropagation(); const r = ev.target.getBoundingClientRect(); showMenu(r.left, r.bottom + 2, M[k]); } })));
   }
@@ -1089,7 +1095,7 @@ function openPop(x, y, content) {
   m.style.top = Math.max(4, Math.min(y, innerHeight - m.offsetHeight - 6)) + 'px';
   setTimeout(() => document.addEventListener('click', closeMenus, { once: true }), 0);
 }
-const MENU_ICONS = [[/check for updates/i, '🔄'], [/^Block list/i, '🚫'], [/nickname/i, '✏️'], [/^Sort contacts/i, '↕️'], [/chat history/i, '🕘'], [/save conversation/i, '💾'], [/^Report/i, '⚑'], [/^Block\b/, '⛔'], [/Delete contact/i, '🗑️'], [/mute|notifications back/i, '🔇'], [/instant message/i, '💬'], [/view profile/i, '👤'], [/^Sign out/, '🚪'], [/^Add a contact/, '➕'], [/group chat/i, '👥'], [/group or list/i, '📁'], [/favourite/i, '⭐'], [/display picture/i, '🖼️'], [/music|playlist/i, '🎵'], [/What.?s new/i, '📰'], [/^Options|settings/i, '⚙️'], [/^Install/i, '⬇️'], [/rules/i, '📜'], [/^Privacy/i, '🔒'], [/^About/i, 'ℹ️'], [/nudge/i, '📳'], [/wink/i, '✨'], [/voice clip/i, '🎙️'], [/voice call/i, '🎤'], [/video call/i, '🎥'], [/Tic-Tac|Leaderboard/i, '🎮'], [/Send files/i, '📎'], [/Save conversation/i, '💾'], [/^Close/i, '✖️'], [/^Find/i, '🔍'], [/Select all/i, '🔲'], [/^Clear/i, '🧹'], [/^Invite/i, '👥'], [/instant message/i, '💬'], [/View profile|View larger/i, '🔎'], [/Save picture/i, '💾'], [/^Hide/i, '🙈'], [/^Report/i, '⚑'], [/^Block/i, '⛔'], [/^Mute|^Unmute/i, '🔕'], [/song I am playing/i, '🎧'], [/Remove|Delete/i, '🗑️'], [/Rename|Move/i, '✏️']];
+const MENU_ICONS = [[/check for updates/i, '🔄'], [/latest from/i, '📰'], [/^Block list/i, '🚫'], [/nickname/i, '✏️'], [/^Sort contacts/i, '↕️'], [/chat history/i, '🕘'], [/save conversation/i, '💾'], [/^Report/i, '⚑'], [/^Block\b/, '⛔'], [/Delete contact/i, '🗑️'], [/mute|notifications back/i, '🔇'], [/instant message/i, '💬'], [/view profile/i, '👤'], [/^Sign out/, '🚪'], [/^Add a contact/, '➕'], [/group chat/i, '👥'], [/group or list/i, '📁'], [/favourite/i, '⭐'], [/display picture/i, '🖼️'], [/music|playlist/i, '🎵'], [/What.?s new/i, '📰'], [/^Options|settings/i, '⚙️'], [/^Install/i, '⬇️'], [/rules/i, '📜'], [/^Privacy/i, '🔒'], [/^About/i, 'ℹ️'], [/nudge/i, '📳'], [/wink/i, '✨'], [/voice clip/i, '🎙️'], [/voice call/i, '🎤'], [/video call/i, '🎥'], [/Tic-Tac|Leaderboard/i, '🎮'], [/Send files/i, '📎'], [/Save conversation/i, '💾'], [/^Close/i, '✖️'], [/^Find/i, '🔍'], [/Select all/i, '🔲'], [/^Clear/i, '🧹'], [/^Invite/i, '👥'], [/instant message/i, '💬'], [/View profile|View larger/i, '🔎'], [/Save picture/i, '💾'], [/^Hide/i, '🙈'], [/^Report/i, '⚑'], [/^Block/i, '⛔'], [/^Mute|^Unmute/i, '🔕'], [/song I am playing/i, '🎧'], [/Remove|Delete/i, '🗑️'], [/Rename|Move/i, '✏️']];
 function showMenu(x, y, items) {
   const box = el('div'), icoOf = it => it[2] || ((MENU_ICONS.find(([re]) => re.test(it[0])) || [])[1] || ''), any = items.some(it => it !== '-' && icoOf(it));
   items.forEach(it => { if (it === '-') box.append(el('hr')); else { const d = el('div', { onclick: () => { closeMenus(); it[1](); } }); const ic = icoOf(it); d.style.cssText = 'display:flex;gap:9px;align-items:center'; if (STATUS[ic]) d.append(buddy(ic)); else if (any) d.append(el('span', { text: ic, style: 'width:1.3em;text-align:center;flex:none' })); d.append(document.createTextNode(it[0])); box.append(d); } });
@@ -3308,7 +3314,30 @@ function buildPlayer() {
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ============ AUTO UPDATE ============ */
-const APP_VER = '2026-11-22i';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const RELEASES = [   // newest first. Add one entry per update that has something people can notice. v must be the same as APP_VER for that update.
+  { v: '2026-11-22j', title: 'News, MSN style', items: [
+    '📰 This little window is new! After each update it tells you what changed. You can open it again any time from Help > Latest from BRB.'
+  ] },
+  { v: '2026-11-22i', title: 'A safer, clearer BRB', items: [
+    '🔒 Friend requests no longer show your profile to the sender until you say yes.',
+    '🚪 "Sign out other devices" now really signs them out.',
+    '🔑 New friend codes are longer and harder to guess. Tap "Get a new code" in your profile to get one.',
+    '📜 The privacy page now says plainly what we keep and for how long.',
+    '🛡️ Extra browser protection working quietly in the background.'
+  ] }
+];
+function showLatest(force) {
+  let seen = ''; try { seen = localStorage.getItem('brb_seen_ver') || ''; } catch (e) {}
+  const list = force ? RELEASES.slice(0, 3) : RELEASES.filter(r => r.v > seen).slice(0, 3);
+  if (!list.length) { try { localStorage.setItem('brb_seen_ver', APP_VER); } catch (e) {} if (force) toast('Latest from BRB', 'No news right now. You are up to date!'); return; }
+  const done = () => { try { localStorage.setItem('brb_seen_ver', APP_VER); } catch (e) {} ov.remove(); };
+  const body = el('div', { class: 'lbd' }, el('h2', { text: 'Hey there, buddy! 👋', style: 'margin:0 0 .2rem;color:#1f4170' }), el('div', { text: 'BeRightBack just got an upgrade. Here is what is new:', style: 'margin-bottom:.4rem' }));
+  list.forEach(r => body.append(el('div', { class: 'lrel' }, el('b', { text: '✨ ' + r.title }), ...r.items.map(t => el('div', { text: t })))));
+  body.append(el('div', { text: 'Thanks for hanging out here. Stay online! 💙', style: 'margin:.6rem 0;color:#4a6a96' }), el('button', { text: 'Got it!', onclick: done }));
+  const ov = el('div', { class: 'modal latest', onclick: ev => { if (ev.target === ov) done(); } }, el('div', { class: 'mbox' }, el('div', { class: 'lhd' }, el('span', { text: '📰 Latest from BRB' }), el('button', { text: '✕', title: 'Close', onclick: done })), body));
+  document.body.append(ov);
+}
+const APP_VER = '2026-11-22j';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
