@@ -5,7 +5,7 @@
   "server": {
     "url": "https://pickngosg.github.io/berightback/",
     "cleartext": false,
-    "allowNavigation": ["pickngosg.github.io", "*.supabase.co"]
+    "allowNavigation": ["pickngosg.github.io", "mzijzbkotfcimueyecin.supabase.co"]
   },
   "plugins": {
     "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
