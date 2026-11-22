@@ -171,6 +171,7 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
 .emi{width:1.35em;height:1.35em;vertical-align:-.3em;display:inline-block}
+.win.dropping{outline:3px dashed #4a86d8;outline-offset:-6px}.hrow{font-size:.9rem;margin:.12rem 0;word-break:break-word}.hday{font-weight:700;color:#1f4170;margin:.6rem 0 .2rem;border-bottom:1px solid #c5d7ee}
 .csearch{display:block;width:calc(100% - 1rem);margin:.3rem .5rem;padding:.3rem .5rem;border:1px solid #b8cde8;border-radius:.4rem;font-size:.9rem;box-sizing:border-box}
 .gifm{display:block;max-width:240px;max-height:240px;border-radius:6px}
 .emopop.gifpop{display:block;width:340px;max-width:92vw;padding:.5rem}.gifpop .gtop input{height:2rem;padding:0 .5rem;border:1px solid #8fb1dc;border-radius:.3rem;font-size:.9rem}.gifpop .gtop button{height:2rem;padding:0 .8rem}.gifpop .ggrid{min-height:60px;font-size:.85rem;color:#456}.gifpop .gtop{display:flex;gap:4px;margin-bottom:4px}.gifpop input{flex:1;min-width:0}.gifpop .ggrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:260px;overflow-y:auto}.gifpop .ggrid img{width:100%;height:90px;object-fit:cover;border-radius:4px;cursor:pointer}.gifpop .gpw{font-size:11px;opacity:.7;text-align:right;margin-top:3px}
@@ -404,7 +405,7 @@ const STALE_MS = 150000;   // no heartbeat for this long = shown offline
 /* Sign in automatically: if the person unticked it, a new start of the app begins signed out (shared-computer safety) */
 try { if (!(/Electron/.test(navigator.userAgent) && new URLSearchParams(location.search).get('pop')) && localStorage.getItem('brb_auto') === '0' && !sessionStorage.getItem('brb_live')) Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 const TURNSTILE_KEY = '';   // Cloudflare Turnstile site key (public). Empty = no bot check yet.
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
 /* ============ HELPERS ============ */
 const $ = (s, r = document) => r.querySelector(s);
@@ -683,7 +684,7 @@ function showLogin(msg) {
   const rem = el('input', { type: 'checkbox', style: 'width:auto', checked: 'checked' });
   const isAppish = /Electron/.test(navigator.userAgent) || (typeof isApp === 'function' && isApp()) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   const _au = localStorage.getItem('brb_auto');
-  const auto = el('input', { type: 'checkbox', style: 'width:auto' }); auto.checked = _au === '1' || (_au === null && isAppish);
+  const auto = el('input', { type: 'checkbox', style: 'width:auto' }); auto.checked = _au !== '0';
   const kick = el('input', { type: 'checkbox', style: 'width:auto' });
   const capRow = el('div', { style: 'display:none;margin-top:10px' }); let capTok = '', capId = null;
   const showCap = () => { if (!TURNSTILE_KEY) return; capRow.style.display = 'block'; const draw = () => { if (capId === null && window.turnstile) capId = window.turnstile.render(capRow, { sitekey: TURNSTILE_KEY, callback: t => { capTok = t; }, 'expired-callback': () => { capTok = ''; } }); }; if (window.turnstile) draw(); else { const sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.onload = draw; document.head.append(sc); } };
@@ -1251,10 +1252,40 @@ function toggleSearch(w) {
   const inp = el('input', { placeholder: 'Search this conversation…', oninput: () => { const q = inp.value.trim().toLowerCase(); [...w.log.children].forEach(c => { c.style.display = !q || c.classList.contains('who') || c.textContent.toLowerCase().includes(q) ? '' : 'none'; }); } });
   w.log.parentNode.insertBefore(el('div', { class: 'wsearch' }, '🔍', inp, el('button', { text: '✕', onclick: () => toggleSearch(w) })), w.log); inp.focus();
 }
-function saveConv(w) {
-  const p = state.profiles.get(w.id) || {};
-  const a = el('a', { href: URL.createObjectURL(new Blob([`BeRightBack conversation with ${p.display_name}\n\n` + w.log.innerText], { type: 'text/plain' })), download: 'conversation.txt' });
-  document.body.append(a); a.click(); a.remove();
+const histText = m => m.kind === 'image' ? '[Photo]' : m.kind === 'video' ? '[Video]' : m.kind === 'audio' ? '[Voice clip]' : m.kind === 'nudge' ? '[Nudge]' : m.kind === 'wink' ? '[Wink]' : String(m.body || '').replace(GIF_RE, '[GIF]').replace(new RegExp(CEMO_RE.source, 'g'), '[emoticon]');
+async function histPage(id, before) {
+  const me = state.uid;
+  let q = sb.from('messages').select('*').neq('kind', 'game').or(`and(sender.eq.${me},recipient.eq.${id}),and(sender.eq.${id},recipient.eq.${me})`).order('created_at', { ascending: false }).limit(300);
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await q; if (error) throw error; return data || [];
+}
+const histWho = m => m.sender === state.uid ? state.me.display_name : (state.profiles.get(m.sender) || {}).display_name || 'Contact';
+async function saveConv(w) {
+  sysLine(w, 'Preparing your conversation file…');
+  try {
+    let all = [], before = null;
+    for (let i = 0; i < 20; i++) { const pg = await histPage(w.id, before); all = all.concat(pg); if (pg.length < 300) break; before = pg[pg.length - 1].created_at; }
+    all.reverse();
+    const txt = `BeRightBack conversation with ${(state.profiles.get(w.id) || {}).display_name || 'Contact'}\nSaved ${new Date().toLocaleString()}  (${all.length} messages${all.length >= 6000 ? ', the newest 6000' : ''})\n\n` + all.map(m => `[${new Date(m.created_at).toLocaleString()}] ${histWho(m)}: ${histText(m)}`).join('\n');
+    const a = el('a', { href: URL.createObjectURL(new Blob([txt], { type: 'text/plain' })), download: 'conversation.txt' });
+    document.body.append(a); a.click(); a.remove(); sysLine(w, 'Saved ' + all.length + ' messages to conversation.txt.');
+  } catch (e) { sysLine(w, 'Could not save the conversation: ' + friendlyErr(e)); }
+}
+function histView(w) {
+  let rows = [], before = null, more = true;
+  const q = el('input', { type: 'text', placeholder: 'Search this conversation', style: 'width:100%;box-sizing:border-box' }), box = el('div', { style: 'max-height:52vh;overflow:auto;margin:.5rem 0' }), msg = el('div', { class: 'hint' });
+  const older = el('button', { text: 'Load older messages' }), dl = el('button', { text: 'Save all as a text file', onclick: () => saveConv(w) });
+  const draw = () => {
+    box.textContent = ''; const f = q.value.trim().toLowerCase(); let day = '';
+    const list = rows.slice().reverse().filter(m => !f || histText(m).toLowerCase().includes(f) || histWho(m).toLowerCase().includes(f));
+    if (!list.length) box.append(el('div', { class: 'hint', text: f ? 'No matches in the messages loaded so far. Try Load older messages.' : 'No messages yet.' }));
+    list.forEach(m => { const d = new Date(m.created_at), dn = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); if (dn !== day) { day = dn; box.append(el('div', { class: 'hday', text: dn })); }
+      box.append(el('div', { class: 'hrow' }, el('span', { style: 'color:#6b7c99', text: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '  ' }), el('b', { text: histWho(m) + ': ' }), histText(m))); });
+    older.style.display = more ? '' : 'none'; msg.textContent = rows.length + ' messages loaded' + (more ? '' : ' (that is everything)');
+  };
+  const load = async () => { older.disabled = true; try { const pg = await histPage(w.id, before); rows = rows.concat(pg); if (pg.length < 300) more = false; else before = pg[pg.length - 1].created_at; } catch (e) { msg.textContent = 'Could not load: ' + friendlyErr(e); } older.disabled = false; draw(); };
+  older.onclick = load; q.oninput = draw;
+  miniModal('Chat history with ' + pname(w.id), q, box, msg, el('div', { class: 'row2' }, older, dl)); load();
 }
 async function inviteFriend(w) {
   const txt = 'Join me on BeRightBack, the messenger with nudges and winks: ' + location.origin + location.pathname;
@@ -1268,7 +1299,7 @@ async function shareSong(w) {
 function actMenu(w, ev) { const r = ev.currentTarget.getBoundingClientRect(); showMenu(r.left, r.bottom, [['Send a nudge', () => sendNudge(w)], ['Send a wink…', () => toggleWinks(w)], ['Record a voice clip', () => toggleRec(w)], ['Share the song I am playing', () => shareSong(w)], ['Play Tic-Tac-Toe', () => startGame(w)]]); }
 function buildWinMenus(w) {
   const M = {
-    File: [['Send files…', () => w.fileIn.click()], ['Save conversation as a text file', () => saveConv(w)], '-', ['Close', () => closeChat(w.id)]],
+    File: [['Send files…', () => w.fileIn.click()], ['Chat history…', () => histView(w)], ['Save conversation as a text file', () => saveConv(w)], '-', ['Close', () => closeChat(w.id)]],
     Edit: [['Find in this conversation', () => toggleSearch(w)], ['Select all text', () => { const r = document.createRange(); r.selectNodeContents(w.log); const g = getSelection(); g.removeAllRanges(); g.addRange(r); }], ['Clear this window', () => { w.log.textContent = ''; w.lastSender = null; }]],
     Actions: [['Send a nudge', () => sendNudge(w)], ['Send a wink…', () => toggleWinks(w)], ['Record a voice clip', () => toggleRec(w)], '-', ['Start a voice call', () => startCall(w, false)], ['Start a video call', () => startCall(w, true)], ['Play Tic-Tac-Toe', () => startGame(w)], '-', ['Invite a friend to BeRightBack', () => inviteFriend(w)]],
     Tools: [['My settings and emoticon shortcuts', () => openSettings()], ['My music and playlists', () => openMusic()]],
@@ -1581,8 +1612,9 @@ function openChat(id) {
   input.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); sendMsg(w); } });
   input.addEventListener('input', () => sendTyping(id));
   input.addEventListener('paste', ev => { const f = [...((ev.clipboardData && ev.clipboardData.files) || [])].find(x => /^(image|video)\//.test(x.type)); if (f) { ev.preventDefault(); sendMedia(w, f); } });
-  root.addEventListener('dragover', ev => ev.preventDefault());
-  root.addEventListener('drop', ev => { ev.preventDefault(); const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]; if (f) sendMedia(w, f); });
+  root.addEventListener('dragover', ev => { ev.preventDefault(); root.classList.add('dropping'); });
+  root.addEventListener('dragleave', ev => { if (!root.contains(ev.relatedTarget)) root.classList.remove('dropping'); });
+  root.addEventListener('drop', ev => { ev.preventDefault(); root.classList.remove('dropping'); const fs = [...((ev.dataTransfer && ev.dataTransfer.files) || [])].slice(0, 5); if (fs.length > 1) sysLine(w, 'Sending ' + fs.length + ' files…'); fs.forEach(f => offerFile(w, f)); });
   // dragging
   bar.addEventListener('pointerdown', ev => {
     if (ev.target.tagName === 'BUTTON' || matchMedia('(max-width:700px)').matches) return;
@@ -1881,6 +1913,12 @@ addEventListener('focus', () => { if (state.wins.size) { const w = [...state.win
 
 /* ============ TIMERS (heartbeat, idle, stale check) ============ */
 let lastAct = Date.now();
+const IDLE_MS = 5 * 60 * 1000;   // 5 minutes with no mouse, keys or touch = Away (the same as the original messenger)
+document.addEventListener('visibilitychange', () => {
+  if (!state.uid || POP) return;
+  if (document.hidden) { clearTimeout(state.hideT); state.hideT = setTimeout(() => { if (document.hidden && state.uid && state.me.status === 'online') { state.autoAway = true; setStatus('away', true); } }, IDLE_MS); }
+  else { clearTimeout(state.hideT); try { sb.auth.startAutoRefresh(); } catch (e) {} lastAct = Date.now(); if (state.autoAway) { state.autoAway = false; setStatus('online', true); } }
+});
 ['mousemove', 'keydown', 'click', 'touchstart'].forEach(e => addEventListener(e, () => {
   lastAct = Date.now();
   if (state.autoAway && state.uid) { state.autoAway = false; setStatus('online', true); }
@@ -1894,8 +1932,8 @@ function startTimers() {
   state.timers.push(setInterval(async () => {
     if (!state.uid) return;
     await sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', state.uid);
-    if (state.me.status === 'online' && Date.now() - lastAct > 600000) { state.autoAway = true; setStatus('away', true); }
-  }, 60000));
+    if (state.me.status === 'online' && Date.now() - lastAct > IDLE_MS) { state.autoAway = true; setStatus('away', true); }
+  }, 30000));
   state.timers.push(setInterval(() => { if (state.uid) { detectOnline(); renderContacts(); state.wins.forEach((w, id) => updateWinHeader(id)); } }, 30000));
   state.timers.push(setInterval(() => { if (state.uid) refresh(); }, 40000)); // safety net if a live update is missed
   state.timers.push(setInterval(() => { if (state.uid) { checkAdmirers(); } }, 60000));
@@ -3260,7 +3298,7 @@ function buildPlayer() {
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ============ AUTO UPDATE ============ */
-const APP_VER = '2026-11-22b';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-22d';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
