@@ -1980,6 +1980,14 @@ const GSND = {
 const GWIN = { ttt: 'fireworks', c4: 'rocket', rps: 'boom', hang: 'stars', trivia: 'money', wyr: 'rainbow', knows: 'hearts' };
 const gKey = g => g === 'connect4' ? 'c4' : g === 'hangman' ? 'hang' : g === 'knows_me' ? 'knows' : g;
 const OKS = [[784, 0, .1], [1047, .1, .2]], BADS = [[196, 0, .25, 'buzz']];
+/* each board game has its own move and click sounds */
+const GS = {
+  c4: { drop: [[700, 0, .04], [420, .07, .05], [300, .14, .08]] },
+  ot: { put: [[560, 0, .05], [840, .045, .07]], flip: n => Array.from({ length: Math.min(n, 6) }, (_, i) => [1000 + i * 70, .1 + i * .05, .04]) },
+  ck: { sel: [[900, 0, .025]], move: [[420, 0, .03], [300, .03, .05]], cap: [[500, 0, .03], [360, .05, .04], [250, .1, .07]], king: [[660, 0, .07], [880, .07, .07], [1100, .14, .16]] },
+  ch: { sel: [[1500, 0, .02]], move: [[196, 0, .06], [147, .03, .1]], cap: [[330, 0, .04], [196, .03, .07], [110, .07, .13]], castle: [[196, 0, .06], [147, .03, .08], [220, .2, .06], [165, .23, .1]], promo: [[523, 0, .08], [659, .07, .08], [784, .14, .08], [1047, .21, .2]], check: [[988, 0, .08], [1319, .1, .16]], draw: [[440, 0, .18], [440, .24, .3]] }
+};
+function gsfx(seq, delay) { if (!seq) return; const go = () => { try { tone(seq); } catch (e) {} }; delay ? setTimeout(go, delay) : go(); }
 function gameEnd(w, game, result) {
   const k = gKey(game), S = GSND[k] || GSND.ttt;
   if (result === 'win') { tone(S.win); confetti(); playWink(GWIN[k] || 'confetti'); sysLine(w, '🏆 You won! Well played!'); }
@@ -2087,7 +2095,7 @@ function otFlips(b, i, col) {
 const otMoves = (b, col) => { const o = []; for (let i = 0; i < 64; i++) if (!b[i] && otFlips(b, i, col).length) o.push(i); return o; };
 function otInit(host) { const b = Array(64).fill(''); b[27] = 'W'; b[36] = 'W'; b[28] = 'B'; b[35] = 'B'; return { b, turn: 'B', me: host ? 'B' : 'W', over: false, last: -1, note: '' }; }
 function otApply(d, i) {
-  const col = d.turn, fl = otFlips(d.b, i, col); d.b[i] = col; fl.forEach(x => { d.b[x] = col; }); d.last = i; d.note = '';
+  const col = d.turn, fl = otFlips(d.b, i, col); gsfx(GS.ot.put.concat(GS.ot.flip(fl.length))); d.b[i] = col; fl.forEach(x => { d.b[x] = col; }); d.last = i; d.note = '';
   const nx = col === 'B' ? 'W' : 'B';
   if (otMoves(d.b, nx).length) d.turn = nx; else if (otMoves(d.b, col).length) { d.turn = col; d.note = nx; } else d.over = true;
 }
@@ -2118,7 +2126,7 @@ function ckApply(d, path) {
   const b = d.b, col = d.turn, man = b[path[0]] === b[path[0]].toLowerCase(); let cap = false, piece = b[path[0]]; b[path[0]] = '';
   for (let k = 1; k < path.length; k++) { const a = path[k - 1], z = path[k]; if (Math.abs((z >> 3) - (a >> 3)) === 2) { b[(((a >> 3) + (z >> 3)) / 2) * 8 + ((a & 7) + (z & 7)) / 2] = ''; cap = true; } }
   const end = path[path.length - 1]; if (man && (col === 'w' ? (end >> 3) === 0 : (end >> 3) === 7)) piece = col.toUpperCase(); b[end] = piece;
-  d.last = path.slice(); d.sel = -1; d.quiet = (cap || man) ? 0 : d.quiet + 1;
+  gsfx(man && piece === piece.toUpperCase() ? GS.ck.king : cap ? GS.ck.cap : GS.ck.move); d.last = path.slice(); d.sel = -1; d.quiet = (cap || man) ? 0 : d.quiet + 1;
   const nx = col === 'w' ? 'b' : 'w'; d.turn = nx;
   if (!ckLegal(b, nx).length) d.over = col; else if (d.quiet >= 80) d.over = 'draw';
 }
@@ -2144,7 +2152,7 @@ function chPseudo(d, col) {
     const push = (to, ex) => out.push({ f: i, t: to, ...(ex || {}) });
     if (t === 'p') {
       const dir = col === 'w' ? -1 : 1, start = col === 'w' ? 6 : 1, last = col === 'w' ? 0 : 7, r1 = r + dir;
-      const add = (to, ex) => { if ((to >> 3) === last) push(to, { ...(ex || {}), p: 'q' }); else push(to, ex); };
+      const add = (to, ex) => { if ((to >> 3) === last) ['q', 'r', 'b', 'n'].forEach(pp => push(to, { ...(ex || {}), p: pp })); else push(to, ex); };
       if (r1 >= 0 && r1 < 8 && !b[r1 * 8 + c]) { add(r1 * 8 + c); if (r === start && !b[(r + 2 * dir) * 8 + c]) push((r + 2 * dir) * 8 + c, { dbl: true }); }
       for (const dc of [-1, 1]) { const cc = c + dc; if (cc < 0 || cc > 7 || r1 < 0 || r1 > 7) continue; const to = r1 * 8 + cc, q = b[to]; if (q && chCol(q) !== col) add(to); else if (to === d.ep) push(to, { ep: true }); }
     } else if (t === 'n' || t === 'k') {
@@ -2180,6 +2188,13 @@ function chApply(d, m) {
   d.cas = cas; d.ep = m.dbl ? (m.f + m.t) / 2 : -1; d.half = (p.toLowerCase() === 'p' || cap) ? 0 : d.half + 1;
   const nx = col === 'w' ? 'b' : 'w'; d.turn = nx; const ks = d.b.indexOf(nx === 'w' ? 'K' : 'k'); d.check = chAttacked(d.b, ks, col);
   if (!chLegal(d, nx).length) d.over = d.check ? col : 'draw'; else if (d.half >= 100) d.over = 'draw';
+  if (!d.over) {
+    const key = d.b.join('') + d.turn + d.cas + d.ep; d.hist = d.hist || {}; d.hist[key] = (d.hist[key] || 0) + 1;
+    const rest = d.b.filter(x => x && x.toLowerCase() !== 'k');
+    if (d.hist[key] >= 3) { d.over = 'draw'; d.why = 'the same position came up 3 times'; }
+    else if (!rest.length || (rest.length === 1 && /[nb]/i.test(rest[0]))) { d.over = 'draw'; d.why = 'not enough pieces left to checkmate'; }
+  }
+  gsfx(m.p ? GS.ch.promo : m.cs ? GS.ch.castle : cap ? GS.ch.cap : GS.ch.move); if (d.check && !d.over) gsfx(GS.ch.check, 260);
 }
 
 Object.assign(ARC, { othello: 'Othello', checkers: 'Checkers', chess: 'Chess' });
@@ -2187,10 +2202,12 @@ const BOARD_INIT = { othello: otInit, checkers: ckInit, chess: chInit };
 const CH_GLYPH = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙︎', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟︎' };
 const bdSend = (w, mv) => sendSig(w.id, { t: 'g2', a: 'mv', k: w.arc.k, d: mv });
 function boardRecv(w, m) {
-  const a = w.arc, d = a.d, k = a.k; if (!d || d.over || d.turn === d.me) return;
+  const a = w.arc, d = a.d, k = a.k; if (!d || d.over) return;
+  if (m.r && (k === 'chess' || k === 'checkers')) { d.over = d.me; d.resigned = 1; return; }
+  if (d.turn === d.me) return;
   if (k === 'othello') { const i = +m.i; if (Number.isInteger(i) && i >= 0 && i < 64 && otFlips(d.b, i, d.turn).length) otApply(d, i); }
   else if (k === 'checkers') { const p = Array.isArray(m.p) ? m.p.map(Number) : [], ok = ckLegal(d.b, d.turn).find(x => x.length === p.length && x.every((v, j) => v === p[j])); if (ok) ckApply(d, ok); }
-  else if (k === 'chess') { const mv = chLegal(d, d.turn).find(x => x.f === +m.f && x.t === +m.t); if (mv) chApply(d, mv); }
+  else if (k === 'chess') { const mv = chLegal(d, d.turn).find(x => x.f === +m.f && x.t === +m.t && (!x.p || x.p === m.p)); if (mv) chApply(d, mv); }
 }
 function drawBoard(w, body, nm) {
   const a = w.arc, d = a.d, k = a.k, mine = d.turn === d.me && !d.over, flip = k !== 'othello' && d.me === 'b';
@@ -2207,20 +2224,23 @@ function drawBoard(w, body, nm) {
     status = d.over ? (res === 'draw' ? "It's a draw!" : res === 'win' ? 'You win! 🎉' : nm + ' wins.') : mine ? (legal.length && Math.abs((legal[0][1] >> 3) - (legal[0][0] >> 3)) === 2 ? 'Your turn. You must capture!' : 'Your turn. Tap a piece, then where to go.') : nm + "'s turn";
     status += `   You are ${d.me === 'w' ? 'White (moves first)' : 'Black'}`;
     cell = i => { const p = d.b[i]; return [p ? (p === p.toUpperCase() ? '♛' : '●') : '', (p ? 'pc ' + (p.toLowerCase() === 'w' ? 'cw' : 'cb') : '') + (d.sel === i ? ' sel' : '') + (tg.has(i) ? ' tgt' : '') + (d.last.includes(i) ? ' lastm' : '')]; };
-    click = i => { if (!mine) return; if (from.has(i)) { d.sel = i; drawArc(w); return; } if (d.sel >= 0) { const p = legal.find(x => x[0] === d.sel && x[x.length - 1] === i); if (p) { ckApply(d, p); bdSend(w, { p }); drawArc(w); } } };
+    click = i => { if (!mine) return; if (from.has(i)) { d.sel = i; gsfx(GS.ck.sel); drawArc(w); return; } if (d.sel >= 0) { const p = legal.find(x => x[0] === d.sel && x[x.length - 1] === i); if (p) { ckApply(d, p); bdSend(w, { p }); drawArc(w); } } };
   } else {
     const legal = mine ? chLegal(d, d.me) : [], from = new Set(legal.map(m => m.f)), tg = new Set(legal.filter(m => m.f === d.sel).map(m => m.t));
     if (d.over) res = d.over === 'draw' ? 'draw' : d.over === d.me ? 'win' : 'loss';
-    status = d.over ? (res === 'draw' ? "It's a draw!" : res === 'win' ? 'Checkmate. You win! 🎉' : 'Checkmate. ' + nm + ' wins.') : (d.check ? 'Check! ' : '') + (mine ? 'Your turn. Tap a piece, then where to go.' : nm + "'s turn");
+    status = d.over ? (res === 'draw' ? "It's a draw" + (d.why ? ' (' + d.why + ')' : '') + '!' : d.resigned ? (res === 'win' ? nm + ' resigned. You win! 🎉' : 'You resigned. ' + nm + ' wins.') : res === 'win' ? 'Checkmate. You win! 🎉' : 'Checkmate. ' + nm + ' wins.') : (d.check ? 'Check! ' : '') + (mine ? 'Your turn. Tap a piece, then where to go.' : nm + "'s turn");
     status += `   You are ${d.me === 'w' ? 'White (moves first)' : 'Black'}`;
     const kingSq = d.check ? d.b.indexOf(d.turn === 'w' ? 'K' : 'k') : -1;
     cell = i => { const p = d.b[i]; return [p ? CH_GLYPH[p] : '', (p ? 'cp ' + (chCol(p) === 'w' ? 'cw' : 'cb') : '') + (d.sel === i ? ' sel' : '') + (tg.has(i) ? ' tgt' : '') + (d.last.includes(i) ? ' lastm' : '') + (i === kingSq ? ' chk' : '')]; };
-    click = i => { if (!mine) return; if (from.has(i)) { d.sel = i; drawArc(w); return; } if (d.sel >= 0) { const m = legal.find(x => x.f === d.sel && x.t === i); if (m) { chApply(d, m); bdSend(w, { f: m.f, t: m.t }); drawArc(w); } } };
+    click = (i, ev) => { if (!mine) return; if (from.has(i)) { d.sel = i; gsfx(GS.ch.sel); drawArc(w); return; } if (d.sel >= 0) { const ms = legal.filter(x => x.f === d.sel && x.t === i); if (!ms.length) return;
+      const go = m => { chApply(d, m); bdSend(w, { f: m.f, t: m.t, p: m.p }); drawArc(w); };
+      if (ms.length > 1) { const nm2 = { q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight' }, gl = { q: '♕', r: '♖', b: '♗', n: '♘' }; showMenu(ev.clientX, ev.clientY, ms.map(m => [gl[m.p] + ' Promote to ' + nm2[m.p], () => go(m), gl[m.p]])); } else go(ms[0]); } };
   }
-  if (res && !a.done) { a.done = true; arcRec(w, k, res); }
+  if (res && !a.done) { a.done = true; arcRec(w, k, res); gsfx(res === 'win' ? OKS : res === 'loss' ? BADS : GS.ch.draw, 450); }
   const g = el('div', { class: 'bgrid' + (k === 'othello' ? ' og' : '') });
-  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const rr = flip ? 7 - r : r, cc = flip ? 7 - c : c, i = rr * 8 + cc, [t, cls] = cell(i); g.append(el('div', { class: 'bc ' + (((rr + cc) % 2) ? 'dk' : 'lt') + ' ' + cls, text: t, onclick: () => click(i) })); }
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const rr = flip ? 7 - r : r, cc = flip ? 7 - c : c, i = rr * 8 + cc, [t, cls] = cell(i); g.append(el('div', { class: 'bc ' + (((rr + cc) % 2) ? 'dk' : 'lt') + ' ' + cls, text: t, onclick: ev => click(i, ev) })); }
   body.append(g, el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: status }));
+  if (!d.over && (k === 'chess' || k === 'checkers')) body.append(el('button', { text: 'Resign', onclick: () => { if (!confirm('Resign this game? ' + nm + ' will win.')) return; d.over = d.me === 'w' ? 'b' : 'w'; d.resigned = 1; bdSend(w, { r: 1 }); drawArc(w); } }));
 }
 
 function c4Win(b) {
@@ -2228,7 +2248,7 @@ function c4Win(b) {
     for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [1, -1]]) { let k = 1; for (; k < 4; k++) { const cc = c + dc * k, rr = r + dr * k; if (cc < 0 || cc > 6 || rr < 0 || rr > 5 || b[rr * 7 + cc] !== v) break; } if (k === 4) return v; } }
   return b.every(Boolean) ? 'draw' : null;
 }
-function c4Drop(b, c, v) { for (let r = 5; r >= 0; r--) if (!b[r * 7 + c]) { b[r * 7 + c] = v; return true; } return false; }
+function c4Drop(b, c, v) { for (let r = 5; r >= 0; r--) if (!b[r * 7 + c]) { b[r * 7 + c] = v; gsfx(GS.c4.drop); return true; } return false; }
 function rpsTry(w) {
   const d = w.arc.d; if (d.mine === null || d.theirs === null) return;
   const r = d.mine === d.theirs ? 0 : ((d.mine - d.theirs + 3) % 3 === 1 ? 1 : -1);
