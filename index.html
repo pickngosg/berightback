@@ -1079,7 +1079,7 @@ function openPop(x, y, content) {
   m.style.top = Math.max(4, Math.min(y, innerHeight - m.offsetHeight - 6)) + 'px';
   setTimeout(() => document.addEventListener('click', closeMenus, { once: true }), 0);
 }
-const MENU_ICONS = [[/^Sign out/, '🚪'], [/^Add a contact/, '➕'], [/group chat/i, '👥'], [/group or list/i, '📁'], [/favourite/i, '⭐'], [/display picture/i, '🖼️'], [/music|playlist/i, '🎵'], [/What.?s new/i, '📰'], [/^Options|settings/i, '⚙️'], [/^Install/i, '⬇️'], [/rules/i, '📜'], [/^Privacy/i, '🔒'], [/^About/i, 'ℹ️'], [/nudge/i, '📳'], [/wink/i, '✨'], [/voice clip/i, '🎙️'], [/voice call/i, '🎤'], [/video call/i, '🎥'], [/Tic-Tac|Leaderboard/i, '🎮'], [/Send files/i, '📎'], [/Save conversation/i, '💾'], [/^Close/i, '✖️'], [/^Find/i, '🔍'], [/Select all/i, '🔲'], [/^Clear/i, '🧹'], [/^Invite/i, '👥'], [/instant message/i, '💬'], [/View profile|View larger/i, '🔎'], [/Save picture/i, '💾'], [/^Hide/i, '🙈'], [/^Report/i, '⚑'], [/^Block/i, '⛔'], [/^Mute|^Unmute/i, '🔕'], [/song I am playing/i, '🎧'], [/Remove|Delete/i, '🗑️'], [/Rename|Move/i, '✏️']];
+const MENU_ICONS = [[/check for updates/i, '🔄'], [/^Block list/i, '🚫'], [/nickname/i, '✏️'], [/^Sort contacts/i, '↕️'], [/chat history/i, '🕘'], [/save conversation/i, '💾'], [/^Report/i, '⚑'], [/^Block\b/, '⛔'], [/Delete contact/i, '🗑️'], [/mute|notifications back/i, '🔇'], [/instant message/i, '💬'], [/view profile/i, '👤'], [/^Sign out/, '🚪'], [/^Add a contact/, '➕'], [/group chat/i, '👥'], [/group or list/i, '📁'], [/favourite/i, '⭐'], [/display picture/i, '🖼️'], [/music|playlist/i, '🎵'], [/What.?s new/i, '📰'], [/^Options|settings/i, '⚙️'], [/^Install/i, '⬇️'], [/rules/i, '📜'], [/^Privacy/i, '🔒'], [/^About/i, 'ℹ️'], [/nudge/i, '📳'], [/wink/i, '✨'], [/voice clip/i, '🎙️'], [/voice call/i, '🎤'], [/video call/i, '🎥'], [/Tic-Tac|Leaderboard/i, '🎮'], [/Send files/i, '📎'], [/Save conversation/i, '💾'], [/^Close/i, '✖️'], [/^Find/i, '🔍'], [/Select all/i, '🔲'], [/^Clear/i, '🧹'], [/^Invite/i, '👥'], [/instant message/i, '💬'], [/View profile|View larger/i, '🔎'], [/Save picture/i, '💾'], [/^Hide/i, '🙈'], [/^Report/i, '⚑'], [/^Block/i, '⛔'], [/^Mute|^Unmute/i, '🔕'], [/song I am playing/i, '🎧'], [/Remove|Delete/i, '🗑️'], [/Rename|Move/i, '✏️']];
 function showMenu(x, y, items) {
   const box = el('div'), icoOf = it => it[2] || ((MENU_ICONS.find(([re]) => re.test(it[0])) || [])[1] || ''), any = items.some(it => it !== '-' && icoOf(it));
   items.forEach(it => { if (it === '-') box.append(el('hr')); else { const d = el('div', { onclick: () => { closeMenus(); it[1](); } }); const ic = icoOf(it); d.style.cssText = 'display:flex;gap:9px;align-items:center'; if (STATUS[ic]) d.append(buddy(ic)); else if (any) d.append(el('span', { text: ic, style: 'width:1.3em;text-align:center;flex:none' })); d.append(document.createTextNode(it[0])); box.append(d); } });
@@ -3298,7 +3298,7 @@ function buildPlayer() {
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ============ AUTO UPDATE ============ */
-const APP_VER = '2026-11-22d';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-22e';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
