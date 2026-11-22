@@ -2,13 +2,13 @@
 // 1) lets the app show pop-up notifications on phones and laptops
 // 2) keeps a copy of the app page so it can open even without internet (it always loads the newest version first)
 // It never stores your messages or personal data.
-const CACHE = 'brb-shell-v1';
+const CACHE = 'brb-shell-v2';
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
-  e.respondWith(fetch(r).then(res => { if (res.ok) { const c = res.clone(); caches.open(CACHE).then(ch => ch.put(r, c)); } return res; })
+  e.respondWith(fetch(r, { cache: 'no-store' }).then(res => { if (res.ok) { const c = res.clone(); caches.open(CACHE).then(ch => ch.put(r, c)); } return res; })
     .catch(() => caches.match(r).then(m => m || caches.match('./index.html'))));
 });
 self.addEventListener('push', e => {

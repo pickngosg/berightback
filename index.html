@@ -171,6 +171,7 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
 .emi{width:1.35em;height:1.35em;vertical-align:-.3em;display:inline-block}
+.csearch{display:block;width:calc(100% - 1rem);margin:.3rem .5rem;padding:.3rem .5rem;border:1px solid #b8cde8;border-radius:.4rem;font-size:.9rem;box-sizing:border-box}
 .gifm{display:block;max-width:240px;max-height:240px;border-radius:6px}
 .emopop.gifpop{display:block;width:340px;max-width:92vw;padding:.5rem}.gifpop .gtop input{height:2rem;padding:0 .5rem;border:1px solid #8fb1dc;border-radius:.3rem;font-size:.9rem}.gifpop .gtop button{height:2rem;padding:0 .8rem}.gifpop .ggrid{min-height:60px;font-size:.85rem;color:#456}.gifpop .gtop{display:flex;gap:4px;margin-bottom:4px}.gifpop input{flex:1;min-width:0}.gifpop .ggrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:260px;overflow-y:auto}.gifpop .ggrid img{width:100%;height:90px;object-fit:cover;border-radius:4px;cursor:pointer}.gifpop .gpw{font-size:11px;opacity:.7;text-align:right;margin-top:3px}
 .cemo{height:1.9em;max-width:3.2em;vertical-align:-.55em;object-fit:contain}
@@ -831,10 +832,10 @@ function buildMain() {
   const mbar = el('div', { class: 'wmenu mmenu' });
   { const M = {
       File: [['Sign out', () => signOut()]],
-      Contacts: [['Add a contact…', () => { const i = document.querySelector('.addbar input'); if (i) i.focus(); }], ['Create a group or list…', () => newGroup()], ['Create a group chat…', () => newRoomDialog()], '-', ['Make someone a favourite…', () => favMenu()]],
+      Contacts: [['Add a contact…', () => { const i = document.querySelector('.addbar input'); if (i) i.focus(); }], ['Create a group or list…', () => newGroup()], ['Create a group chat…', () => newRoomDialog()], '-', ['Make someone a favourite…', () => favMenu()], '-', ['Sort contacts: by name / by status', () => { localStorage.setItem('brb_sort', localStorage.getItem('brb_sort') === 'status' ? 'name' : 'status'); renderContacts(); }], ['Block list…', () => blockList()]],
       Actions: [...STATUS_LIST.map(k => [STATUS[k][0], () => setStatus(k), k === 'invisible' ? 'offline' : k]), '-', ['Change my display picture…', () => openSettings()], ['My music and playlists', () => openMusic()], ["What's new with my contacts", () => openNews()]],
       Tools: [['Options…', () => openSettings()], ...(isStandalone() ? [] : [['Install BeRightBack as an app', () => installApp()]])],
-      Help: [['Community rules', () => legalModal('rules')], ['Privacy and terms', () => legalModal('privacy')], ['About BeRightBack', () => toast('BeRightBack', 'A nostalgic messenger with nudges, winks, calls, games and shared music.')]]
+      Help: [['Community rules', () => legalModal('rules')], ['Privacy and terms', () => legalModal('privacy')], ['Check for updates', () => checkUpdate(true)], ['About BeRightBack', () => toast('BeRightBack', 'A nostalgic messenger with nudges, winks, calls, games and shared music. Version ' + APP_VER)]]
     };
     Object.keys(M).forEach(k => mbar.append(el('span', { text: k, onclick: ev => { ev.stopPropagation(); const r = ev.target.getBoundingClientRect(); showMenu(r.left, r.bottom + 2, M[k]); } })));
     const hide = localStorage.getItem('brb_mbar') === '0' || (localStorage.getItem('brb_mbar') === null && matchMedia('(max-width:700px)').matches);
@@ -842,7 +843,9 @@ function buildMain() {
     var mcol = el('button', { class: 'mcol', title: 'Show or hide the menu bar', text: hide ? '▾' : '▴', onclick: ev => { ev.stopPropagation(); const on = mbar.style.display === 'none'; mbar.style.display = on ? '' : 'none'; mcol.textContent = on ? '▴' : '▾'; localStorage.setItem('brb_mbar', on ? '1' : '0'); } });
     title.prepend(mcol); }
   const ban = el('div', { class: 'mban' }); { const tips = ['Tip: click ✨ in a chat to send a wink, or 📳 to nudge your friend.', 'Tip: change your status from the Actions menu.', 'Tip: click a picture in a chat for the profile. Use the small arrows to hide it.', 'Tip: point at a contact to see their status and message.']; let ti = 0; ban.textContent = tips[0]; state.timers.push(setInterval(() => { ti = (ti + 1) % tips.length; ban.textContent = tips[ti]; }, 20000)); }
-  const main = el('div', { class: 'main' }, title, mbar, head, notifyBar(), reqs, list, hs, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn), ban, rzx);
+  const csIn = el('input', { type: 'text', id: 'csearch', class: 'csearch', autocomplete: 'off', placeholder: 'Search contacts (Ctrl+F)', oninput: () => { state.csearch = csIn.value; renderContacts(); }, onkeydown: ev => { if (ev.key === 'Escape') { csIn.value = ''; state.csearch = ''; renderContacts(); csIn.blur(); } } });
+  if (!window.__csKey) { window.__csKey = 1; addEventListener('keydown', ev => { if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'f' && !ev.target.closest('.win,.modal')) { const i = document.getElementById('csearch'); if (i) { ev.preventDefault(); i.focus(); i.select(); } } }); }
+  const main = el('div', { class: 'main' }, title, mbar, head, notifyBar(), reqs, csIn, list, hs, buildPlayer(), addMsg, el('div', { class: 'addbar' }, addIn, addBtn), ban, rzx);
   const sw = +localStorage.getItem('brb_mainw'), shh = +localStorage.getItem('brb_listh');
   if (sw) main.style.width = clampN(sw, 280, innerWidth * 0.85) + 'px';
   if (shh) { main.classList.add('fixedlist'); list.style.flex = 'none'; list.style.height = clampN(shh, 80, innerHeight - 250) + 'px'; }
@@ -937,9 +940,11 @@ function renderContacts() {
       el('div', { class: 'row' }, el('button', { text: 'Accept', onclick: act('accept') }), el('button', { text: 'Decline', onclick: act('decline') }), el('button', { text: 'Block', onclick: act('block') }), el('button', { text: 'Report', onclick: () => reportDialog(id) }))));
   });
   const online = [], offline = [], byGroup = {};
-  r.accepted.forEach(id => { const p = state.profiles.get(id); if (!p) return; const gn = state.groups.map[id]; if (gn && state.groups.names.includes(gn)) (byGroup[gn] = byGroup[gn] || []).push(p); else (effStatus(p) === 'offline' ? offline : online).push(p); });
+  const qs = (state.csearch || '').trim().toLowerCase();
+  r.accepted.forEach(id => { const p = state.profiles.get(id); if (!p) return; if (qs && !(p.display_name + ' ' + nick(id)).toLowerCase().includes(qs)) return; const gn = state.groups.map[id]; if (gn && state.groups.names.includes(gn)) (byGroup[gn] = byGroup[gn] || []).push(p); else (effStatus(p) === 'offline' ? offline : online).push(p); });
   const byName = (a, b) => a.display_name.localeCompare(b.display_name);
-  online.sort(byName); offline.sort(byName);
+  const bySt = localStorage.getItem('brb_sort') === 'status' ? (a, b) => STATUS_LIST.indexOf(a.status) - STATUS_LIST.indexOf(b.status) || byName(a, b) : byName;
+  online.sort(bySt); offline.sort(byName);
   const group = (key, label, arr, mk) => {
     if (!arr.length && key !== 'online' && key !== 'offline') return;
     const col = state.collapsed[key];
@@ -948,7 +953,7 @@ function renderContacts() {
   };
   const contactRow = p => {
     const st = effStatus(p), n = state.unread.get(p.id) || 0;
-    const nm = el('span', { class: 'n' }); renderEmo(nm, p.display_name); decorName(nm, p);
+    const nm = el('span', { class: 'n' }); renderEmo(nm, nick(p.id) || p.display_name); decorName(nm, p);
     const l1 = el('div', { class: 'l1' }, nm, el('span', { class: 's', text: st !== 'offline' && st !== 'online' ? ' (' + STATUS[st][0] + ')' : '' }));
     const l2 = el('div', { class: 'l2' }); if (isMuted(p.id)) l1.append(el('span', { class: 's', text: ' 🔇' }));
     { const sk = state.streaks.get(p.id); if (sk) l1.append(el('span', { class: 's', title: sk.n + ' days chatting in a row' + (sk.last < sgToday() ? '. Chat today to keep it going.' : ''), text: ' 🔥' + sk.n + (sk.last < sgToday() ? '⏳' : '') })); }
@@ -959,10 +964,10 @@ function renderContacts() {
     const icon = state.pics ? avatarEl(p, 40, true, st) : buddy(st);
     const row = el('div', { class: 'ct' + (st === 'offline' ? ' off' : '') + (state.flash.has(p.id) ? ' flash' : ''), ondblclick: () => openChat(p.id), onclick: () => { if (matchMedia('(max-width:700px)').matches || n) openChat(p.id); } },
       icon, el('div', { class: 'txt' }, l1, l2));
-    row.title = p.display_name + ' (' + STATUS[st][0] + ')' + (p.personal_message && !p.anon ? '\n' + p.personal_message : '') + (st !== 'offline' && p.now_playing ? '\n♫ ' + p.now_playing : '');
+    row.title = (nick(p.id) ? nick(p.id) + ' = ' : '') + p.display_name + ' (' + STATUS[st][0] + ')' + (p.personal_message && !p.anon ? '\n' + p.personal_message : '') + (st !== 'offline' && p.now_playing ? '\n♫ ' + p.now_playing : '');
     if (n) row.append(el('span', { class: 'badge', text: String(n) }));
     row.append(el('button', { text: '⋯', title: 'More', onclick: ev => { ev.stopPropagation(); showMenu(ev.clientX, ev.clientY, [
-      ['Send an instant message', () => openChat(p.id)], ['View profile', () => profileCard(p.id)], ['Add to Favourites', () => addFav(p.id)], '-',
+      ['Send an instant message', () => openChat(p.id)], ['View profile', () => profileCard(p.id)], [nick(p.id) ? 'Change nickname…' : 'Set a nickname…', () => setNick(p.id)], ['Add to Favourites', () => addFav(p.id)], '-',
       ...state.groups.names.map(n => ['Move to ' + n, () => { state.groups.map[p.id] = n; saveGroups(); renderContacts(); }]),
       ['Move to a new group…', () => newGroup(p.id)],
       ...(state.groups.map[p.id] ? [['Remove from group', () => { delete state.groups.map[p.id]; saveGroups(); renderContacts(); }]] : []), '-',
@@ -1327,7 +1332,23 @@ function onSig(p) {
   if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
   if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {}); else if (p.t[0] === 'f') onFile(p.from, p);
 }
-const pname = id => (state.profiles.get(id) || {}).display_name || 'Contact';
+const getNicks = () => { try { return JSON.parse(localStorage.getItem('brb_nicks') || '{}') || {}; } catch (e) { return {}; } };
+const nick = id => getNicks()[id] || '';
+const pname = id => nick(id) || (state.profiles.get(id) || {}).display_name || 'Contact';
+function setNick(id) {
+  const p = state.profiles.get(id); if (!p) return;
+  const v = prompt('Nickname for ' + p.display_name + ' (only you will see it). Leave empty to remove it:', nick(id)); if (v === null) return;
+  const n = getNicks(), t = v.trim().slice(0, 30); if (t) n[id] = t; else delete n[id];
+  localStorage.setItem('brb_nicks', JSON.stringify(n)); renderContacts();
+}
+function blockList() {
+  const r = friendIds(), box = el('div', { style: 'max-height:50vh;overflow:auto' });
+  const ov = miniModal('Block list', el('div', { class: 'hint', text: 'People you have blocked cannot message or call you, and they cannot see when you are online.' }), box);
+  const draw = () => { box.textContent = ''; const ps = friendIds().blocked.map(id => state.profiles.get(id)).filter(Boolean);
+    if (!ps.length) box.append(el('div', { class: 'hint', text: 'You have not blocked anyone.' }));
+    ps.forEach(p => box.append(el('div', { class: 'row2', style: 'align-items:center;gap:8px;margin:.3rem 0' }, el('span', { style: 'flex:1', text: p.display_name }), el('button', { text: 'Unblock', onclick: async () => { await sb.rpc('unblock_user', { p_other: p.id }); await refresh(); draw(); } })))); };
+  draw(); return ov;
+}
 
 /* ---- Tic-Tac-Toe ---- */
 function tttWinner(b) {
@@ -2181,7 +2202,7 @@ function chLegal(d, col) {
 }
 function chApply(d, m) {
   const p = d.b[m.f], col = chCol(p), cap = d.b[m.t] || m.ep;
-  d.b = chMake(d.b, m); d.last = [m.f, m.t]; d.sel = -1;
+  d.b = chMake(d.b, m); d.last = [m.f, m.t]; d.sel = -1; d.offered = 0; d.offerIn = 0; d.declined = 0;
   let cas = d.cas; const strip = ch => { cas = cas.replace(ch, ''); };
   if (p === 'K') { strip('K'); strip('Q'); } if (p === 'k') { strip('k'); strip('q'); }
   for (const [sq, ch] of [[63, 'K'], [56, 'Q'], [7, 'k'], [0, 'q']]) if (m.f === sq || m.t === sq) strip(ch);
@@ -2204,6 +2225,9 @@ const bdSend = (w, mv) => sendSig(w.id, { t: 'g2', a: 'mv', k: w.arc.k, d: mv })
 function boardRecv(w, m) {
   const a = w.arc, d = a.d, k = a.k; if (!d || d.over) return;
   if (m.r && (k === 'chess' || k === 'checkers')) { d.over = d.me; d.resigned = 1; return; }
+  if (k === 'chess' && m.dr) { d.offerIn = 1; return; }
+  if (k === 'chess' && m.da && d.offered) { d.over = 'draw'; d.why = 'you both agreed'; return; }
+  if (k === 'chess' && m.dd) { d.offered = 0; d.declined = 1; return; }
   if (d.turn === d.me) return;
   if (k === 'othello') { const i = +m.i; if (Number.isInteger(i) && i >= 0 && i < 64 && otFlips(d.b, i, d.turn).length) otApply(d, i); }
   else if (k === 'checkers') { const p = Array.isArray(m.p) ? m.p.map(Number) : [], ok = ckLegal(d.b, d.turn).find(x => x.length === p.length && x.every((v, j) => v === p[j])); if (ok) ckApply(d, ok); }
@@ -2240,6 +2264,10 @@ function drawBoard(w, body, nm) {
   const g = el('div', { class: 'bgrid' + (k === 'othello' ? ' og' : '') });
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const rr = flip ? 7 - r : r, cc = flip ? 7 - c : c, i = rr * 8 + cc, [t, cls] = cell(i); g.append(el('div', { class: 'bc ' + (((rr + cc) % 2) ? 'dk' : 'lt') + ' ' + cls, text: t, onclick: ev => click(i, ev) })); }
   body.append(g, el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: status }));
+  if (!d.over && k === 'chess') {
+    if (d.offerIn) body.append(el('div', { class: 'hint', style: 'font-weight:700' }, nm + ' offers a draw. ', el('button', { text: 'Accept', onclick: () => { d.over = 'draw'; d.why = 'you both agreed'; d.offerIn = 0; bdSend(w, { da: 1 }); drawArc(w); } }), ' ', el('button', { text: 'Decline', onclick: () => { d.offerIn = 0; bdSend(w, { dd: 1 }); drawArc(w); } })));
+    else body.append(el('button', { text: d.offered ? 'Draw offered…' : (d.declined ? 'Draw declined. Offer again' : 'Offer a draw'), disabled: !!d.offered, onclick: () => { d.offered = 1; d.declined = 0; bdSend(w, { dr: 1 }); drawArc(w); } }), ' ');
+  }
   if (!d.over && (k === 'chess' || k === 'checkers')) body.append(el('button', { text: 'Resign', onclick: () => { if (!confirm('Resign this game? ' + nm + ' will win.')) return; d.over = d.me === 'w' ? 'b' : 'w'; d.resigned = 1; bdSend(w, { r: 1 }); drawArc(w); } }));
 }
 
@@ -2672,7 +2700,7 @@ function decorName(node, p) {
   if (m[2] && NAME_FX.some(x => x[0] === m[2])) node.classList.add('fx-' + m[2]);
   return node;
 }
-const SYNC_KEYS = ['brb_cemos', 'brb_theme', 'brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack', 'brb_clicks'];
+const SYNC_KEYS = ['brb_cemos', 'brb_theme', 'brb_nicks', 'brb_sort', 'brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack', 'brb_clicks'];
 let syncT, syncReady = false;
 const _lsSet = Storage.prototype.setItem, _lsDel = Storage.prototype.removeItem;
 function syncSoon() { if (!syncReady) return; clearTimeout(syncT); syncT = setTimeout(syncPush, 2500); }
@@ -3230,6 +3258,35 @@ function buildPlayer() {
 
 /* ============ BOOT ============ */
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* ============ AUTO UPDATE ============ */
+const APP_VER = '2026-11-22b';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+let updReady = false, updBar = null;
+const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
+async function applyUpdate() {
+  try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (e) {}
+  location.reload();
+}
+function showUpd() {
+  if (updBar || document.hidden) return;
+  let n = 10; const txt = el('span'), go = el('button', { text: 'Update now', onclick: applyUpdate, style: 'margin-left:.6rem' });
+  updBar = el('div', { style: 'position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);background:#1f4170;color:#fff;padding:.6rem 1rem;border-radius:.6rem;z-index:99999;box-shadow:0 .4rem 1.4rem #0006;font-size:.95rem' }, txt, go);
+  document.body.append(updBar);
+  const tick = () => { if (!updBar) return; if (updBusy()) { txt.textContent = 'A new version of BeRightBack is ready. Update when you are done with your chat or call.'; return setTimeout(tick, 3000); } txt.textContent = 'A new version is ready. Updating in ' + n + '…'; if (n-- <= 0) return applyUpdate(); setTimeout(tick, 1000); };
+  tick();
+}
+async function checkUpdate(manual) {
+  try {
+    const t = await (await fetch('index.html', { cache: 'no-store' })).text(), m = t.match(/const APP_VER = '([^']+)'/);
+    if (m && m[1] !== APP_VER) { updReady = true; showUpd(); return; }
+    if (manual) toast('BeRightBack', 'You already have the newest version.');
+  } catch (e) { if (manual) toast('BeRightBack', 'Could not check for updates. Please check your internet.'); }
+}
+if (/^https?:/.test(location.protocol)) {
+  setTimeout(() => checkUpdate(false), 6000); setInterval(() => checkUpdate(false), 30 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (updReady && !updBusy()) applyUpdate(); else checkUpdate(false); } });
+  addEventListener('online', () => checkUpdate(false));
+}
 state.recovering = /type=recovery/.test(location.hash);
 /* pop-out windows stay silent except for their own contact; the main window ignores contacts that are popped out */
 {
