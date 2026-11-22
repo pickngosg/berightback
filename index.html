@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://www.youtube.com https://s.ytimg.com https://open.spotify.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.klipy.com https://i.ytimg.com https://*.scdn.co; media-src 'self' blob: data: https://*.supabase.co https://*.klipy.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://open.spotify.com https://challenges.cloudflare.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'; manifest-src 'self'">
+<script>if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.style.display = 'none'; } }</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>BeRightBack</title>
 <link rel="manifest" href="manifest.json">
@@ -398,7 +401,8 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 <body>
 <div id="app"></div>
 <noscript>BeRightBack needs JavaScript turned on.</noscript>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script>window.supabase || document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');</script>
 <script>
 'use strict';
 /* ============ SETTINGS (public values - safe to be in the file) ============ */
@@ -991,7 +995,7 @@ function renderContacts() {
   });
   group('online', 'Online', online, contactRow);
   group('offline', 'Offline', offline, contactRow);
-  if (r.outgoing.length) group('pending', 'Waiting for reply', r.outgoing.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name }), el('span', { class: 'm', text: ' - waiting for them to accept' })), el('button', { text: '✕', style: 'padding:0 7px', title: 'Cancel request', onclick: async () => { await sb.rpc('remove_friend', { p_other: p.id }); await refresh(); } })));
+  if (r.outgoing.length) group('pending', 'Waiting for reply', r.outgoing.map(id => state.profiles.get(id) || { id, display_name: 'Request sent', avatar: '🙂' }), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name }), el('span', { class: 'm', text: ' - waiting for them to accept' })), el('button', { text: '✕', style: 'padding:0 7px', title: 'Cancel request', onclick: async () => { await sb.rpc('remove_friend', { p_other: p.id }); await refresh(); } })));
   if (r.blocked.length) group('blocked', 'Blocked', r.blocked.map(id => state.profiles.get(id)).filter(Boolean), p => el('div', { class: 'ct off' }, buddy('offline'), el('div', { class: 'txt' }, el('span', { class: 'n', text: p.display_name })), el('button', { text: 'Unblock', onclick: async () => { await sb.rpc('unblock_user', { p_other: p.id }); await refresh(); } })));
   list.append(el('div', { class: 'grp newg', onclick: () => newGroup(), text: '＋ Create a group or list (Friends, Work…)' }));
   if (!r.accepted.length && !r.incoming.length) list.append(el('div', { style: 'padding:14px;color:#7a869b;text-align:center', text: 'No contacts yet. Ask a friend for their friend code (Settings, Privacy and safety), type it below and click Add.' }));
@@ -1343,7 +1347,7 @@ async function sendAudio(w, blob, mime) {
 function getChan(id) {
   let c = state.tchans[id];
   if (!c) {
-    c = state.tchans[id] = sb.channel('typing-' + id); c.brbReady = false; c.brbQ = [];
+    c = state.tchans[id] = sb.channel('typing-' + id, { config: { private: true } }); c.brbReady = false; c.brbQ = [];
     c.subscribe(st => { if (st === 'SUBSCRIBED') { c.brbReady = true; c.brbQ.splice(0).forEach(m => c.send(m)); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { c.brbReady = false; } });
   }
   return c;
@@ -1541,9 +1545,10 @@ const baseTitle = () => POP ? (((state.profiles.get(POP) || {}).display_name || 
 const SID = Math.random().toString(36).slice(2);
 function sessInit() {   // "You signed in at another location"
   if (state.sessCh) { try { sb.removeChannel(state.sessCh); } catch (e) {} }
-  state.sessCh = sb.channel('sess-' + state.uid).on('broadcast', { event: 'kick' }, ({ payload }) => {
+  try { sb.realtime.setAuth(); } catch (e) {}
+  state.sessCh = sb.channel('sess-' + state.uid, { config: { private: true } }).on('broadcast', { event: 'kick' }, ({ payload }) => {
     if (payload && payload.sid && payload.sid !== SID && state.uid) { state.uid = null; sb.auth.signOut({ scope: 'local' }).then(() => showLogin('You signed in at another location, so this device was signed out.')); }
-  }).subscribe(st => { if (st === 'SUBSCRIBED') { try { sessionStorage.setItem('brb_live', '1'); if (sessionStorage.getItem('brb_kick')) { sessionStorage.removeItem('brb_kick'); state.sessCh.send({ type: 'broadcast', event: 'kick', payload: { sid: SID } }); } } catch (e) {} } });
+  }).subscribe(st => { if (st === 'SUBSCRIBED') { try { sessionStorage.setItem('brb_live', '1'); if (sessionStorage.getItem('brb_kick')) { sessionStorage.removeItem('brb_kick'); state.sessCh.send({ type: 'broadcast', event: 'kick', payload: { sid: SID } }); try { sb.auth.signOut({ scope: 'others' }); } catch (e) {} } } catch (e) {} } });
 }
 function popInit() {
   const id = POP; let tries = 0;
@@ -1879,7 +1884,8 @@ function subscribe() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => refresh())
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, pl => onProfile(pl.new))
     .subscribe(st => { if (st === 'SUBSCRIBED') refresh(); else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') toast('Connection', 'Live updates are reconnecting…'); });
-  state.myTyping = sb.channel('typing-' + uid).on('broadcast', { event: 'typing' }, ({ payload }) => payload && payload.from && onTyping(payload.from)).on('broadcast', { event: 'sig' }, ({ payload }) => onSig(payload)).subscribe();
+  try { sb.realtime.setAuth(); } catch (e) {}
+  state.myTyping = sb.channel('typing-' + uid, { config: { private: true } }).on('broadcast', { event: 'typing' }, ({ payload }) => payload && payload.from && onTyping(payload.from)).on('broadcast', { event: 'sig' }, ({ payload }) => onSig(payload)).subscribe();
 }
 function onProfile(p) {
   if (p.id === state.uid) return;
@@ -3304,7 +3310,7 @@ function buildPlayer() {
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ============ AUTO UPDATE ============ */
-const APP_VER = '2026-11-22f';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-22g';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
