@@ -170,6 +170,11 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
+.emi{width:1.35em;height:1.35em;vertical-align:-.3em;display:inline-block}
+.cemo{height:1.9em;max-width:3.2em;vertical-align:-.55em;object-fit:contain}
+.themes{display:flex;gap:.5rem;margin:.2rem 0 .7rem}.thdot{width:1.9rem;height:1.9rem;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #9bbbe6;cursor:pointer;padding:0}.thdot.on{box-shadow:0 0 0 3px #1f4170}
+.themed .main,.themed .win,.themed .mbox,.themed .menu,.themed .toast,.themed .bigcard{filter:hue-rotate(var(--th))}
+.themed .main img,.themed .win img,.themed .mbox img,.themed .menu img,.themed .toast img,.themed .bigcard img,.themed .main video,.themed .win video,.themed .main .av,.themed .win .av,.themed .mbox .av,.themed .toast .av,.themed .bigcard .av,.themed .win canvas,.themed .main svg,.themed .win svg,.themed .menu svg,.themed .toast svg,.themed .bgrid,.themed .c4{filter:hue-rotate(calc(-1 * var(--th)))}
 .mwide{width:min(46rem,96vw)}
 .bgrid{--bs:min(2.15rem,10vw);display:grid;grid-template-columns:repeat(8,var(--bs));width:max-content;border:2px solid #3a2f1c;border-radius:.3rem;overflow:hidden;margin:.3rem 0}
 .bc{width:var(--bs);height:var(--bs);display:grid;place-items:center;font-size:calc(var(--bs)*.72);line-height:1;user-select:none;cursor:pointer;position:relative}
@@ -418,21 +423,58 @@ const LOGO = `<img class="logo" alt="BeRightBack" src="data:image/png;base64,iVB
 
 const EMO = [[':)','🙂'],[':-)','🙂'],[':D','😄'],[':-D','😄'],[';)','😉'],[';-)','😉'],[':P','😛'],[':-P','😛'],[':(','🙁'],[':-(','🙁'],[":'(",'😢'],[':@','😠'],[':O','😮'],[':S','😕'],[':|','😐'],['8-)','😎'],['(H)','😎'],['(L)','❤️'],['(U)','💔'],['(Y)','👍'],['(N)','👎'],['(K)','😘'],['(A)','😇'],['(6)','😈'],['(B)','🍺'],['(*)','⭐'],['(8)','🎵'],['(@)','🐱'],['(%)','🐶'],['(})','🤗'],['(P)','📷'],['(^)','🎂'],['(G)','🎁'],['(F)','🌹'],['(W)','🥀'],['(O)','🕐'],['(S)','🌙'],['(D)','🍸'],['(C)','☕'],['(pl)','🍽️'],['(sn)','🐌'],['(xx)','🎮'],['(mp)','📱'],['(e)','✉️'],['(R)','🌈']];
 const EMOMAP = new Map(EMO.map(([k, v]) => [k.toLowerCase(), v]));
+/* ---- original animated BRB faces (drawn here, no outside artwork) ---- */
+const FACE_CSS = '<style>g.f{animation:bob 2.6s ease-in-out infinite}@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-.7px)}}.bl{animation:bl 3.4s infinite;transform-box:fill-box;transform-origin:center}@keyframes bl{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.1)}}.tg{animation:tg .6s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:top center}@keyframes tg{from{transform:rotate(-9deg)}to{transform:rotate(9deg)}}.td{animation:td 1.5s ease-in infinite}@keyframes td{0%{transform:translateY(0);opacity:1}100%{transform:translateY(7px);opacity:0}}.pu{animation:pu .7s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}@keyframes pu{from{transform:scale(1)}to{transform:scale(1.2)}}.fl{animation:fl 1.6s ease-out infinite}@keyframes fl{0%{transform:translate(0,0);opacity:1}100%{transform:translate(5px,-9px);opacity:0}}</style>';
+const F_EYES = '<ellipse class="bl" cx="11.5" cy="13" rx="1.7" ry="2.3" fill="#4a2c00"/><ellipse class="bl" cx="20.5" cy="13" rx="1.7" ry="2.3" fill="#4a2c00"/>', F_S = 'stroke="#6b3d00" stroke-width="1.9" stroke-linecap="round" fill="none"';
+const FACE_PARTS = {
+  smile: F_EYES + `<path d="M9.5 19 Q16 25.5 22.5 19" ${F_S}/>`,
+  grin: F_EYES + '<path d="M8.5 18 Q16 29 23.5 18 Z" fill="#5a1d00" stroke="#6b3d00" stroke-width="1.2" stroke-linejoin="round"/><path d="M10.5 19.2 Q16 21.6 21.5 19.2 L21 21 Q16 22.8 11 21 Z" fill="#fff"/>',
+  wink: `<path d="M8.8 13.5 Q11.5 10.6 14.2 13.5" ${F_S}/><ellipse class="bl" cx="20.5" cy="13" rx="1.7" ry="2.3" fill="#4a2c00"/><path d="M9.5 19 Q16 25.5 22.5 19" ${F_S}/>`,
+  tongue: F_EYES + `<path d="M9.5 19 Q16 24 22.5 19" ${F_S}/><g class="tg"><path d="M13.2 21.4 h5.6 v3 a2.8 2.8 0 0 1 -5.6 0z" fill="#ff6b8b" stroke="#c0304f" stroke-width=".8"/></g>`,
+  sad: F_EYES + `<path d="M10 23.5 Q16 17.5 22 23.5" ${F_S}/>`,
+  cry: F_EYES + `<path d="M10 23.5 Q16 17.5 22 23.5" ${F_S}/><path class="td" d="M10.5 16 q-1.6 2.6 0 3.4 q1.6 -.8 0 -3.4z" fill="#4aa8ff"/><path class="td" style="animation-delay:.7s" d="M21.5 16 q-1.6 2.6 0 3.4 q1.6 -.8 0 -3.4z" fill="#4aa8ff"/>`,
+  angry: '<circle cx="16" cy="16" r="14" fill="#ff4d2e" opacity=".38"/>' + F_EYES + `<path d="M7.5 8.5 L13.5 11" ${F_S}/><path d="M24.5 8.5 L18.5 11" ${F_S}/><path d="M10.5 23 Q16 19.5 21.5 23" ${F_S}/>`,
+  surprised: '<ellipse class="bl" cx="11.5" cy="12.5" rx="2.4" ry="3" fill="#fff" stroke="#6b3d00"/><circle cx="11.5" cy="12.8" r="1.2" fill="#4a2c00"/><ellipse class="bl" cx="20.5" cy="12.5" rx="2.4" ry="3" fill="#fff" stroke="#6b3d00"/><circle cx="20.5" cy="12.8" r="1.2" fill="#4a2c00"/><ellipse class="pu" cx="16" cy="22.5" rx="2.6" ry="3.2" fill="#5a1d00"/>',
+  confused: F_EYES + `<path d="M8.5 8.5 Q11.5 6.5 14 9" ${F_S}/><path d="M10 21.5 Q13 18.5 16 21.5 T22 21.5" ${F_S}/>`,
+  neutral: F_EYES + `<path d="M10.5 21.5 H21.5" ${F_S}/>`,
+  cool: '<path d="M5.5 10.5 H26.5 M7 10.5 h7.5 v4.8 q0 2 -2 2 h-3.5 q-2 0 -2 -2z M17.5 10.5 h7.5 v4.8 q0 2 -2 2 h-3.5 q-2 0 -2 -2z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>' + `<path d="M9.5 20.5 Q16 26 22.5 20.5" ${F_S}/>`,
+  kiss: `<path d="M8.8 13.5 Q11.5 10.6 14.2 13.5" ${F_S}/><ellipse class="bl" cx="20.5" cy="13" rx="1.7" ry="2.3" fill="#4a2c00"/><path d="M14.5 21.5 q1.5 -2 3 0 q-1.5 2 -3 0z" fill="#e0405f"/><path class="fl" d="M23 19 c-2.6 -1.6 -1.2 -4.4 .6 -3 c1.8 -1.4 3.2 1.4 .6 3z" fill="#ff4d7a"/>`
+};
+const FACES = {};
+Object.keys(FACE_PARTS).forEach(k => { FACES[k] = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${FACE_CSS}<defs><radialGradient id="g" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff58a"/><stop offset=".6" stop-color="#ffcf2e"/><stop offset="1" stop-color="#e59b00"/></radialGradient></defs><circle cx="16" cy="16" r="14.5" fill="url(#g)" stroke="#c98a00"/><g class="f">${FACE_PARTS[k]}</g></svg>`); });
+FACES.heart = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${FACE_CSS}<g class="pu"><path d="M16 27.5 C3.5 18.5 4.5 8 11 6.8 C14 6.3 16 8.8 16 10 C16 8.8 18 6.3 21 6.8 C27.5 8 28.5 18.5 16 27.5Z" fill="#ee2f5a" stroke="#b3123a" stroke-width="1"/><path d="M10 11 q1.5 -2 3.2 -1.4" stroke="#ff9db4" stroke-width="1.6" fill="none" stroke-linecap="round"/></g></svg>`);
+const FACE_KEY = { '🙂': 'smile', '😄': 'grin', '😉': 'wink', '😛': 'tongue', '🙁': 'sad', '😢': 'cry', '😠': 'angry', '😮': 'surprised', '😕': 'confused', '😐': 'neutral', '😎': 'cool', '😘': 'kiss', '❤️': 'heart' };
+function emoNode(p) { const v = EMOMAP.get(p.toLowerCase()), f = v && FACES[FACE_KEY[v]]; return f ? el('img', { class: 'emi', src: f, alt: v, title: p }) : el('span', { title: p, text: v || p }); }
+/* ---- my own emoticons: a small picture of mine that my contacts see too ---- */
+const CEMO_RE = /\[\[e:([0-9a-f-]{36}\/emo_[A-Za-z0-9_-]{1,40}\.png)\]\]/;
+const getCemos = () => { try { const a = JSON.parse(localStorage.getItem('brb_cemos') || '[]'); return Array.isArray(a) ? a.filter(e => e && /^[a-z0-9]{2,10}$/.test(e.c) && CEMO_RE.test('[[e:' + e.p + ']]')) : []; } catch (e) { return []; } };
+const setCemos = a => localStorage.setItem('brb_cemos', JSON.stringify(a.slice(0, 12)));
+function expandCustom(text) { getCemos().forEach(e => { if (e.p.startsWith(state.uid + '/')) text = text.split(':' + e.c + ':').join('[[e:' + e.p + ']]'); }); return text; }
+async function pngSmall(file, n) {
+  let bmp; try { bmp = await createImageBitmap(file); } catch (e) { throw new Error('This picture type is not supported.'); }
+  const k = Math.min(n / bmp.width, n / bmp.height), w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+  const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Could not process the picture.')), 'image/png'));
+}
+
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const EMORE = new RegExp('(' + [...EMOMAP.keys()].sort((a, b) => b.length - a.length).map(esc).join('|') + ')', 'gi');
 const URLRE = /(https?:\/\/[^\s<>"']+)/g;
 function renderRich(parent, text) {
+  String(text).split(new RegExp(CEMO_RE.source, 'g')).forEach((seg, n) => { if (n % 2) parent.append(el('img', { class: 'cemo', src: avatarUrl(seg), alt: 'emoticon', loading: 'lazy' })); else if (seg) richPlain(parent, seg); });
+}
+function richPlain(parent, text) {
   text.split(URLRE).forEach((part, i) => {
     if (i % 2) { parent.append(el('a', { href: part, target: '_blank', rel: 'noopener noreferrer nofollow', text: part })); return; }
     part.split(EMORE).forEach((p, j) => {
-      if (j % 2) parent.append(el('span', { title: p, text: EMOMAP.get(p.toLowerCase()) || p }));
+      if (j % 2) parent.append(emoNode(p));
       else if (p) parent.append(document.createTextNode(p));
     });
   });
 }
 function renderEmo(parent, text) {
   String(text || '').split(EMORE).forEach((p, j) => {
-    if (j % 2) parent.append(el('span', { title: p, text: EMOMAP.get(p.toLowerCase()) || p }));
+    if (j % 2) parent.append(emoNode(p));
     else if (p) parent.append(document.createTextNode(p));
   });
 }
@@ -530,7 +572,8 @@ const STATUS_LIST = ['online', 'busy', 'brb', 'away', 'phone', 'lunch', 'invisib
 const DEFPIC = 'data:image/webp;base64,UklGRpoPAABXRUJQVlA4II4PAADQVgCdASoAAQABPmEwlEckIyIhJJOakIAMCWVu8YAFWlBnC/SjGaRFDc3BHmi803pAP651Un7M8EB9wGJPWlOtf28e02XWDofnOqsrcHke/w+49CUnRMHlXJv2OB1nBHVxRCKeQXY4HWUo7ScU4T/U5jhmqN5quXYROJQrrDIHvJ81USsuF2U+AsNtEkvaiKbmdOaf/rQkrP+f/vh3OtDeprxQi1jwWX6oK41EVoPmD5GOyrEjMrxrenetG+SvpL1dMGfMCsZP/xALavRRd1AdNV8g+7NmX/3qFH6k5PhN73i7coUwOqQydjrcpgCrhDBLYxy5YuB7ngoLptdY/9qtQX90MvjJf2plTH72SI3nFpCAWb+8mO2fgb3s3t5XnOq//W8tGWKca4paHxxw56zrrzE8GszHgm4RUYPWv39QbXKKM4FHRoCgoMo1fUhPfjR9B3MUmgQsH9z7tNp3B2dx41S+qTRvm3xL6tOtUKHSOAOGhlsvE2sLERhxBf0Bou3ElrXYRGUBYLRRp551g/qV4x7c05DzyU1Mx4WUQnsxK6n8n28mXd6Ayl8sQtLcxsQ8npWdJksB4gU/zgS6Vq+GyRKXJGfiWNiAM7MjDFyVrEYot0xRB/HdV4Xeaslk35/xqpmK3QpcNTTBA0sw6eTqENdOkTaZ9JBy/Fp7u3gH+H3mGCrDGYWRjGNEbiQrA0w0YY+bK3iFrSBXXkqpfwi8z94Mmr1H8EbTewr0MnJn07VGHAbo0lHPNUugCub9VodG5gSvRPhmaprWJYdlycT0M4O5q4/K6QIsw/h1AOHPqIksZt6gKrpI8Cup1OuihNED5IB6xyweIm0ZTv0bGpmhanhvvzBHpgSOZvfqTJy6i/4ZhTaLa7DEc7kSdLDUX5XsLHna8ypXQ/YbZhfufPZrKmxLl1Zn+7GOYCoBlo2mAP75W7/xYixhCOf6d5N30/iMHQ0AZ1IIUsYTWiEDl58TmOFZtv8VzocjucrYixeOvqZW0On8RFdNhqOeVIEdSFS+rrPMBEAfQFxy5f5Jv1nw9zOJ/j89wvw6OnCJjqFKiaEPVMZZ1hCfOrfkBgCjNbRJlEk79F1G/rHJ+uvF9+el0DNKMP2Kwxm3gtb/S/XTkWaXjWYInDISkkV33bWWRGGgvNQ/zz1KStNHJOjQmeQuJ34cn2xJhbCqvR9vcNoky2trJ2msKQbWmUuDHPWTMgFxQiXnp3blJdVzo3aeEm9zmFwPnEvSPTRtePaJqnryyRm/DQvwNORZEjttvakmLYvEoyb4Tz90Vdy01E5/qqrvyJsCwOQ0RZydyVFeSpmiNPhmExSJ1hgzS6D59jxsNAFlEcXWRC9Us8rqlI2WZLQJXnrzS8D1TC59HI3MB1MRP9xwSF0O2KoLTy7BLaYg+tTLZFFVFYwpRkY+NZaCHImUnWHy3SXS1YH0nJfiDENXgQdPYnvH3+HT5Wrscd3oMhXPfsZv3iJksYQnb9nkh26uiXV1/CTD8610JNP7+b+bgJkfUm/tfz7HUBJ1is9DTJNYNlogjYCeZA+UTyg/XGAbIyttHoa2kwD/GZFRg7I0Htprurx9vIT3cY8u62IqbGm3navCf5LbS+5CMegnaNVM2gX5z8ERCQCzvxK7WgAaj78p2oLIdld3XAyqimRs6EMjZSuoLi41SDZsjz52k6AV/xVlcwpBva7sytiE1ILcjkTzeKL6I2JuVT8ZXxY7REYQnAt+YiaHRvkh72/kLfAZD3J+Ui44ojM97T9PrLZlfIH44XWPhlcX5lvMcAmkO77hGdszxT7Uj0tWYQILxCcEkMt9uP83bAJfKIkk3Ej0rDrA/wkrk5DmUsZ7Xa6BQHgSjjREwhd7FZJ+vHPmmAPMyDoI6S5ILoSVCs5a8dGFw9uhaFSsOHaOQHDw7rcg158ZTWzoL5QN3Zv1ScQtHbI9TYTcfByvAxFINsGnuDiP7FD57d2MwCwEs8IHvQr2K/MPRQt6Syhu4SMC/CfVfxDTpWG8S6y1NMnCIrW/iFKdqjKnCN96VKYj2v9EhaW2+nS7c4mZ/iaxE3dHNUhwMAVs2cIWI+X1jGbCxydy9UkHLsWc6a2drznA+9G/fC3y7kzAHrfgjLl3ldSYHWFTwcqzccz9gT5luYfNnAd78apJqMKpqxNEVxypOJ6huwOgtFspu49hCRiOEooZTLq0cfwMd1OPbXNK2nncc4omJpxr+oT1MZ325sBgglFacdAl6K6o7eaABX//pi7jjrJec/pX08Yz0kLWSnDyyhO2MwceTkUu07oTSA1cQnPFj3AuW5cJXqJoQlKVGXRB+z2iMNFpLswmupAZOevGYRbT+vJX8LP674GzNleCBzQPQB/XFk3lYgeBsB9LXPJSAzPBT1sE+c4Zzcmwgm6oelar1Rprpeu8CtxWlSA4Z1asoZbcXR3eSZWo3LEn4A5TXCU5SijCAbW0KBi+vJ8n7LQdyVI87Mi5+xZHbRzec2hrDmaRzFxjhNVjROj8b5FUZTZUtBaKf1PXgKWq6FDiaG6p4UwGkbBVUYZgUwxrM4zX2Z5VqH6nu1NHkQF8N717GhYSaoEr31bvc3gT9jLZweOn1f5UbV9sDyrOeIjFTSgYTu1jCBYX60spDbAlFWi/sn7a2ZhB1zAt3v//dycOJNRdeFyGDhpcCwpolpAMJMhvNOFsE8Ln5CKfLdOaB0tYN4/Gv/8BA2NyoS6vpNrsdZeYX+z9lJ9tNZgyScygPDTgSJf0256BjOjJPbPHGv9INvY9/3ODHFQy8UCUP5Zr10x5IOABrk8pdOYvmvMMn2bBMvD080KwI61Ei5nyXTJl0dzBi2g1SNqKTiUXgy8dbvTJ8gR4fpYXExvA4xlpKvwi3+bOieqFfcqgq7kXoHRwCqc750PufB36PRGtx3JHEwRmaqR1pSYeXOy0SRQorB6sjbN/SnQ1266DXGZG1RT/Lpjo3BNSGNDN3Ti1iu/CgCsQD87DzUypDT8pJQX6wA/XPNBMGoRsIXiluFXkWy3Rc+h5GcvW70Z6b2SuyLX8NktqG90DN1ddHqbq8lnnTE5aSazk6ih68hprD1MtaIyBLx8w7WMJ0aJMISwcUnYpdCpXQ6ZkvzWzbUFHxnkuT+fySncOZq60gWfhmd0n4UDuVoT/n4BIkAbUytK3NYgF89HUF0lHXcXUu74Tgs3QglocRS30Pvyy2uFkfXglhPvM35omVhInfjuVW9yWA7fPrXm2nIAXlAeEET+fZN5J2+uUbeArr6yjeCDamWHHKlZlRDsAFMMM+2/YklUPTpnnOhMxU5GqyR/5TZSM/oGHE3fYfn7x8tH56j0ZZGWUx3JoC9hwt2JWPF9XPkq9XXXE2Vx8i4M0ZJ38gDlKFWBI6z/Lkxd8f2FaFreMwP8/XVgWrMhPDyvS8c7x9hjvhyJ8GjEtKNIeVon/KJ2HPp2tbur6+oy9JFjkTtusBErr1wghKU8Q3NmxsPCkVzM44IqyW6g9PTZ7HydHkvPiMhaGzEZOvXpfXBa4aGyufnJId7A8WF80IaZkRNSDUMzymx1NO9zfQEH1Jm43V1N/dtz6nkOPo7oqVCIMFX97VC7lNzXhktkLDP7Hf33rUqR8byeSdpbKr5dJ5Sb0QjCetUdSScdwvwcwWQykUsEGgIFsJ+dDIItWgp9kf6VDYhGt4k3JFL/i5Z8Mgr7aNlTLGoSAQ2n0mGMzV3q4z0Di4l49yYJgU00w/bxVma0L7e/UeUsqq12f+a/jpimQwTHx47SX/Z5Uup5wNs014m8Sxx9nSbfnWtZoC0HUaIZ1LWgRWG8XS16Zp8U/zK6dw/alTZ3BGlrHJxCNkswFibD0STt1Msd+wLjwFl/5R373T9ydLooq11WOSyRMv74eboC64PbVXyTGzPthr7kjL3Q0obY9PaxGrz1EWRZfKLX4WW5+yYrYiaq5AHWXEfCWwgIE2m0nihi0ewOb1W/+SwMX5wRgyPIdVlNKKdmeClkTdF2DSCJsAzukuoeCz//nFLVh51LkQXDxI3CIrVq6EnP7FvzKYr/u6j2n/T44GmzC0usHnww4mw2ebdxMoQ7cRyyr7CJal+8vqSTAHW/pe6mLhhJG2gr2l0BrHhHnAZ1ZWSRT4stoIcHqJK+0hZw+qkqkeabpguwUNSpAnLHDDZso+FI8e2xFF2n0+WZO1Mp5R7+e/vj0ZP1bRgfuXUiBhB7Kh5ff7nXUNNNWcWB9pfIlW/qK9YrhfL/zgufUyMcA3nS9VgSOt1uOTkT4y+V9M3PSUrrVGFcFISkm8/pAJzmqyUhLMf9BRQeUb4L/if0ZhEGwTAQbhhB+HBaWcjYr+cEknp82/Irzyr3zmNdlf5HpQOXlZZkzq/XBBVXr7bgbdmSOs043NWuo34Cx/DOnQjmhu2p62PnSkh7yCaM43oxtm2af+9kmPB2vMj53igi369QNkRMUVWnlJuRaas/0avaU5Y7pjcXyGqCunJ2zKD/9m9GSgZv9lHY9DyrrybGkyQsggQirxIhAgq/MkMLXcqp7oZesmrYV/LPmbgJa2eC+WyMenSAhcbfnu7YSpc9xFh6O9/TdkSzfJ9lXmwynUoARYxF6c3mC2ZOJNB108aYAyAHL9iN5/TR4cl0Vr1GdRJY1VbPw0CZjwE9ajPKusnqJCQfx/e9s3LW4FH+gf1IHzgpsF8cjnRqzQUNS08wmPCDHc27iXIrMmHSsyDpNqeRYqFdkslxlOVJ6dMXGuysfD5m9vQNOWC+PWAzJvReSKhgBl71DvKcGcgHNFcoQ3GbbqQhy5zKAWOWT+0GktCITJ+k4IsuC+2gtAdLtK2YBHZFgSm6/wsNVVGlUwJKvzzvKpLbtOmH3vhV0e8rG02qffb7Ycm5zVTf6HA7/+yWsA0BcGknMSWgMpaFd5kwzgJ7RSI5pAJa+HjMiKXXmkq4qsfIU0Jr/p8KmRU9sqkWA/b6+dUog7K2WXlSv1VdI6LaQr96PRArsHnI1PhL+cB1t9hLbDh0bIX27xIZ8/CeEiB2ZAOSUnAiKDFRpbHurCj35ioFTjTBC9Aj2hV+2XpZv4sJ4CwPdxq96JCkVVjM+A6O+YMSRbkkxpi1mqDBcRmdbJOhmoWfWWPx8RAEjgncJCDDUIzWZTq/IaAfEQJMa9smPlwalwKrqEwbyp6rOWLGVNQJzoB+l558bNqR9x9Ve/yDhih/6UXpGgJTRzBpnEKAz0zWdXOTch9qh9H4IfTwbjJlFwRg9lXfKMAYk7pwLp8v5NVIScqu5aRzQvxecmoZULMFXcoZZn3hUJ89EC4TP3jpwy/wgAAAA';
 const AVATARS = ['🙂','😎','🤓','😺','🐶','🐱','🦊','🐼','🐸','🦁','🐧','🐢','🦄','🚀','✈️','⚽','🎮','🎧','🌸','🌈','⭐','🔥','🍕','☕'];
 
-function applyPrefs() { document.documentElement.dataset.size = localStorage.getItem('brb_size') || 'normal'; }
+const THEMES = [['Classic blue', 0, '#4a86d8'], ['Ocean teal', 325, '#2fb3a7'], ['Forest', 285, '#3da05a'], ['Sunset', 170, '#e8833a'], ['Rose', 115, '#e0508f'], ['Grape', 55, '#8c5cd6']];
+function applyPrefs() { document.documentElement.dataset.size = localStorage.getItem('brb_size') || 'normal'; const t = THEMES.find(x => x[0] === localStorage.getItem('brb_theme')); document.documentElement.style.setProperty('--th', (t ? t[1] : 0) + 'deg'); document.documentElement.classList.toggle('themed', !!(t && t[1])); }
 applyPrefs();
 /* ============ STATE ============ */
 const state = {
@@ -839,8 +882,8 @@ function notifyBar() {
 function renderHeader() {
   const h = $('#mhead'); if (!h) return; h.innerHTML = '';
   const me = state.me;
-  const av = avatarEl(me, 64, false); av.style.border = '3px solid ' + STATUS[me.status][1]; av.style.borderRadius = '.55rem'; av.style.boxShadow = '0 2px 6px #0004'; av.style.cursor = 'pointer'; av.title = 'Change your picture and settings';
-  av.onclick = () => openSettings();
+  const av = avatarEl(me, 64, false); av.style.border = '3px solid ' + STATUS[me.status][1]; av.style.borderRadius = '.55rem'; av.style.boxShadow = '0 2px 6px #0004'; av.style.cursor = 'pointer'; av.title = 'My contact card';
+  av.onclick = () => profileCard(state.uid);
   const nm = el('div', { class: 'nm', title: 'Click to change your name' }); renderEmo(nm, me.display_name); decorName(nm, me);
   const pm = el('div', { class: 'pm', title: 'Click to type a personal message' });
   if (me.now_playing) { pm.classList.add('np'); pm.append(eqBars(), ' ' + me.now_playing); }
@@ -1409,7 +1452,7 @@ function openNews() {
   let n; try { n = JSON.parse(localStorage.getItem('brb_news') || '[]'); } catch (e) { n = []; }
   const box = el('div', { style: 'max-height:60vh;overflow:auto' });
   if (!n.length) box.append(el('p', { text: 'Nothing new yet. Changes your contacts make to their picture, personal message or song will show here.' }));
-  n.forEach(x => box.append(el('div', { style: 'padding:.35rem 0;border-bottom:1px solid #d6e2f2' }, el('b', { text: x.name }), ' ' + x.text + ' ', el('small', { style: 'color:#6b7a90', text: new Date(x.t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }))));
+  n.forEach(x => box.append(el('div', { style: 'padding:.4rem 0;border-bottom:1px solid #d6e2f2;display:flex;gap:.6rem;align-items:center' }, state.profiles.get(x.id) ? avatarEl(state.profiles.get(x.id), 34, false) : '', el('div', { style: 'flex:1;min-width:0' }, el('b', { text: x.name }), ' ' + x.text + ' ', el('small', { style: 'color:#6b7a90', text: new Date(x.t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })))));
   miniModal("What's new", box);
 }
 function newGroup(moveId) {
@@ -1689,7 +1732,7 @@ async function sendMedia(w, file) {
   clearReply(w); w.typ.textContent = ''; appendMsg(w, data); tone(SND.online);
 }
 async function sendMsg(w) {
-  const body = expandShort(w.input.value.replace(/\s+$/, '')).slice(0, 2000);
+  const body = expandCustom(expandShort(w.input.value.replace(/\s+$/, ''))).slice(0, 2000);
   if (!body.trim()) return;
   const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.u ? 'u' : '') + (f.z || '') + (f.f || '') + (f.c || '');
   w.input.value = '';
@@ -1714,7 +1757,8 @@ function shake(w) {
 function toggleEmo(w) {
   const old = w.tools.querySelector('.emopop'); if (old) { old.remove(); return; }
   const seen = new Set(), pop = el('div', { class: 'emopop' });
-  EMO.forEach(([k, v]) => { if (seen.has(v)) return; seen.add(v); pop.append(el('span', { text: v, title: k, onclick: ev => { ev.stopPropagation(); w.input.value += k + ' '; pop.remove(); w.input.focus(); } })); });
+  EMO.forEach(([k, v]) => { if (seen.has(v)) return; seen.add(v); const f = FACES[FACE_KEY[v]]; pop.append(el('span', { title: k, onclick: ev => { ev.stopPropagation(); w.input.value += k + ' '; pop.remove(); w.input.focus(); } }, f ? el('img', { class: 'emi', src: f, alt: v }) : v)); });
+  getCemos().forEach(e => pop.append(el('span', { title: ':' + e.c + ':', onclick: ev => { ev.stopPropagation(); w.input.value += ':' + e.c + ': '; pop.remove(); w.input.focus(); } }, el('img', { class: 'cemo', src: avatarUrl(e.p), alt: e.c }))));
   w.tools.append(pop);
   setTimeout(() => document.addEventListener('click', () => pop.remove(), { once: true }), 0);
 }
@@ -1767,7 +1811,7 @@ function onIncoming(m) {
   state.unread.set(id, (state.unread.get(id) || 0) + 1);
   renderContacts(); updateTitle();
   if (m.kind !== 'nudge' && m.kind !== 'wink') tone(SND.msg);
-  const preview = m.kind === 'audio' ? 'sent you a voice clip 🎙' : m.kind === 'wink' ? 'sent you a wink ✨' : m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.slice(0, 80);
+  const preview = m.kind === 'audio' ? 'sent you a voice clip 🎙' : m.kind === 'wink' ? 'sent you a wink ✨' : m.kind === 'nudge' ? 'sent you a nudge!' : m.kind === 'image' ? 'sent you a picture 📷' : m.kind === 'video' ? 'sent you a video 🎬' : m.body.replace(new RegExp(CEMO_RE.source, 'g'), '🙂').slice(0, 80);
   toast(p.display_name, preview, () => openChat(id), p);
   sysNotify(p.display_name, preview, 'm-' + id);
 }
@@ -1920,7 +1964,8 @@ document.addEventListener('click', ev => {
 const arcRec = (w, game, result) => { try { gameEnd(w, game, result); } catch (e) {} try { sb.rpc('record_game', { p_other: w.id, p_game: game, p_result: result }).then(() => {}, () => {}); } catch (e) {} };
 function gamesMenu(w, ev) {
   const r = ev.currentTarget.getBoundingClientRect();
-  showMenu(r.left, r.bottom, [['Tic-Tac-Toe', () => startGame(w)], ...Object.entries(ARC).map(([k, n]) => [n, () => arcInvite(w, k)]), '-', ['🏆 Leaderboard', leaderboard]]);
+  const GI = { c4: '🔴', rps: '✊', hang: '🔤', trivia: '❓', wyr: '🤔', knows: '💞', othello: '⚫', checkers: '🏁', chess: '♟️' };
+  showMenu(r.left, r.bottom, [['Tic-Tac-Toe', () => startGame(w), '❌'], ...Object.entries(ARC).map(([k, n]) => [n, () => arcInvite(w, k), GI[k] || '🎮']), '-', ['Leaderboard', leaderboard, '🏆']]);
 }
 async function leaderboard() {
   const box = el('div', { text: 'Loading…' }); miniModal('🏆 Leaderboard (last 30 days)', box);
@@ -2574,7 +2619,7 @@ function decorName(node, p) {
   if (m[2] && NAME_FX.some(x => x[0] === m[2])) node.classList.add('fx-' + m[2]);
   return node;
 }
-const SYNC_KEYS = ['brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack', 'brb_clicks'];
+const SYNC_KEYS = ['brb_cemos', 'brb_theme', 'brb_groups', 'brb_short', 'brb_bg', 'brb_muted', 'brb_yt', 'brb_sound', 'brb_pics', 'brb_size', 'brb_n_inout', 'brb_n_status', 'brb_n_song', 'brb_share_music', 'brb_pack', 'brb_clicks'];
 let syncT, syncReady = false;
 const _lsSet = Storage.prototype.setItem, _lsDel = Storage.prototype.removeItem;
 function syncSoon() { if (!syncReady) return; clearTimeout(syncT); syncT = setTimeout(syncPush, 2500); }
@@ -2812,6 +2857,39 @@ function openSettings() {
       drawPic(); markSel(); say('Your picture was changed!', true);
     } catch (x) { say('Could not use that picture: ' + friendlyErr(x)); }
   };
+  const upGif = el('input', { type: 'file', accept: 'image/gif,image/webp', style: 'display:none' });
+  upGif.onchange = async () => {
+    const f = upGif.files[0]; upGif.value = ''; if (!f) return;
+    if (!/^image\/(gif|webp)$/.test(f.type)) { say('Please choose a GIF or WebP picture.'); return; }
+    if (f.size > 800 * 1024) { say('That animated picture is too big. Please keep it under 800 KB.'); return; }
+    say('Uploading your animated picture…', true);
+    try {
+      const path = `${state.uid}/${Date.now()}.${f.type === 'image/gif' ? 'gif' : 'webp'}`;
+      const r = await sb.storage.from('avatars').upload(path, f, { contentType: f.type, upsert: false });
+      if (r.error) throw r.error;
+      const old = state.me.avatar, e = await setAvatar('img:' + path);
+      if (e) { say(e); return; }
+      if (old && old.startsWith('img:')) sb.storage.from('avatars').remove([old.slice(4)]);
+      drawPic(); markSel(); say('Your animated picture is set!', true);
+    } catch (x) { say('Could not use that picture: ' + friendlyErr(x) + ' (run the newest setup.sql once)'); }
+  };
+  const emoSec = () => {
+    const list = el('div'), code = el('input', { placeholder: 'Code, e.g. mycat (letters and numbers)', maxlength: '10' }), fl = el('input', { type: 'file', accept: 'image/*', style: 'display:none' });
+    const draw = () => { list.textContent = ''; const a = getCemos(); if (!a.length) list.append(el('div', { class: 'hint', text: 'You have no emoticons of your own yet.' })); a.forEach(e => list.append(el('div', { class: 'scrow' }, el('img', { class: 'cemo', src: avatarUrl(e.p), alt: '' }), el('b', { text: ':' + e.c + ':' }), el('button', { text: '✕', title: 'Remove', onclick: () => { setCemos(getCemos().filter(x => x.c !== e.c)); sb.storage.from('avatars').remove([e.p]).then(() => {}, () => {}); draw(); } })))); };
+    fl.onchange = async () => {
+      const f = fl.files[0]; fl.value = ''; if (!f) return; const c = code.value.trim().toLowerCase();
+      if (!/^[a-z0-9]{2,10}$/.test(c)) { say('A code needs 2 to 10 letters or numbers, no spaces.'); return; }
+      if (getCemos().length >= 12) { say('You can keep up to 12 emoticons.'); return; }
+      if (getCemos().some(x => x.c === c)) { say('You already use that code.'); return; }
+      try {
+        const blob = await pngSmall(f, 48), path = `${state.uid}/emo_${Date.now().toString(36)}.png`;
+        const r = await sb.storage.from('avatars').upload(path, blob, { contentType: 'image/png', upsert: false }); if (r.error) throw r.error;
+        setCemos([...getCemos(), { c, p: path }]); code.value = ''; draw(); say('Emoticon added. Type :' + c + ': in a chat.', true);
+      } catch (x) { say('Could not add it: ' + friendlyErr(x)); }
+    };
+    draw();
+    return sec('My own emoticons', el('div', { class: 'hint', text: 'Turn a small picture into an emoticon. Type its code between colons, for example :' + 'mycat' + ': , and your contacts see the picture too. Please only use pictures you are allowed to share.' }), list, el('div', { class: 'row2' }, code, el('button', { text: '＋ Choose a picture', onclick: () => { if (!code.value.trim()) { say('Type a code first.'); return; } fl.click(); } }), fl));
+  };
   // --- appearance
   const sizeSel = el('select', { onchange: () => { localStorage.setItem('brb_size', sizeSel.value); applyPrefs(); } },
     [['small', 'Small'], ['normal', 'Normal'], ['large', 'Large'], ['xl', 'Extra large']].map(([v, t]) => el('option', { value: v, text: t })));
@@ -2841,9 +2919,9 @@ function openSettings() {
       el('label', { text: 'Personal message' }), pm, saveP),
     sec('Make it yours', ...styleItems(say)),
     sec('My picture', el('div', { class: 'hint', text: 'Choose one of the 10 pictures that come with BeRightBack:' }), grid,
-      el('div', { class: 'row2' }, el('button', { text: '📷 Upload my own picture', onclick: () => up.click() }), up),
+      el('div', { class: 'row2' }, el('button', { text: '📷 Upload my own picture', onclick: () => up.click() }), up, el('button', { text: '🎞 Upload an animated picture', onclick: () => upGif.click() }), upGif),
       el('div', { class: 'hint', text: 'Your picture is cropped to a square and made small automatically.' })),
-    sec('Appearance', el('label', { text: 'Text size' }), sizeSel,
+    sec('Appearance', el('label', { text: 'Colour theme' }), el('div', { class: 'themes' }, THEMES.map(([n, h, c]) => el('button', { type: 'button', class: 'thdot' + ((localStorage.getItem('brb_theme') || 'Classic blue') === n ? ' on' : ''), title: n, style: 'background:' + c, onclick: ev => { localStorage.setItem('brb_theme', n); applyPrefs(); [...ev.currentTarget.parentNode.children].forEach(b => b.classList.toggle('on', b === ev.currentTarget)); } }))), el('label', { text: 'Text size' }), sizeSel,
       chk('Show display pictures in my contact list', state.pics, v => { state.pics = v; localStorage.setItem('brb_pics', v ? 'on' : 'off'); renderContacts(); })),
     sec('My emoticon shortcuts', el('div', { class: 'hint', text: 'Type a short code in a chat and it turns into your text or emoticon when you press Send. Example: code  brb  becomes  🏃 be right back' }), scList, el('div', { class: 'row2' }, scCode, scText, scAdd)),
     ...(isStandalone() ? [] : [sec('Install the app', el('div', { class: 'hint', text: 'Install BeRightBack on this device so it opens like a normal app.' }), el('div', { class: 'row2' }, el('button', { text: '📲 Install the app', onclick: installApp })))]),
@@ -2877,6 +2955,7 @@ function openSettings() {
       secs = secs.filter(x => x !== sounds); secs.push(sec('Pop-up alerts', ...pops), sec('Notifications on this device', ...dev), sSounds);
       GROUP['Pop-up alerts'] = 3; GROUP['Notifications on this device'] = 3; GROUP['Sounds'] = 3;
     }
+    secs.push(emoSec()); GROUP['My own emoticons'] = 2;
     secs.push(sec('Conversations', chk('Show the time on every message', localStorage.getItem('brb_ts') === '1', v => localStorage.setItem('brb_ts', v ? '1' : '0'))));
     const pages = NAV.map(() => el('div', { class: 'spage' }));
     secs.forEach(x => { const g = GROUP[(x.querySelector('h3') || {}).textContent]; pages[g === undefined ? 5 : g].append(x); });
