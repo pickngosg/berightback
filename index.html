@@ -56,6 +56,10 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .mtitle b{font-size:1rem;font-weight:600}
 .mtitle .sp{flex:1}
 .mtitle button{padding:0 .6rem;line-height:1.5rem;font-size:1rem}
+.mtitle{padding-right:0}.mtitle button.gear{margin-right:.4rem}
+.mtitle button.cap{border:0;background:transparent;box-shadow:none;border-radius:0;width:2.6rem;height:2rem;padding:0;margin:0;line-height:2rem;font-size:1.05rem;color:#10294a;text-shadow:none;cursor:pointer;align-self:flex-start}
+.mtitle button.cap:hover{background:#ffffffa0}.mtitle button.cap.x{width:2.9rem;background:#d64545;color:#fff;border-top-right-radius:.7rem}.mtitle button.cap.x:hover{background:#e25858}
+.main.rolled>*:not(.mtitle){display:none!important}
 .mhead{display:flex;gap:.8rem;padding:.7rem .8rem;background:linear-gradient(#fdfeff,#e3effb 55%,#d2e4f6);border:1px solid #a3bfe0;border-radius:.55rem .55rem 0 0}
 .mhead .who{flex:1;min-width:0}
 .nmrow{display:flex;align-items:baseline;gap:.2rem;min-width:0;flex-wrap:wrap}
@@ -810,7 +814,12 @@ function buildMain() {
   const app = $('#app'); app.innerHTML = '';
   const lg = el('div'); lg.innerHTML = LOGO;
   const gear = el('button', { text: '⚙', title: 'Settings', onclick: () => openSettings() });
-  const title = el('div', { class: 'mtitle' }, lg, el('b', { text: APP_NAME }), el('div', { class: 'sp' }), gear);
+  if (!matchMedia('(max-width:700px)').matches) gear.style.display = 'none';
+  const capMin = el('button', { class: 'cap', text: '–', title: 'Roll up or open the window', 'aria-label': 'Minimise', onclick: () => { const on = $('#app .main').classList.toggle('rolled'); capMin.title = on ? 'Open the window' : 'Roll up the window'; } });
+  const capMax = el('button', { class: 'cap', text: '□', title: 'Full screen on or off', 'aria-label': 'Maximise', onclick: () => { try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) {} } });
+  if (!document.documentElement.requestFullscreen) capMax.style.display = 'none';
+  const capX = el('button', { class: 'cap x', text: '✕', title: 'Sign out', 'aria-label': 'Close', onclick: () => { if (confirm('Sign out of BeRightBack?')) signOut(); } });
+  const title = el('div', { class: 'mtitle' }, lg, el('b', { text: APP_NAME }), el('div', { class: 'sp' }), gear, capMin, capMax, capX);
   const head = el('div', { class: 'mhead', id: 'mhead' });
   const list = el('div', { class: 'contacts', id: 'clist' });
   const reqs = el('div', { id: 'reqs' });
@@ -839,10 +848,7 @@ function buildMain() {
       Help: [['Community rules', () => legalModal('rules')], ['Privacy and terms', () => legalModal('privacy')], ['Check for updates', () => checkUpdate(true)], ['About BeRightBack', () => toast('BeRightBack', 'A nostalgic messenger with nudges, winks, calls, games and shared music. Version ' + APP_VER)]]
     };
     Object.keys(M).forEach(k => mbar.append(el('span', { text: k, onclick: ev => { ev.stopPropagation(); const r = ev.target.getBoundingClientRect(); showMenu(r.left, r.bottom + 2, M[k]); } })));
-    const hide = localStorage.getItem('brb_mbar') === '0' || (localStorage.getItem('brb_mbar') === null && matchMedia('(max-width:700px)').matches);
-    mbar.style.display = hide ? 'none' : '';
-    var mcol = el('button', { class: 'mcol', title: 'Show or hide the menu bar', text: hide ? '▾' : '▴', onclick: ev => { ev.stopPropagation(); const on = mbar.style.display === 'none'; mbar.style.display = on ? '' : 'none'; mcol.textContent = on ? '▴' : '▾'; localStorage.setItem('brb_mbar', on ? '1' : '0'); } });
-    title.prepend(mcol); }
+  }
   const ban = el('div', { class: 'mban' }); { const tips = ['Tip: click ✨ in a chat to send a wink, or 📳 to nudge your friend.', 'Tip: change your status from the Actions menu.', 'Tip: click a picture in a chat for the profile. Use the small arrows to hide it.', 'Tip: point at a contact to see their status and message.']; let ti = 0; ban.textContent = tips[0]; state.timers.push(setInterval(() => { ti = (ti + 1) % tips.length; ban.textContent = tips[ti]; }, 20000)); }
   const csIn = el('input', { type: 'text', id: 'csearch', class: 'csearch', autocomplete: 'off', placeholder: 'Search contacts (Ctrl+F)', oninput: () => { state.csearch = csIn.value; renderContacts(); }, onkeydown: ev => { if (ev.key === 'Escape') { csIn.value = ''; state.csearch = ''; renderContacts(); csIn.blur(); } } });
   if (!window.__csKey) { window.__csKey = 1; addEventListener('keydown', ev => { if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'f' && !ev.target.closest('.win,.modal')) { const i = document.getElementById('csearch'); if (i) { ev.preventDefault(); i.focus(); i.select(); } } }); }
@@ -3298,7 +3304,7 @@ function buildPlayer() {
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ============ AUTO UPDATE ============ */
-const APP_VER = '2026-11-22e';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-22f';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
