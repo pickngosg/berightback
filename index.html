@@ -1347,7 +1347,7 @@ async function sendAudio(w, blob, mime) {
 function getChan(id) {
   let c = state.tchans[id];
   if (!c) {
-    c = state.tchans[id] = sb.channel('typing-' + id, { config: { private: true } }); c.brbReady = false; c.brbQ = [];
+    c = state.tchans[id] = sb.channel('typing-' + id); c.brbReady = false; c.brbQ = [];
     c.subscribe(st => { if (st === 'SUBSCRIBED') { c.brbReady = true; c.brbQ.splice(0).forEach(m => c.send(m)); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { c.brbReady = false; } });
   }
   return c;
@@ -1545,8 +1545,7 @@ const baseTitle = () => POP ? (((state.profiles.get(POP) || {}).display_name || 
 const SID = Math.random().toString(36).slice(2);
 function sessInit() {   // "You signed in at another location"
   if (state.sessCh) { try { sb.removeChannel(state.sessCh); } catch (e) {} }
-  try { sb.realtime.setAuth(); } catch (e) {}
-  state.sessCh = sb.channel('sess-' + state.uid, { config: { private: true } }).on('broadcast', { event: 'kick' }, ({ payload }) => {
+  state.sessCh = sb.channel('sess-' + state.uid).on('broadcast', { event: 'kick' }, ({ payload }) => {
     if (payload && payload.sid && payload.sid !== SID && state.uid) { state.uid = null; sb.auth.signOut({ scope: 'local' }).then(() => showLogin('You signed in at another location, so this device was signed out.')); }
   }).subscribe(st => { if (st === 'SUBSCRIBED') { try { sessionStorage.setItem('brb_live', '1'); if (sessionStorage.getItem('brb_kick')) { sessionStorage.removeItem('brb_kick'); state.sessCh.send({ type: 'broadcast', event: 'kick', payload: { sid: SID } }); try { sb.auth.signOut({ scope: 'others' }); } catch (e) {} } } catch (e) {} } });
 }
@@ -1884,8 +1883,7 @@ function subscribe() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => refresh())
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, pl => onProfile(pl.new))
     .subscribe(st => { if (st === 'SUBSCRIBED') refresh(); else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') toast('Connection', 'Live updates are reconnecting…'); });
-  try { sb.realtime.setAuth(); } catch (e) {}
-  state.myTyping = sb.channel('typing-' + uid, { config: { private: true } }).on('broadcast', { event: 'typing' }, ({ payload }) => payload && payload.from && onTyping(payload.from)).on('broadcast', { event: 'sig' }, ({ payload }) => onSig(payload)).subscribe();
+  state.myTyping = sb.channel('typing-' + uid).on('broadcast', { event: 'typing' }, ({ payload }) => payload && payload.from && onTyping(payload.from)).on('broadcast', { event: 'sig' }, ({ payload }) => onSig(payload)).subscribe();
 }
 function onProfile(p) {
   if (p.id === state.uid) return;
@@ -3310,7 +3308,7 @@ function buildPlayer() {
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ============ AUTO UPDATE ============ */
-const APP_VER = '2026-11-22g';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-22h';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
