@@ -3065,6 +3065,10 @@ function openSettings() {
       chk('Pop-up when a contact signs in or signs out', noteOn('inout'), v => localStorage.setItem('brb_n_inout', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their status', noteOn('status'), v => localStorage.setItem('brb_n_status', v ? 'on' : 'off')),
       chk('Pop-up when a contact changes their song', noteOn('song'), v => localStorage.setItem('brb_n_song', v ? 'on' : 'off')),
+      (() => { const c = el('input', { type: 'checkbox', style: 'width:auto' }); c.disabled = true;
+        sb.from('push_prefs').select('preview').eq('user_id', state.uid).maybeSingle().then(({ data }) => { c.checked = !!(data && data.preview); c.disabled = false; }).catch(() => { c.disabled = false; });
+        c.onchange = async () => { const { error } = await sb.rpc('set_push_preview', { p_on: c.checked }); if (error) { c.checked = !c.checked; toast('Notifications', 'Could not save: ' + friendlyErr(error) + ' (run the newest setup.sql once)'); } };
+        return el('label', { class: 'crow' }, c, 'Show the start of a message in phone notifications (off = only the sender\'s name)'); })(),
       (() => { const c = el('input', { type: 'checkbox', style: 'width:auto' }), out = el('div', { class: 'hint' }); c.checked = isApp() ? localStorage.getItem('brb_push') !== 'off' : localStorage.getItem('brb_push') === 'on';
         c.onchange = async () => { out.textContent = ''; try { if (c.checked) { await enablePush(); out.textContent = '✓ On for this device. You will get messages even when the app is closed.'; } else { await disablePush(); out.textContent = 'Off for this device.'; } } catch (e) { c.checked = false; out.textContent = e.message || 'Could not switch on.'; } };
         return el('div', {}, el('label', { class: 'crow' }, c, 'Notify me of new messages when the app is closed (this device)'), el('div', { class: 'row2' }, el('button', { text: '🔔 Send me a test notification', onclick: () => testNotify(out) })), out); })(),
@@ -3315,6 +3319,9 @@ if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigato
 
 /* ============ AUTO UPDATE ============ */
 const RELEASES = [   // newest first. Add one entry per update that has something people can notice. v must be the same as APP_VER for that update.
+  { v: '2026-11-22l', title: 'Private by default', items: [
+    '🔔 Phone notifications now show only who wrote to you. Want to see the start of the message too? Switch it on in Settings > Sounds and notifications.'
+  ] },
   { v: '2026-11-22k', title: 'Spring clean', items: [
     '🧹 Pictures, videos and voice clips are now deleted 30 days after they are sent, just like the privacy page promises.'
   ] },
@@ -3340,7 +3347,7 @@ function showLatest(force) {
   const ov = el('div', { class: 'modal latest', onclick: ev => { if (ev.target === ov) done(); } }, el('div', { class: 'mbox' }, el('div', { class: 'lhd' }, el('span', { text: '📰 Latest from BRB' }), el('button', { text: '✕', title: 'Close', onclick: done })), body));
   document.body.append(ov);
 }
-const APP_VER = '2026-11-22k';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-22l';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
