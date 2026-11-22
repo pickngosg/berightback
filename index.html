@@ -171,6 +171,8 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
 .emi{width:1.35em;height:1.35em;vertical-align:-.3em;display:inline-block}
+.gifm{display:block;max-width:240px;max-height:240px;border-radius:6px}
+.gifpop{width:340px;max-width:92vw}.gifpop .gtop{display:flex;gap:4px;margin-bottom:4px}.gifpop input{flex:1;min-width:0}.gifpop .ggrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:260px;overflow:auto}.gifpop .ggrid img{width:100%;height:90px;object-fit:cover;border-radius:4px;cursor:pointer}.gifpop .gpw{font-size:11px;opacity:.7;text-align:right;margin-top:3px}
 .cemo{height:1.9em;max-width:3.2em;vertical-align:-.55em;object-fit:contain}
 .themes{display:flex;gap:.5rem;margin:.2rem 0 .7rem}.thdot{width:1.9rem;height:1.9rem;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #9bbbe6;cursor:pointer;padding:0}.thdot.on{box-shadow:0 0 0 3px #1f4170}
 .themed .main,.themed .win,.themed .mbox,.themed .menu,.themed .toast,.themed .bigcard{filter:hue-rotate(var(--th))}
@@ -459,8 +461,11 @@ async function pngSmall(file, n) {
 
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const EMORE = new RegExp('(' + [...EMOMAP.keys()].sort((a, b) => b.length - a.length).map(esc).join('|') + ')', 'gi');
+const GIF_RE = /\[\[g:(https:\/\/[a-z0-9.-]*klipy\.com\/[A-Za-z0-9_\/.%~-]{3,300})\]\]/;
 const URLRE = /(https?:\/\/[^\s<>"']+)/g;
 function renderRich(parent, text) {
+  const gm = String(text).match(GIF_RE);
+  if (gm) { parent.append(el('img', { class: 'gifm', src: gm[1], alt: 'GIF', loading: 'lazy' })); text = String(text).replace(GIF_RE, '').trim(); if (!text) return; }
   String(text).split(new RegExp(CEMO_RE.source, 'g')).forEach((seg, n) => { if (n % 2) parent.append(el('img', { class: 'cemo', src: avatarUrl(seg), alt: 'emoticon', loading: 'lazy' })); else if (seg) richPlain(parent, seg); });
 }
 function richPlain(parent, text) {
@@ -1519,7 +1524,7 @@ function openChat(id) {
   const mk = (t, title, fn) => el('button', { text: t, title, onclick: ev => { ev.stopPropagation(); fn(ev); } });
   const voiceBtn = mk('🎙 Voice Clip', 'Record a voice clip (click again to send)', () => toggleRec(w));
   const nudgeBtn = mk('📳', 'Nudge - get their attention', () => sendNudge(w)); nudgeBtn.classList.add('on');
-  const tools = el('div', { class: 'wtools' }, mk('A', 'Bold, italic and colour', ev => fmtMenu(w, ev)), mk('🙂▾', 'Emoticons', () => toggleEmo(w)), voiceBtn, mk('✨▾', 'Winks', () => toggleWinks(w)), mk('🖼▾', 'Chat background', ev => bgMenu(w, ev)), mk('✏️', 'Handwriting - draw a note', () => penPad(w)), nudgeBtn, fileIn);
+  const tools = el('div', { class: 'wtools' }, mk('A', 'Bold, italic and colour', ev => fmtMenu(w, ev)), mk('🙂▾', 'Emoticons', () => toggleEmo(w)), mk('GIF', 'Search and send a GIF', () => toggleGifs(w)), voiceBtn, mk('✨▾', 'Winks', () => toggleWinks(w)), mk('🖼▾', 'Chat background', ev => bgMenu(w, ev)), mk('✏️', 'Handwriting - draw a note', () => penPad(w)), nudgeBtn, fileIn);
   const big = (ico, label, fn) => el('button', { class: 'tb', onclick: ev => { ev.stopPropagation(); fn(ev); } }, el('span', { class: 'ti', text: ico }), el('span', { text: label }));
   const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', ev => showMenu(ev.clientX, ev.clientY, [['Invite another contact into a group chat with ' + pname(w.id) + '…', () => newRoomDialog(w.id)], ['Invite a friend to join BeRightBack', () => inviteFriend(w)]])), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', ev => gamesMenu(w, ev)), big('🎁', 'Gift', ev => giftMenu(w, ev)));
   const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
@@ -1740,6 +1745,34 @@ async function sendMsg(w) {
   const { data, error } = await sb.from('messages').insert(row).select().single();
   if (error) { w.input.value = body; sysLine(w, 'Message not sent: ' + friendlyErr(error)); return; }
   clearReply(w); w.typ.textContent = ''; appendMsg(w, data); w.input.focus();
+}
+
+/* ============ GIF SEARCH (KLIPY via Supabase function 'gif-search') ============ */
+function toggleGifs(w) {
+  const old = w.tools.querySelector('.gifpop'); if (old) { old.remove(); return; }
+  const pop = el('div', { class: 'emopop gifpop' }), q = el('input', { placeholder: 'Search KLIPY', maxlength: 60 }), grid = el('div', { class: 'ggrid' });
+  const go = el('button', { text: 'Search' }); pop.onclick = ev => ev.stopPropagation();
+  pop.append(el('div', { class: 'gtop' }, q, go), grid, el('div', { class: 'gpw', text: 'Powered by KLIPY' }));
+  w.tools.append(pop);
+  const load = async () => {
+    grid.textContent = 'Loading…';
+    try {
+      const { data, error } = await sb.functions.invoke('gif-search', { body: { q: q.value.trim() } });
+      if (error || !data || !Array.isArray(data.items)) throw new Error('x');
+      grid.textContent = '';
+      if (!data.items.length) grid.textContent = 'No GIFs found.';
+      data.items.forEach(g => { if (!GIF_RE.test('[[g:' + g.u + ']]')) return; grid.append(el('img', { src: g.p || g.u, alt: 'GIF', loading: 'lazy', onclick: () => { pop.remove(); sendGif(w, g.u); } })); });
+    } catch (e) { grid.textContent = 'GIF search is not available right now.'; }
+  };
+  go.onclick = load; q.onkeydown = ev => { if (ev.key === 'Enter') load(); };
+  load(); q.focus();
+}
+async function sendGif(w, url) {
+  if (Date.now() - (state.gifAt || 0) < 2000) return;
+  state.gifAt = Date.now();
+  const { data, error } = await sb.from('messages').insert({ sender: state.uid, recipient: w.id, body: '[[g:' + url + ']]', kind: 'text', fmt: '' }).select().single();
+  if (error) { sysLine(w, 'GIF not sent: ' + friendlyErr(error)); return; }
+  appendMsg(w, data);
 }
 async function sendNudge(w) {
   const nowN = Date.now(); state.nudgeLog = (state.nudgeLog || []).filter(t => nowN - t < 10000);
@@ -2861,7 +2894,7 @@ function openSettings() {
   upGif.onchange = async () => {
     const f = upGif.files[0]; upGif.value = ''; if (!f) return;
     if (!/^image\/(gif|webp)$/.test(f.type)) { say('Please choose a GIF or WebP picture.'); return; }
-    if (f.size > 800 * 1024) { say('That animated picture is too big. Please keep it under 800 KB.'); return; }
+    if (f.size > 5 * 1024 * 1024) { say('That animated picture is too big. Please keep it under 5 MB.'); return; }
     say('Uploading your animated picture…', true);
     try {
       const path = `${state.uid}/${Date.now()}.${f.type === 'image/gif' ? 'gif' : 'webp'}`;
