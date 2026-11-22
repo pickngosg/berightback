@@ -170,6 +170,17 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
+.mwide{width:min(46rem,96vw)}
+.sbody{display:flex;gap:1rem;align-items:flex-start}.snav{flex:none;width:10rem;display:flex;flex-direction:column;gap:.2rem;position:sticky;top:0}
+.snav button{display:flex;gap:.5rem;align-items:center;text-align:left;border:1px solid transparent;background:transparent;padding:.5rem .6rem;border-radius:.5rem;cursor:pointer;font:inherit;color:#1f4170}
+.snav button.on{background:linear-gradient(#e6f1ff,#cfe3fb);border-color:#9bbbe6;font-weight:700}.spages{flex:1;min-width:0}
+@media(max-width:620px){.sbody{flex-direction:column}.snav{width:100%;flex-direction:row;overflow-x:auto;position:static}.snav button{white-space:nowrap}}
+.fpanel{padding:.5rem .7rem;min-width:15rem}.fh{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#6b7a90;margin:.5rem 0 .25rem;border-top:1px solid #d3e0f1;padding-top:.4rem}.fh:first-child{border-top:0;margin-top:0}
+.frow{display:flex;gap:.35rem;align-items:center;flex-wrap:wrap}.fsep{width:1px;height:1.4rem;background:#c5d4e8;margin:0 .2rem}
+.ftog{min-width:2rem;height:2rem;border:1px solid #9bbbe6;border-radius:.4rem;background:linear-gradient(#fff,#e6f1ff);cursor:pointer;padding:0 .4rem}.ftog.on{background:linear-gradient(#cfe3fb,#a9cdf5);box-shadow:inset 0 1px 3px #0003}
+.fopt{display:block;width:100%;text-align:left;border:0;background:transparent;padding:.3rem .4rem;border-radius:.3rem;cursor:pointer;font-size:1rem}.fopt:hover,.fopt.on{background:#e6f1ff}
+.fdot{width:1.5rem;height:1.5rem;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #9bbbe6;cursor:pointer}.fdot.on{box-shadow:0 0 0 2px #1f4170}
+.fprev{margin-top:.5rem;padding:.4rem .5rem;border:1px dashed #9bbbe6;border-radius:.4rem;background:#fff}
 .prog{height:.35rem;margin-top:.25rem;background:#d6e2f2;border-radius:1rem;overflow:hidden}.prog i{display:block;height:100%;width:35%;background:#4a86d8;border-radius:1rem;animation:progmv 1.1s ease-in-out infinite}@keyframes progmv{0%{margin-left:-35%}100%{margin-left:100%}}
 .foffer button{margin-left:.4rem}
 .mcol{min-width:0!important;width:1.5rem;height:1.5rem;padding:0!important;border-radius:50%!important;font-size:.75rem!important;line-height:1.4rem!important;flex:none}
@@ -418,7 +429,8 @@ function sanitizeName(s, max) {
 }
 const eqBars = () => el('span', { class: 'eq' }, el('i'), el('i'), el('i'));
 function applyFmt(node, fmt) {
-  if (!/^b?i?u?(f[1-4])?(#[0-9a-fA-F]{6})?$/.test(fmt || '')) return;
+  if (!/^b?i?u?[sl]?(f[1-4])?(#[0-9a-fA-F]{6})?$/.test(fmt || '')) return;
+  { const z = fmt.match(/^b?i?u?([sl])/); if (z) node.style.fontSize = z[1] === 's' ? '.82em' : '1.3em'; }
   if (/^b?i?u/.test(fmt)) node.style.textDecoration = 'underline';
   const fo = fmt.match(/f([1-4])/); if (fo) node.style.fontFamily = FONTS['f' + fo[1]];
   if (fmt.includes('b')) node.style.fontWeight = '700';
@@ -442,6 +454,7 @@ function toneRetro(seq) {
 }
 function tone(seq) {
   if (!state.sound) return;
+  { const k = seq === SND.msg ? 'msg' : seq === SND.online ? 'online' : seq === SND.nudge ? 'nudge' : ''; if (k && localStorage.getItem('brb_snd_' + k) === 'off') return; }
   try {
     if (localStorage.getItem('brb_pack') === 'retro' && !(seq[0] && seq[0][3] === 'buzz')) { toneRetro(seq); return; }
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
@@ -982,9 +995,10 @@ function openPop(x, y, content) {
   m.style.top = Math.max(4, Math.min(y, innerHeight - m.offsetHeight - 6)) + 'px';
   setTimeout(() => document.addEventListener('click', closeMenus, { once: true }), 0);
 }
+const MENU_ICONS = [[/^Sign out/, '🚪'], [/^Add a contact/, '➕'], [/group chat/i, '👥'], [/group or list/i, '📁'], [/favourite/i, '⭐'], [/display picture/i, '🖼️'], [/music|playlist/i, '🎵'], [/What.?s new/i, '📰'], [/^Options|settings/i, '⚙️'], [/^Install/i, '⬇️'], [/rules/i, '📜'], [/^Privacy/i, '🔒'], [/^About/i, 'ℹ️'], [/nudge/i, '📳'], [/wink/i, '✨'], [/voice clip/i, '🎙️'], [/voice call/i, '🎤'], [/video call/i, '🎥'], [/Tic-Tac|Leaderboard/i, '🎮'], [/Send files/i, '📎'], [/Save conversation/i, '💾'], [/^Close/i, '✖️'], [/^Find/i, '🔍'], [/Select all/i, '🔲'], [/^Clear/i, '🧹'], [/^Invite/i, '👥'], [/instant message/i, '💬'], [/View profile|View larger/i, '🔎'], [/Save picture/i, '💾'], [/^Hide/i, '🙈'], [/^Report/i, '⚑'], [/^Block/i, '⛔'], [/^Mute|^Unmute/i, '🔕'], [/song I am playing/i, '🎧'], [/Remove|Delete/i, '🗑️'], [/Rename|Move/i, '✏️']];
 function showMenu(x, y, items) {
-  const box = el('div');
-  items.forEach(it => { if (it === '-') box.append(el('hr')); else { const d = el('div', { onclick: () => { closeMenus(); it[1](); } }); if (it[2]) { d.style.cssText = 'display:flex;gap:9px;align-items:center'; d.append(buddy(it[2])); } d.append(document.createTextNode(it[0])); box.append(d); } });
+  const box = el('div'), icoOf = it => it[2] || ((MENU_ICONS.find(([re]) => re.test(it[0])) || [])[1] || ''), any = items.some(it => it !== '-' && icoOf(it));
+  items.forEach(it => { if (it === '-') box.append(el('hr')); else { const d = el('div', { onclick: () => { closeMenus(); it[1](); } }); const ic = icoOf(it); d.style.cssText = 'display:flex;gap:9px;align-items:center'; if (STATUS[ic]) d.append(buddy(ic)); else if (any) d.append(el('span', { text: ic, style: 'width:1.3em;text-align:center;flex:none' })); d.append(document.createTextNode(it[0])); box.append(d); } });
   openPop(x, y, box);
 }
 function toast(title, text, onclick, prof) {
@@ -1135,8 +1149,19 @@ function applyBg(w) { w.log.style.background = BGS[localStorage.getItem('brb_bg'
 function bgMenu(w, ev) { const r = ev.currentTarget.getBoundingClientRect(); showMenu(r.left, r.top - 170, Object.keys(BGS).map(k => [k, () => { localStorage.setItem('brb_bg', k); state.wins.forEach(applyBg); }])); }
 const FONTS = { f1: '"Comic Sans MS","Comic Neue",cursive', f2: 'Georgia,"Times New Roman",serif', f3: '"Courier New",monospace', f4: '"Segoe Script","Bradley Hand",cursive' };
 function fmtMenu(w, ev) {
-  const r = ev.currentTarget.getBoundingClientRect(), C = [['Default colour', ''], ['Pink', '#d6336c'], ['Blue', '#1c7ed6'], ['Green', '#2f9e44'], ['Orange', '#f08c00'], ['Purple', '#7048e8']];
-  showMenu(r.left, Math.max(8, r.top - 420), [[(w.fmt.b ? '✔ ' : '') + 'Bold', () => { w.fmt.b = !w.fmt.b; }], [(w.fmt.i ? '✔ ' : '') + 'Italic', () => { w.fmt.i = !w.fmt.i; }], [(w.fmt.u ? '✔ ' : '') + 'Underline', () => { w.fmt.u = !w.fmt.u; }], '-', ...[['Default font', ''], ['Comic', 'f1'], ['Serif', 'f2'], ['Typewriter', 'f3'], ['Handwriting', 'f4']].map(([n, f]) => [((w.fmt.f || '') === f ? '✔ ' : '') + n, () => { w.fmt.f = f; }]), '-', [(localStorage.getItem('brb_ts') === '1' ? '✔ ' : '') + 'Show the time on every message', () => localStorage.setItem('brb_ts', localStorage.getItem('brb_ts') === '1' ? '0' : '1')], '-', ...C.map(([n, c]) => [(w.fmt.c === c ? '✔ ' : '') + n, () => { w.fmt.c = c; }])]);
+  const r = ev.currentTarget.getBoundingClientRect(), f = w.fmt, box = el('div', { class: 'fpanel', onclick: e => e.stopPropagation() });
+  const COL = [['Default', ''], ['Pink', '#d6336c'], ['Blue', '#1c7ed6'], ['Green', '#2f9e44'], ['Orange', '#f08c00'], ['Purple', '#7048e8']];
+  const FN = [['Default font', ''], ['Comic', 'f1'], ['Serif', 'f2'], ['Typewriter', 'f3'], ['Handwriting', 'f4']];
+  const draw = () => {
+    box.textContent = '';
+    const tog = (t, k, st, tip) => el('button', { type: 'button', class: 'ftog' + (f[k] ? ' on' : ''), title: tip, text: t, style: st, onclick: () => { f[k] = !f[k]; draw(); } });
+    const sz = (t, v, tip, st) => el('button', { type: 'button', class: 'ftog' + ((f.z || '') === v ? ' on' : ''), title: tip, text: t, style: st, onclick: () => { f.z = v; draw(); } });
+    box.append(el('div', { class: 'fh', text: 'Style' }), el('div', { class: 'frow' }, tog('B', 'b', 'font-weight:900', 'Bold'), tog('I', 'i', 'font-style:italic', 'Italic'), tog('U', 'u', 'text-decoration:underline', 'Underline'), el('span', { class: 'fsep' }), sz('A', 's', 'Small text', 'font-size:.75rem'), sz('A', '', 'Normal text', 'font-size:1rem'), sz('A', 'l', 'Large text', 'font-size:1.3rem')));
+    box.append(el('div', { class: 'fh', text: 'Font' }), ...FN.map(([n, v]) => el('button', { type: 'button', class: 'fopt' + ((f.f || '') === v ? ' on' : ''), style: v ? 'font-family:' + FONTS[v] : '', text: ((f.f || '') === v ? '✔ ' : '') + n, onclick: () => { f.f = v; draw(); } })));
+    box.append(el('div', { class: 'fh', text: 'Colour' }), el('div', { class: 'frow' }, ...COL.map(([n, c]) => el('button', { type: 'button', class: 'fdot' + ((f.c || '') === c ? ' on' : ''), title: n, style: 'background:' + (c || '#222'), onclick: () => { f.c = c; draw(); } }))));
+    const pv = el('div', { class: 'fprev', text: 'This is how your message will look.' }); applyFmt(pv, (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.u ? 'u' : '') + (f.z || '') + (f.f || '') + (f.c || '')); box.append(pv);
+  };
+  draw(); openPop(r.left, Math.max(8, r.top - 330), box);
 }
 function toggleSearch(w) {
   const old = w.root.querySelector('.wsearch'); if (old) { old.remove(); [...w.log.children].forEach(c => { c.style.display = ''; }); return; }
@@ -1636,7 +1661,7 @@ async function sendMedia(w, file) {
 async function sendMsg(w) {
   const body = expandShort(w.input.value.replace(/\s+$/, '')).slice(0, 2000);
   if (!body.trim()) return;
-  const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.u ? 'u' : '') + (f.f || '') + (f.c || '');
+  const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.u ? 'u' : '') + (f.z || '') + (f.f || '') + (f.c || '');
   w.input.value = '';
   const row = { sender: state.uid, recipient: w.id, body, kind: 'text', fmt }; if (w.replyTo) row.reply_to = w.replyTo;
   const { data, error } = await sb.from('messages').insert(row).select().single();
@@ -2648,6 +2673,17 @@ function openSettings() {
     ...(state.isAdmin ? [sec('Admin', el('div', { class: 'hint', text: 'You are an admin. Reports from people appear here.' }), el('div', { class: 'row2' }, el('button', { text: '🛡 Open the admin tool', onclick: adminTool })))] : []),
     sec('My account', el('div', { class: 'hint', text: 'Signed in as ' + (state.authEmail || '') + '. Only you can see this email.' }), el('label', { text: 'New password' }), pw,
       el('div', { class: 'row2' }, pwBtn, el('button', { text: 'Sign out', onclick: () => { closeSettings(); signOut(); } }), el('button', { class: 'danger', text: 'Delete my account…', onclick: () => { closeSettings(); deleteAccount(); } }))));
+  { const NAV = [['👤', 'Personal'], ['🎨', 'Appearance'], ['💬', 'Messages'], ['🔔', 'Alerts'], ['🔒', 'Privacy and help'], ['⚙️', 'Account']];
+    const GROUP = { 'My profile': 0, 'My picture': 0, 'Make it yours': 0, 'Appearance': 1, 'My emoticon shortcuts': 2, 'Conversations': 2, 'Sounds and notifications': 3, 'Privacy and safety': 4, 'Help, rules and reports': 4 };
+    const snd = (k, t) => chk(t, localStorage.getItem('brb_snd_' + k) !== 'off', v => localStorage.setItem('brb_snd_' + k, v ? 'on' : 'off'));
+    const secs = [...box.querySelectorAll(':scope > .sec')], sounds = secs.find(x => (x.querySelector('h3') || {}).textContent === 'Sounds and notifications');
+    if (sounds) sounds.append(el('div', { class: 'hint', text: 'Choose which sounds play:' }), snd('msg', 'New message sound'), snd('online', 'Contact signs in sound'), snd('nudge', 'Nudge sound'));
+    secs.push(sec('Conversations', chk('Show the time on every message', localStorage.getItem('brb_ts') === '1', v => localStorage.setItem('brb_ts', v ? '1' : '0'))));
+    const pages = NAV.map(() => el('div', { class: 'spage' }));
+    secs.forEach(x => { const g = GROUP[(x.querySelector('h3') || {}).textContent]; pages[g === undefined ? 5 : g].append(x); });
+    const nav = el('div', { class: 'snav' }), show = i => { pages.forEach((p, j) => { p.style.display = j === i ? '' : 'none'; }); [...nav.children].forEach((b, j) => b.classList.toggle('on', j === i)); };
+    NAV.forEach(([ic, t], i) => nav.append(el('button', { type: 'button', onclick: () => show(i) }, el('span', { text: ic }), t)));
+    box.append(el('div', { class: 'sbody' }, nav, el('div', { class: 'spages' }, ...pages))); show(0); box.classList.add('mwide'); }
   ov.append(box); document.body.append(ov); markSel();
 }
 async function purgeMyFiles() {
