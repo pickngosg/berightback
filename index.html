@@ -170,6 +170,8 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt{min-width:0;font-size:1.25rem;line-height:1.35;color:#10294a;word-break:break-word}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
+.prog{height:.35rem;margin-top:.25rem;background:#d6e2f2;border-radius:1rem;overflow:hidden}.prog i{display:block;height:100%;width:35%;background:#4a86d8;border-radius:1rem;animation:progmv 1.1s ease-in-out infinite}@keyframes progmv{0%{margin-left:-35%}100%{margin-left:100%}}
+.foffer button{margin-left:.4rem}
 .mcol{min-width:0!important;width:1.5rem;height:1.5rem;padding:0!important;border-radius:50%!important;font-size:.75rem!important;line-height:1.4rem!important;flex:none}
 .mban{padding:.3rem .8rem;font-size:.8rem;color:#4b6285;text-align:center;border-top:1px solid #c5d4e8;background:linear-gradient(#f4f9fe,#dbe8f6)}
 .pwrap{position:relative;display:flex;justify-content:center;width:100%}
@@ -416,9 +418,11 @@ function sanitizeName(s, max) {
 }
 const eqBars = () => el('span', { class: 'eq' }, el('i'), el('i'), el('i'));
 function applyFmt(node, fmt) {
-  if (!/^b?i?(#[0-9a-fA-F]{6})?$/.test(fmt || '')) return;
+  if (!/^b?i?u?(f[1-4])?(#[0-9a-fA-F]{6})?$/.test(fmt || '')) return;
+  if (/^b?i?u/.test(fmt)) node.style.textDecoration = 'underline';
+  const fo = fmt.match(/f([1-4])/); if (fo) node.style.fontFamily = FONTS['f' + fo[1]];
   if (fmt.includes('b')) node.style.fontWeight = '700';
-  if (/^b?i/.test(fmt)) node.style.fontStyle = 'italic';
+  if (/^bi|^i/.test(fmt)) node.style.fontStyle = 'italic';
   const c = fmt.match(/#[0-9a-fA-F]{6}/); if (c) node.style.color = c[0];
 }
 
@@ -1129,9 +1133,10 @@ function newId() { return (window.crypto && crypto.randomUUID) ? crypto.randomUU
 const BGS = { 'White': '#fff', 'Sunny day': 'linear-gradient(#fffbe0,#ffe9a8)', 'Blue sky': 'linear-gradient(#f0f8ff,#bfe0fb)', 'Pink dream': 'linear-gradient(#fff4f9,#ffd3e6)', 'Meadow': 'linear-gradient(#f4fff0,#c9efc0)', 'Lavender': 'linear-gradient(#f8f3ff,#dccbf7)' };
 function applyBg(w) { w.log.style.background = BGS[localStorage.getItem('brb_bg') || 'White'] || '#fff'; }
 function bgMenu(w, ev) { const r = ev.currentTarget.getBoundingClientRect(); showMenu(r.left, r.top - 170, Object.keys(BGS).map(k => [k, () => { localStorage.setItem('brb_bg', k); state.wins.forEach(applyBg); }])); }
+const FONTS = { f1: '"Comic Sans MS","Comic Neue",cursive', f2: 'Georgia,"Times New Roman",serif', f3: '"Courier New",monospace', f4: '"Segoe Script","Bradley Hand",cursive' };
 function fmtMenu(w, ev) {
   const r = ev.currentTarget.getBoundingClientRect(), C = [['Default colour', ''], ['Pink', '#d6336c'], ['Blue', '#1c7ed6'], ['Green', '#2f9e44'], ['Orange', '#f08c00'], ['Purple', '#7048e8']];
-  showMenu(r.left, r.top - 200, [[(w.fmt.b ? '✔ ' : '') + 'Bold', () => { w.fmt.b = !w.fmt.b; }], [(w.fmt.i ? '✔ ' : '') + 'Italic', () => { w.fmt.i = !w.fmt.i; }], '-', ...C.map(([n, c]) => [(w.fmt.c === c ? '✔ ' : '') + n, () => { w.fmt.c = c; }])]);
+  showMenu(r.left, Math.max(8, r.top - 420), [[(w.fmt.b ? '✔ ' : '') + 'Bold', () => { w.fmt.b = !w.fmt.b; }], [(w.fmt.i ? '✔ ' : '') + 'Italic', () => { w.fmt.i = !w.fmt.i; }], [(w.fmt.u ? '✔ ' : '') + 'Underline', () => { w.fmt.u = !w.fmt.u; }], '-', ...[['Default font', ''], ['Comic', 'f1'], ['Serif', 'f2'], ['Typewriter', 'f3'], ['Handwriting', 'f4']].map(([n, f]) => [((w.fmt.f || '') === f ? '✔ ' : '') + n, () => { w.fmt.f = f; }]), '-', [(localStorage.getItem('brb_ts') === '1' ? '✔ ' : '') + 'Show the time on every message', () => localStorage.setItem('brb_ts', localStorage.getItem('brb_ts') === '1' ? '0' : '1')], '-', ...C.map(([n, c]) => [(w.fmt.c === c ? '✔ ' : '') + n, () => { w.fmt.c = c; }])]);
 }
 function toggleSearch(w) {
   const old = w.root.querySelector('.wsearch'); if (old) { old.remove(); [...w.log.children].forEach(c => { c.style.display = ''; }); return; }
@@ -1217,7 +1222,7 @@ function sendSig(id, p) {
 function onSig(p) {
   if (p && p.from && (POP ? p.from !== POP : (CAN_POP && isPopped(p.from)))) return;
   if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
-  if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {});
+  if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {}); else if (p.t[0] === 'f') onFile(p.from, p);
 }
 const pname = id => (state.profiles.get(id) || {}).display_name || 'Contact';
 
@@ -1408,17 +1413,17 @@ function openChat(id) {
   const np = el('div', { class: 'wnp' });
   const log = el('div', { class: 'wlog' });
   const typ = el('div', { class: 'wtyping' });
-  const input = el('textarea', { class: 'winput', maxlength: '2000', placeholder: 'Type a message…' });
+  const input = el('textarea', { class: 'winput', maxlength: '2000', placeholder: 'Type a message…', spellcheck: 'true', autocorrect: 'on', autocapitalize: 'sentences' });
   const send = el('button', { text: 'Send', onclick: () => sendMsg(w) });
   const srch = el('button', { text: 'Search', onclick: () => toggleSearch(w) });
   const fileIn = el('input', { type: 'file', accept: 'image/*,video/*', style: 'display:none' });
-  fileIn.onchange = () => { if (fileIn.files[0]) sendMedia(w, fileIn.files[0]); fileIn.value = ''; };
+  fileIn.onchange = () => { if (fileIn.files[0]) offerFile(w, fileIn.files[0]); fileIn.value = ''; };
   const mk = (t, title, fn) => el('button', { text: t, title, onclick: ev => { ev.stopPropagation(); fn(ev); } });
   const voiceBtn = mk('🎙 Voice Clip', 'Record a voice clip (click again to send)', () => toggleRec(w));
   const nudgeBtn = mk('📳', 'Nudge - get their attention', () => sendNudge(w)); nudgeBtn.classList.add('on');
-  const tools = el('div', { class: 'wtools' }, mk('A', 'Bold, italic and colour', ev => fmtMenu(w, ev)), mk('🙂▾', 'Emoticons', () => toggleEmo(w)), voiceBtn, mk('✨▾', 'Winks', () => toggleWinks(w)), mk('🖼▾', 'Chat background', ev => bgMenu(w, ev)), nudgeBtn, fileIn);
+  const tools = el('div', { class: 'wtools' }, mk('A', 'Bold, italic and colour', ev => fmtMenu(w, ev)), mk('🙂▾', 'Emoticons', () => toggleEmo(w)), voiceBtn, mk('✨▾', 'Winks', () => toggleWinks(w)), mk('🖼▾', 'Chat background', ev => bgMenu(w, ev)), mk('✏️', 'Handwriting - draw a note', () => penPad(w)), nudgeBtn, fileIn);
   const big = (ico, label, fn) => el('button', { class: 'tb', onclick: ev => { ev.stopPropagation(); fn(ev); } }, el('span', { class: 'ti', text: ico }), el('span', { text: label }));
-  const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', () => inviteFriend(w)), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', ev => gamesMenu(w, ev)), big('🎁', 'Gift', ev => giftMenu(w, ev)));
+  const toolbar = el('div', { class: 'wtb' }, big('👥', 'Invite', ev => showMenu(ev.clientX, ev.clientY, [['Invite another contact into a group chat with ' + pname(w.id) + '…', () => newRoomDialog(w.id)], ['Invite a friend to join BeRightBack', () => inviteFriend(w)]])), big('🖼️', 'Send Files', () => fileIn.click()), big('🎥', 'Video', () => startCall(w, true)), big('🎤', 'Voice', () => startCall(w, false)), big('🧩', 'Activities', ev => actMenu(w, ev)), big('🎮', 'Games', ev => gamesMenu(w, ev)), big('🎁', 'Gift', ev => giftMenu(w, ev)));
   const bottom = el('div', { class: 'wbottom' }, input, el('div', { class: 'btns' }, send, srch));
   const rbar = el('div', { class: 'rbar', style: 'display:none' });
   const info = el('div', { class: 'winfo', style: 'display:none' });
@@ -1522,6 +1527,7 @@ function appendMsg(w, m, quiet) {
   else {
     if (w.lastSender !== m.sender) { const who = el('div', { class: 'who' }); const wn = el('span'); renderEmo(wn, name); decorName(wn, mine ? state.me : state.profiles.get(w.id)); who.append(wn); who.append(' says: ', el('small', { text: time })); w.log.append(who); w.lastSender = m.sender; }
     const d = el('div', { class: 'msg', title: new Date(m.created_at).toLocaleString() });
+    if (localStorage.getItem('brb_ts') === '1') d.append(el('small', { class: 'mts', text: time + '  ', style: 'color:#6b7a90;margin-right:.3rem' }));
     if (m.reply_to) d.append(replyQuote(w, m.reply_to));
     if (m.kind === 'image' || m.kind === 'video' || m.kind === 'audio') d.append(mediaNode(m, () => { if (stick) w.log.scrollTop = w.log.scrollHeight; }));
     else { applyFmt(d, m.fmt); renderRich(d, m.body); }
@@ -1567,13 +1573,53 @@ async function resizeImage(file, max, q, square) {
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, dw, dh); g.drawImage(bmp, sx, sy, sw, sh, 0, 0, dw, dh);
   return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Could not process the picture.')), 'image/jpeg', q));
 }
+/* ---- sending files: the other person gets Accept / Decline first, like MSN ---- */
+const FOFF = new Map();
+function offerFile(w, file) {
+  if (!/^(image|video)\//.test(file.type)) { sendMedia(w, file); return; }
+  const fid = Math.random().toString(36).slice(2, 10), nm = pname(w.id), label = (file.name || 'file').slice(0, 60) + ' (' + (file.size / 1048576).toFixed(1) + ' MB)';
+  let done = false, tm;
+  const box = el('div', { class: 'sys foffer' }, 'Waiting for ' + nm + ' to accept ' + label + '… ');
+  const end = () => { done = true; clearTimeout(tm); FOFF.delete(fid); box.remove(); };
+  box.append(el('button', { text: 'Cancel', onclick: () => { if (done) return; end(); sendSig(w.id, { t: 'f-can', fid }); sysLine(w, 'You cancelled the file.'); } }));
+  w.log.append(box); w.log.scrollTop = w.log.scrollHeight;
+  FOFF.set(fid, { id: w.id, acc: () => { if (done) return; end(); sendMedia(w, file); }, dec: () => { if (done) return; end(); sysLine(w, nm + ' declined the file.'); } });
+  sendSig(w.id, { t: 'f-off', fid, name: (file.name || 'file').slice(0, 60), size: file.size });
+  tm = setTimeout(() => { if (done) return; end(); sysLine(w, nm + ' did not answer, so the file is going to their inbox instead.'); sendMedia(w, file); }, 20000);
+}
+function onFile(id, p) {
+  let w = state.wins.get(id);
+  if (p.t === 'f-off') {
+    if (!w) { openChat(id); w = state.wins.get(id); } if (!w) return; w.root.classList.remove('min'); front(w); tone(SND.msg);
+    const fid = String(p.fid || '').slice(0, 12), mb = ((+p.size || 0) / 1048576).toFixed(1);
+    const box = el('div', { class: 'sys foffer', 'data-fid': fid }, pname(id) + ' wants to send you a file: ' + String(p.name || 'file').slice(0, 60) + ' (' + mb + ' MB) ');
+    const close = () => box.remove();
+    box.append(el('button', { text: 'Accept', onclick: () => { sendSig(id, { t: 'f-acc', fid }); box.textContent = 'Accepted. The file will appear here when it arrives.'; setTimeout(close, 6000); } }), el('button', { text: 'Decline', onclick: () => { sendSig(id, { t: 'f-dec', fid }); close(); sysLine(w, 'You declined the file.'); } }));
+    w.log.append(box); w.log.scrollTop = w.log.scrollHeight; setTimeout(close, 60000);
+  } else if (p.t === 'f-acc' || p.t === 'f-dec') { const f = FOFF.get(String(p.fid)); if (f && f.id === id) (p.t === 'f-acc' ? f.acc : f.dec)(); }
+  else if (p.t === 'f-can' && w) { const b = w.log.querySelector('[data-fid="' + String(p.fid).replace(/[^a-z0-9]/gi, '') + '"]'); if (b) { b.remove(); sysLine(w, pname(id) + ' cancelled the file.'); } }
+}
+/* ---- handwriting pad ---- */
+function penPad(w) {
+  const cv = el('canvas', { width: '320', height: '200', style: 'background:#fff;border:1px solid #9db6d8;border-radius:.4rem;touch-action:none;max-width:100%' }), g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 320, 200); g.lineCap = 'round'; g.lineJoin = 'round';
+  const col = el('input', { type: 'color', value: '#1a3d8f', style: 'width:2.6rem;height:2rem;padding:0' }), sz = el('input', { type: 'range', min: '1', max: '14', value: '3', style: 'width:6rem' });
+  let down = false;
+  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * 320 / r.width, (e.clientY - r.top) * 200 / r.height]; };
+  cv.onpointerdown = e => { down = true; cv.setPointerCapture(e.pointerId); const [x, y] = pt(e); g.strokeStyle = col.value; g.lineWidth = +sz.value; g.beginPath(); g.moveTo(x, y); g.lineTo(x + .1, y + .1); g.stroke(); };
+  cv.onpointermove = e => { if (!down) return; const [x, y] = pt(e); g.lineTo(x, y); g.stroke(); };
+  cv.onpointerup = cv.onpointercancel = () => { down = false; };
+  const send = el('button', { class: 'primary', text: 'Send drawing' }), clr = el('button', { text: 'Clear', onclick: () => { g.fillStyle = '#fff'; g.fillRect(0, 0, 320, 200); } });
+  const ov = miniModal('Handwriting', cv, el('div', { class: 'row', style: 'display:flex;gap:.5rem;align-items:center;flex-wrap:wrap' }, 'Colour', col, 'Pen', sz, clr), send);
+  send.onclick = () => cv.toBlob(b => { if (!b) return; ov.remove(); sendMedia(w, new File([b], 'handwriting.png', { type: 'image/png' })); }, 'image/png');
+}
 async function sendMedia(w, file) {
   const isImg = /^image\//.test(file.type), isVid = /^video\//.test(file.type);
   if (!isImg && !isVid) { sysLine(w, 'Only pictures and videos can be sent.'); return; }
   if (isVid && !/^video\/(mp4|webm|quicktime)$/.test(file.type)) { sysLine(w, 'That video type is not supported. Use MP4, WebM or MOV.'); return; }
   if (isVid && file.size > 50 * 1024 * 1024) { sysLine(w, 'That video is too big. Videos must be under 50 MB (about 2-3 minutes at normal phone quality).'); return; }
   if (isImg && file.type === 'image/gif' && file.size > 10 * 1024 * 1024) { sysLine(w, 'That GIF is too big. GIFs must be under 10 MB.'); return; }
-  const note = el('div', { class: 'sys', text: 'Sending your ' + (isImg ? 'picture' : 'video') + '…' }); w.log.append(note); w.log.scrollTop = w.log.scrollHeight;
+  const note = el('div', { class: 'sys' }, 'Sending your ' + (isImg ? 'picture' : 'video') + '… (' + (file.size / 1048576).toFixed(1) + ' MB)', el('div', { class: 'prog' }, el('i'))); w.log.append(note); w.log.scrollTop = w.log.scrollHeight;
   let blob = file, type = file.type;
   try { if (isImg && type !== 'image/gif') { blob = await resizeImage(file, 1600, 0.85, false); type = 'image/jpeg'; } }
   catch (e) { note.remove(); sysLine(w, 'Could not read that picture: ' + e.message); return; }
@@ -1590,7 +1636,7 @@ async function sendMedia(w, file) {
 async function sendMsg(w) {
   const body = expandShort(w.input.value.replace(/\s+$/, '')).slice(0, 2000);
   if (!body.trim()) return;
-  const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.c || '');
+  const f = w.fmt, fmt = (f.b ? 'b' : '') + (f.i ? 'i' : '') + (f.u ? 'u' : '') + (f.f || '') + (f.c || '');
   w.input.value = '';
   const row = { sender: state.uid, recipient: w.id, body, kind: 'text', fmt }; if (w.replyTo) row.reply_to = w.replyTo;
   const { data, error } = await sb.from('messages').insert(row).select().single();
@@ -2099,10 +2145,10 @@ async function cleanMyMedia() {
     if (old.length) await sb.storage.from('chat-media').remove(old);
   } catch (e) {}
 }
-function newRoomDialog() {
+function newRoomDialog(pre) {
   const fr = friendIds().accepted.map(id => state.profiles.get(id)).filter(Boolean).sort((a, b) => a.display_name.localeCompare(b.display_name));
   const name = el('input', { type: 'text', maxlength: '40', placeholder: 'Group name, e.g. Weekend plans' }), msg = el('div', { class: 'setmsg' });
-  const picks = fr.map(p => { const c = el('input', { type: 'checkbox', style: 'width:auto' }); const nm = el('span'); renderEmo(nm, p.display_name); return [p, c, el('label', { class: 'crow' }, c, nm)]; });
+  const picks = fr.map(p => { const c = el('input', { type: 'checkbox', style: 'width:auto' }); if (pre && p.id === pre) c.checked = true; const nm = el('span'); renderEmo(nm, p.display_name); return [p, c, el('label', { class: 'crow' }, c, nm)]; });
   const go = el('button', { class: 'primary', text: 'Create group chat' });
   const ov = miniModal('New group chat', el('div', { class: 'hint', text: 'Up to 10 people. You can only add your own contacts. Everyone in the group can see everyone\'s name and messages.' }), name,
     ...(fr.length ? picks.map(x => x[2]) : [el('div', { class: 'hint', text: 'Add some contacts first.' })]), msg, go);
@@ -2451,7 +2497,7 @@ function legalModal(which) {
     H('What can happen'), P('The admin may remove content or pause an account that breaks these rules.')
   ] : [
     P('This is a plain-language summary of how BeRightBack handles your information, written to follow the spirit of Singapore\'s PDPA. It may be updated; the app will show changes here.'),
-    H('What we collect'), P('Your sign-in email (kept private and never shown to other users), your nickname, picture, status, personal message, the messages, pictures, videos and voice clips you send, the song title you choose to share, when you were last active, and the reports you make.'),
+    H('What we collect'), P('Your sign-in email (kept private and never shown to other users), your nickname, picture, status, personal message, the messages, pictures, videos and voice clips you send, the song title you choose to share, when you were last active, and the reports you make. Handwritten drawings you send are stored as pictures. Voice and video calls go directly between devices (through a relay server when needed) and are not recorded or stored. Your contact groups, favourites and the What\'s new list are kept only on your own device.'),
     H('Why'), P('Only to run the chat service: signing you in, delivering messages to your contacts, showing your status, and keeping the community safe.'),
     H('Who can see it'), P('Your contacts see your nickname, picture, status, personal message and song (unless you switch on Anonymous mode, which hides picture, message and song). Nobody sees your email. The admin can see reports and, technically, the data stored in the service in order to keep it running and safe.'),
     H('Where it is kept'), P('On Supabase cloud servers, which may be outside Singapore. We do not sell your data and we do not show advertising.'),
@@ -2718,12 +2764,15 @@ async function playSP(item) {
   pl.audio.pause(); stopYT(true); pl.err = ''; pl.info = 'Loading Spotify…'; updatePlayer();
   const host = pl.ui.ytbox; host.style.display = 'block'; host.textContent = ''; const d = el('div'); host.append(d);
   host.append(el('div', { class: 'hint', text: 'Log in to Spotify in this browser (open.spotify.com) to hear full songs. Without a login, Spotify plays 30-second previews.' }));
+  const my = pl.spTok = (pl.spTok || 0) + 1; try { if (pl.spc && pl.spc.destroy) pl.spc.destroy(); } catch (e) {} pl.spc = null;
   const api = await spLoad(), uri = `spotify:${item.sp}:${item.id}`, label = item.name + ' (Spotify)';
-  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { pl.spc = c; let was = null, lastUri = ''; c.addListener('playback_update', e => {
+  if (my !== pl.spTok) return;
+  if (api) { api.createController(d, { uri, width: '100%', height: item.sp === 'track' ? 152 : 300 }, c => { if (my !== pl.spTok) { try { c.destroy(); } catch (e) {} return; } pl.spc = c; let was = null, lastUri = ''; c.addListener('playback_update', e => {
+        if (my !== pl.spTok) return;
         const d = e.data || {}, play = !d.isPaused, uri = d.playingURI || '';
         if (play === was && uri === lastUri) return; was = play; lastUri = uri;
         if (!play) { pl.ytTitle = ''; setNow(''); updatePlayer(); return; }
-        const go = t => { if (was && lastUri === uri) { pl.ytTitle = t; setNow(t); updatePlayer(); } };
+        const go = t => { if (my === pl.spTok && was && lastUri === uri) { pl.ytTitle = t; setNow(t); updatePlayer(); } };
         if (!/^spotify:(track|episode):/.test(uri)) { go(label); return; }
         spTitle(uri).then(t => go(t || label));
       }); }); }
@@ -2736,8 +2785,10 @@ function openMusic() {
     box.textContent = ''; const cur = pl.pls.find(p => p.id === pl.cur);
     const sel = el('select', { onchange: () => { loadPl(sel.value, true); draw(); updatePlayer(); } }, ...pl.pls.map(p => el('option', { value: p.id, text: p.name + ' (' + p.songs.length + ')' }))); sel.value = pl.cur;
     const file = el('input', { type: 'file', accept: 'audio/*', multiple: 'multiple', style: 'display:none', onchange: async () => { await addSongs([...file.files]); file.value = ''; draw(); } });
+    const mv = (sid, d) => { const a = cur.songs, i = a.indexOf(sid), j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; savePl(); const now = pl.tracks[pl.i] && pl.tracks[pl.i].id; loadPl(pl.cur); if (now) pl.i = Math.max(0, pl.tracks.findIndex(t => t.id === now)); draw(); };
     const songs = el('div'); cur.songs.forEach(sid => { if (!pl.lib[sid]) return; songs.append(el('div', { class: 'scrow' },
       el('button', { text: '▶', title: 'Play', onclick: () => { loadPl(pl.cur); playIdx(pl.tracks.findIndex(t => t.id === sid)); } }), el('span', { text: pl.lib[sid] }),
+      el('button', { text: '▲', title: 'Move up', onclick: () => mv(sid, -1) }), el('button', { text: '▼', title: 'Move down', onclick: () => mv(sid, 1) }),
       el('button', { text: '✕', title: 'Remove from this playlist', onclick: () => { cur.songs = cur.songs.filter(x => x !== sid); if (!pl.pls.some(p => p.songs.includes(sid))) { delete pl.lib[sid]; idbDel(sid).catch(() => {}); } savePl(); loadPl(pl.cur); draw(); } }))); });
     if (!songs.childNodes.length) songs.append(el('div', { class: 'hint', text: 'This playlist is empty. Add songs from your device below.' }));
     const yn = el('input', { placeholder: 'Name (e.g. My chill mix)', maxlength: '40' }), yl = el('input', { placeholder: 'Paste a YouTube or Spotify link' });
