@@ -171,6 +171,18 @@ html.appwin .card>*{width:100%;max-width:22rem}}
 .bigcard .btxt b{font-size:1.45rem}
 .mmenu{display:flex}
 .mwide{width:min(46rem,96vw)}
+.bgrid{--bs:min(2.15rem,10vw);display:grid;grid-template-columns:repeat(8,var(--bs));width:max-content;border:2px solid #3a2f1c;border-radius:.3rem;overflow:hidden;margin:.3rem 0}
+.bc{width:var(--bs);height:var(--bs);display:grid;place-items:center;font-size:calc(var(--bs)*.72);line-height:1;user-select:none;cursor:pointer;position:relative}
+.bc.lt{background:#f0d9b5}.bc.dk{background:#b58863}.bc.sel{outline:3px solid #2f7de1;outline-offset:-3px}.bc.lastm{box-shadow:inset 0 0 0 3px #f2c94c}.bc.chk{background:#ff8787}
+.bc.tgt::after,.og .bc.hint::after{content:'';position:absolute;width:30%;height:30%;border-radius:50%;background:#2f9e4499}
+.bc.cw{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 0 1px #000}.bc.cb{color:#161616}
+.bc.pc.cw{color:#f7f7f7}.bc.pc.cb{color:#2a2a2a;text-shadow:0 0 1px #fff}
+.og .bc{background:#2e8b57;box-shadow:inset 0 0 0 1px #1d6b40}.og .bc.ob{color:#111;text-shadow:0 0 1px #fff}.og .bc.ow{color:#fff;text-shadow:0 0 2px #000,0 0 1px #000}.og .bc{font-size:calc(var(--bs)*.85)}
+.spage .sec{border:1px solid #b6cce6;border-radius:.6rem;padding:.6rem .8rem .7rem;margin:0 0 .8rem;background:#fbfdff}
+.spage .sec h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:#4b6285;margin:0 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid #d3e0f1}
+.spage .crow{display:flex;align-items:flex-start;gap:.55rem;margin:.3rem 0}.spage .crow input{flex:none;width:1rem;height:1rem;margin:.2rem 0 0}
+.spage .hint{font-size:.8rem;line-height:1.35}
+.sndrow{display:flex;align-items:center;gap:.5rem;margin:.35rem 0}.sndrow .sndlbl{flex:none;width:8rem}.sndrow select{flex:1;min-width:0}.sndrow button{flex:none}
 .sbody{display:flex;gap:1rem;align-items:flex-start}.snav{flex:none;width:10rem;display:flex;flex-direction:column;gap:.2rem;position:sticky;top:0}
 .snav button{display:flex;gap:.5rem;align-items:center;text-align:left;border:1px solid transparent;background:transparent;padding:.5rem .6rem;border-radius:.5rem;cursor:pointer;font:inherit;color:#1f4170}
 .snav button.on{background:linear-gradient(#e6f1ff,#cfe3fb);border-color:#9bbbe6;font-weight:700}.spages{flex:1;min-width:0}
@@ -452,7 +464,25 @@ function toneRetro(seq) {
     o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.3);
   }
 }
+const SND_PRESETS = {
+  chime: [[880, 0, 0.5], [1318.5, 0.12, 0.9]], bubble: [[500, 0, 0.12], [900, 0.08, 0.15], [1300, 0.16, 0.2]], bell: [[1046.5, 0, 1.2], [1568, 0.02, 0.9]],
+  click: [[1200, 0, 0.05], [800, 0.05, 0.07]], marimba: [[523.3, 0, 0.4], [659.3, 0.1, 0.4], [784, 0.2, 0.6]], ping: [[1760, 0, 0.35]], doorbell: [[659.3, 0, 0.5], [523.3, 0.35, 0.9]],
+  softbuzz: [[120, 0, 0.12, 'buzz'], [120, 0.16, 0.12, 'buzz']], longbuzz: [[140, 0, 0.12, 'buzz'], [105, 0.13, 0.12, 'buzz'], [140, 0.26, 0.12, 'buzz'], [105, 0.39, 0.12, 'buzz'], [140, 0.52, 0.12, 'buzz'], [105, 0.65, 0.2, 'buzz']]
+};
+const SND_NAMES = { chime: 'Chime', bubble: 'Bubble', bell: 'Bell', click: 'Soft click', marimba: 'Marimba', ping: 'Ping', doorbell: 'Doorbell', softbuzz: 'Soft buzz', longbuzz: 'Long buzz' };
+const SND_EVENTS = [['msg', 'New message', ['chime', 'bubble', 'bell', 'click', 'marimba', 'ping']], ['online', 'Contact signs in', ['doorbell', 'chime', 'bell', 'marimba', 'bubble', 'ping']], ['nudge', 'Nudge', ['softbuzz', 'longbuzz']]];
 function tone(seq) {
+  if (!state.sound) return;
+  const k = seq === SND.msg ? 'msg' : seq === SND.online ? 'online' : seq === SND.nudge ? 'nudge' : '';
+  if (k) {
+    const p = localStorage.getItem('brb_snd_' + k) || 'brb';
+    if (p === 'off') return;
+    if (p === 'custom') { const u = localStorage.getItem('brb_sndfile_' + k); if (u) { try { const a = new Audio(u); a.volume = 0.85; a.play().catch(() => {}); setTimeout(() => { try { a.pause(); } catch (e) {} }, 9000); return; } catch (e) {} } }
+    else if (SND_PRESETS[p]) { toneBase(SND_PRESETS[p]); return; }
+  }
+  toneBase(seq);
+}
+function toneBase(seq) {
   if (!state.sound) return;
   { const k = seq === SND.msg ? 'msg' : seq === SND.online ? 'online' : seq === SND.nudge ? 'nudge' : ''; if (k && localStorage.getItem('brb_snd_' + k) === 'off') return; }
   try {
@@ -1850,7 +1880,15 @@ const WYR = [['Be able to fly', 'Be invisible'], ['Always be 10 minutes late', '
   ['Always be hot', 'Always be cold'], ['Win a free holiday', 'Win a free phone'], ['Sleep in a treehouse', 'Sleep in a castle']];
 const KNOWS = [['Favourite food?', ['Rice dishes', 'Noodles', 'Pizza or burgers', 'Sweets and desserts']], ['Perfect weekend?', ['Sleeping in', 'Out with friends', 'Games or movies', 'Exploring somewhere new']],
   ['Favourite time of day?', ['Morning', 'Afternoon', 'Evening', 'Late night']], ['Which pet?', ['Cat', 'Dog', 'Fish or bird', 'No pets']], ['Favourite drink?', ['Coffee', 'Tea', 'Bubble tea', 'Plain water']],
-  ['Phone or computer?', ['Phone', 'Laptop', 'Tablet', 'Game console']], ['Early bird or night owl?', ['Early bird', 'Night owl', 'Both', 'Neither']], ['Dream holiday?', ['Beach', 'City', 'Mountains', 'Theme park']]];
+  ['Phone or computer?', ['Phone', 'Laptop', 'Tablet', 'Game console']], ['Early bird or night owl?', ['Early bird', 'Night owl', 'Both', 'Neither']], ['Dream holiday?', ['Beach', 'City', 'Mountains', 'Theme park']],
+  ['Favourite weather?', ['Sunny', 'Rainy', 'Cool and breezy', 'Stormy']], ['Which snack?', ['Chips', 'Chocolate', 'Fruit', 'Nuts']], ['Favourite music?', ['Pop', 'Hip hop', 'Rock', 'Old school']], ['Text or call?', ['Text', 'Call', 'Voice note', 'Video call']],
+  ['Favourite movie type?', ['Comedy', 'Action', 'Horror', 'Romance']], ['Stay in or go out?', ['Stay in', 'Go out', 'Depends on mood', 'Both']], ['Which superpower?', ['Fly', 'Be invisible', 'Read minds', 'Time travel']], ['Breakfast?', ['Toast', 'Rice or noodles', 'Cereal', 'Skip it']],
+  ['Spicy food?', ['Love it', 'A little', 'No way', 'Only sometimes']], ['Sport to watch?', ['Football', 'Basketball', 'Badminton', 'None']], ['Most used app?', ['Instagram', 'TikTok', 'WhatsApp', 'YouTube']], ['Shower time?', ['Morning', 'Night', 'Both', 'Whenever']],
+  ['Biggest fear?', ['Heights', 'Spiders', 'The dark', 'Speaking in public']], ['Favourite colours?', ['Red or pink', 'Blue or purple', 'Green or yellow', 'Black or white']], ['Window or aisle seat?', ['Window', 'Aisle', 'Middle, no choice', 'Do not mind']], ['Plan or wing it?', ['Plan everything', 'Wing it', 'Plan a little', 'Let others decide']],
+  ['Meeting friends: you are…', ['Early', 'On time', 'Late', 'Very late']], ['Cooking skill?', ['Chef level', 'Basic', 'Instant noodles', 'Order delivery']], ['Favourite dessert?', ['Ice cream', 'Cake', 'Local kuih or cendol', 'Fruit']], ['Rainy day plan?', ['Sleep', 'Watch shows', 'Play games', 'Read']],
+  ['How do you get around?', ['MRT or bus', 'Car', 'Walk', 'Bike or scooter']], ['Save or spend?', ['Save', 'Spend', 'Bit of both', 'Spend then regret']], ['Best meal of the day?', ['Breakfast', 'Lunch', 'Dinner', 'Supper']], ['Hot or iced drinks?', ['Hot', 'Iced', 'Room temperature', 'Depends']],
+  ['Selfie or group photo?', ['Selfie', 'Group photo', 'I take the photo', 'No photos']], ['Best way to relax?', ['Music', 'Gaming', 'Scrolling my phone', 'A nap']], ['Birthday plans?', ['Big party', 'Small dinner', 'Quiet day', 'A trip']], ['Language to learn?', ['Japanese', 'Korean', 'French', 'Spanish']],
+  ['In a story you are the…', ['Hero', 'Villain', 'Sidekick', 'Narrator']], ['Pineapple on pizza?', ['Yes please', 'Never', 'Tried it once', 'Pizza is not for me']], ['Dream job vibe?', ['Creative', 'Helping people', 'Business', 'Tech or science']], ['Favourite place at home?', ['Bed', 'Sofa', 'Kitchen', 'Desk']]];
 const pickN = (len, n) => { const a = Array.from({ length: len }, (_, i) => i); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); };
 /* ---- game sounds and win/lose reactions ---- */
 const GSND = {
@@ -1924,15 +1962,17 @@ function arcInit(w) {
   } else if (a.k === 'trivia' || a.k === 'wyr') {
     a.d = { qs: null, n: 0, mine: {}, theirs: {}, sm: 0, st: 0, same: 0, rev: false };
     if (h) { a.d.qs = pickN(a.k === 'trivia' ? TRIVIA.length : WYR.length, 5); S({ qs: a.d.qs }); }
+  } else if (BOARD_INIT[a.k]) { a.d = BOARD_INIT[a.k](h);
   } else if (a.k === 'knows') {
     a.d = { qs: null, n: 0, ans: [], phase: 'ans', score: 0, fb: '' };
-    if (h) { a.d.qs = pickN(KNOWS.length, 5); S({ qs: a.d.qs }); }
+    if (h) { let last = []; try { last = JSON.parse(localStorage.getItem('brb_knows_last') || '[]'); } catch (e) {} const pool = pickN(KNOWS.length, KNOWS.length).filter(i => !last.includes(i)); a.d.qs = pool.slice(0, 5); try { localStorage.setItem('brb_knows_last', JSON.stringify(a.d.qs)); } catch (e) {} S({ qs: a.d.qs }); }
   }
   drawArc(w);
 }
 function arcMove(w, m) {
   const a = w.arc, d = a.d, S = x => sendSig(w.id, { t: 'g2', a: 'mv', k: a.k, d: x });
   if (a.k === 'c4') { const op = d.me === 'R' ? 'Y' : 'R'; if (d.turn === op && Number.isInteger(m.c) && m.c >= 0 && m.c < 7 && c4Drop(d.b, m.c, op)) d.turn = d.me; }
+  else if (BOARD_INIT[a.k]) boardRecv(w, m);
   else if (a.k === 'rps') { if ([0, 1, 2].includes(m.p) && d.theirs === null) { d.theirs = m.p; rpsTry(w); } }
   else if (a.k === 'hang') {
     if (d.setter) {
@@ -1951,12 +1991,160 @@ function arcMove(w, m) {
     if (m.qs && !d.qs) d.qs = m.qs.filter(i => Number.isInteger(i)).slice(0, 5);
     else if (d.qs && m.n === d.n && Number.isInteger(m.a) && d.theirs[m.n] === undefined) { d.theirs[m.n] = m.a; qzTry(w); }
   } else if (a.k === 'knows') {
-    if (m.qs && !d.qs) d.qs = m.qs.filter(i => Number.isInteger(i)).slice(0, 5);
+    if (m.qs && !d.qs) d.qs = m.qs.filter(i => Number.isInteger(i) && i >= 0 && i < KNOWS.length).slice(0, 5);
     else if (m.ready) d.phase = 'guess';
     else if (d.qs && a.host && Number.isInteger(m.g) && m.n === d.n && d.ans[m.n] !== undefined) { const ok = m.g === d.ans[m.n]; if (ok) d.score++; d.n++; S({ n: m.n, ok, a: d.ans[m.n] }); }
     else if (d.qs && !a.host && m.n === d.n) { tone(m.ok ? OKS : BADS); d.fb = m.ok ? '✔ You know them well!' : '✖ It was: ' + KNOWS[d.qs[m.n]][1][m.a]; if (m.ok) d.score++; d.rev = true; setTimeout(() => { if (w.arc === a) { d.n++; d.rev = false; d.fb = ''; drawArc(w); } }, 1800); }
   }
 }
+
+/* ============ BOARD GAMES: Othello, Checkers, Chess ============ */
+/* ---- board games: Othello, Checkers, Chess (rules only; no screen code) ---- */
+const OT_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function otFlips(b, i, col) {
+  if (b[i]) return []; const r = i >> 3, c = i & 7, op = col === 'B' ? 'W' : 'B', out = [];
+  for (const [dr, dc] of OT_DIRS) { let rr = r + dr, cc = c + dc; const t = []; while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && b[rr * 8 + cc] === op) { t.push(rr * 8 + cc); rr += dr; cc += dc; } if (t.length && rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && b[rr * 8 + cc] === col) out.push(...t); }
+  return out;
+}
+const otMoves = (b, col) => { const o = []; for (let i = 0; i < 64; i++) if (!b[i] && otFlips(b, i, col).length) o.push(i); return o; };
+function otInit(host) { const b = Array(64).fill(''); b[27] = 'W'; b[36] = 'W'; b[28] = 'B'; b[35] = 'B'; return { b, turn: 'B', me: host ? 'B' : 'W', over: false, last: -1, note: '' }; }
+function otApply(d, i) {
+  const col = d.turn, fl = otFlips(d.b, i, col); d.b[i] = col; fl.forEach(x => { d.b[x] = col; }); d.last = i; d.note = '';
+  const nx = col === 'B' ? 'W' : 'B';
+  if (otMoves(d.b, nx).length) d.turn = nx; else if (otMoves(d.b, col).length) { d.turn = col; d.note = nx; } else d.over = true;
+}
+const otCount = b => ({ B: b.filter(x => x === 'B').length, W: b.filter(x => x === 'W').length });
+/* checkers (English draughts): 'w','b' men, 'W','B' kings; white starts at the bottom and moves first */
+function ckInit(host) { const b = Array(64).fill(''); for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if ((r + c) % 2) { if (r < 3) b[r * 8 + c] = 'b'; else if (r > 4) b[r * 8 + c] = 'w'; } return { b, turn: 'w', me: host ? 'w' : 'b', over: false, quiet: 0, last: [], sel: -1 }; }
+function ckJumps(b, i, col) {
+  const res = [], king = b[i] === b[i].toUpperCase();
+  const walk = (pos, board, path, kingNow) => {
+    let any = false; const dirs = kingNow ? [[1, 1], [1, -1], [-1, 1], [-1, -1]] : (col === 'w' ? [[-1, 1], [-1, -1]] : [[1, 1], [1, -1]]);
+    for (const [dr, dc] of dirs) {
+      const r = pos >> 3, c = pos & 7, mr = r + dr, mc = c + dc, lr = r + 2 * dr, lc = c + 2 * dc; if (lr < 0 || lr > 7 || lc < 0 || lc > 7) continue;
+      const m = board[mr * 8 + mc], l = board[lr * 8 + lc];
+      if (m && m.toLowerCase() !== col && !l) { any = true; const nb = board.slice(); nb[mr * 8 + mc] = ''; nb[pos] = ''; const pr = !kingNow && (col === 'w' ? lr === 0 : lr === 7); nb[lr * 8 + lc] = (pr || kingNow) ? col.toUpperCase() : col; const np = [...path, lr * 8 + lc]; if (pr) res.push(np); else walk(lr * 8 + lc, nb, np, kingNow); }
+    }
+    if (!any && path.length > 1) res.push(path);
+  };
+  walk(i, b, [i], king); return res;
+}
+function ckLegal(b, col) {
+  const jumps = [], steps = [];
+  for (let i = 0; i < 64; i++) { const p = b[i]; if (!p || p.toLowerCase() !== col) continue; jumps.push(...ckJumps(b, i, col));
+    const kg = p === p.toUpperCase(), dirs = kg ? [[1, 1], [1, -1], [-1, 1], [-1, -1]] : (col === 'w' ? [[-1, 1], [-1, -1]] : [[1, 1], [1, -1]]);
+    for (const [dr, dc] of dirs) { const r = (i >> 3) + dr, c = (i & 7) + dc; if (r >= 0 && r < 8 && c >= 0 && c < 8 && !b[r * 8 + c]) steps.push([i, r * 8 + c]); } }
+  return jumps.length ? jumps : steps;
+}
+function ckApply(d, path) {
+  const b = d.b, col = d.turn, man = b[path[0]] === b[path[0]].toLowerCase(); let cap = false, piece = b[path[0]]; b[path[0]] = '';
+  for (let k = 1; k < path.length; k++) { const a = path[k - 1], z = path[k]; if (Math.abs((z >> 3) - (a >> 3)) === 2) { b[(((a >> 3) + (z >> 3)) / 2) * 8 + ((a & 7) + (z & 7)) / 2] = ''; cap = true; } }
+  const end = path[path.length - 1]; if (man && (col === 'w' ? (end >> 3) === 0 : (end >> 3) === 7)) piece = col.toUpperCase(); b[end] = piece;
+  d.last = path.slice(); d.sel = -1; d.quiet = (cap || man) ? 0 : d.quiet + 1;
+  const nx = col === 'w' ? 'b' : 'w'; d.turn = nx;
+  if (!ckLegal(b, nx).length) d.over = col; else if (d.quiet >= 80) d.over = 'draw';
+}
+/* chess */
+const CH_START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+function chFromFen(f, turn, cas, ep) { const b = []; for (const ch of f.split(' ')[0]) { if (ch === '/') continue; if (/\d/.test(ch)) for (let k = 0; k < +ch; k++) b.push(''); else b.push(ch); } return { b, turn: turn || 'w', cas: cas || 'KQkq', ep: ep === undefined ? -1 : ep, over: false, last: [], sel: -1, check: false, half: 0 }; }
+function chInit(host) { const d = chFromFen(CH_START); d.me = host ? 'w' : 'b'; return d; }
+const chCol = p => p === p.toUpperCase() ? 'w' : 'b';
+const KN = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]], KG = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+function chAttacked(b, sq, by) {
+  const r = sq >> 3, c = sq & 7, at = (rr, cc) => (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) ? b[rr * 8 + cc] : '';
+  const pr = by === 'w' ? r + 1 : r - 1, P = by === 'w' ? 'P' : 'p'; if (at(pr, c - 1) === P || at(pr, c + 1) === P) return true;
+  const N = by === 'w' ? 'N' : 'n'; for (const [a, z] of KN) if (at(r + a, c + z) === N) return true;
+  const K = by === 'w' ? 'K' : 'k'; for (const [a, z] of KG) if (at(r + a, c + z) === K) return true;
+  const Q = by === 'w' ? 'Q' : 'q', R = by === 'w' ? 'R' : 'r', B = by === 'w' ? 'B' : 'b';
+  for (const [a, z] of KG) { let rr = r + a, cc = c + z; while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) { const p = b[rr * 8 + cc]; if (p) { if (p === Q || ((a === 0 || z === 0) ? p === R : p === B)) return true; break; } rr += a; cc += z; } }
+  return false;
+}
+function chPseudo(d, col) {
+  const b = d.b, out = [];
+  for (let i = 0; i < 64; i++) {
+    const p = b[i]; if (!p || chCol(p) !== col) continue; const r = i >> 3, c = i & 7, t = p.toLowerCase();
+    const push = (to, ex) => out.push({ f: i, t: to, ...(ex || {}) });
+    if (t === 'p') {
+      const dir = col === 'w' ? -1 : 1, start = col === 'w' ? 6 : 1, last = col === 'w' ? 0 : 7, r1 = r + dir;
+      const add = (to, ex) => { if ((to >> 3) === last) push(to, { ...(ex || {}), p: 'q' }); else push(to, ex); };
+      if (r1 >= 0 && r1 < 8 && !b[r1 * 8 + c]) { add(r1 * 8 + c); if (r === start && !b[(r + 2 * dir) * 8 + c]) push((r + 2 * dir) * 8 + c, { dbl: true }); }
+      for (const dc of [-1, 1]) { const cc = c + dc; if (cc < 0 || cc > 7 || r1 < 0 || r1 > 7) continue; const to = r1 * 8 + cc, q = b[to]; if (q && chCol(q) !== col) add(to); else if (to === d.ep) push(to, { ep: true }); }
+    } else if (t === 'n' || t === 'k') {
+      for (const [a, z] of (t === 'n' ? KN : KG)) { const rr = r + a, cc = c + z; if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue; const q = b[rr * 8 + cc]; if (!q || chCol(q) !== col) push(rr * 8 + cc); }
+      if (t === 'k') { const home = col === 'w' ? 60 : 4, en = col === 'w' ? 'b' : 'w'; if (i === home && !chAttacked(b, i, en)) {
+        const ks = col === 'w' ? 'K' : 'k', qs = col === 'w' ? 'Q' : 'q', R = col === 'w' ? 'R' : 'r';
+        if (d.cas.includes(ks) && b[home + 3] === R && !b[home + 1] && !b[home + 2] && !chAttacked(b, home + 1, en) && !chAttacked(b, home + 2, en)) push(home + 2, { cs: 'k' });
+        if (d.cas.includes(qs) && b[home - 4] === R && !b[home - 1] && !b[home - 2] && !b[home - 3] && !chAttacked(b, home - 1, en) && !chAttacked(b, home - 2, en)) push(home - 2, { cs: 'q' }); } }
+    } else {
+      const dirs = t === 'b' ? [[-1, -1], [-1, 1], [1, -1], [1, 1]] : t === 'r' ? [[-1, 0], [1, 0], [0, -1], [0, 1]] : KG;
+      for (const [a, z] of dirs) { let rr = r + a, cc = c + z; while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) { const q = b[rr * 8 + cc]; if (q) { if (chCol(q) !== col) push(rr * 8 + cc); break; } push(rr * 8 + cc); rr += a; cc += z; } }
+    }
+  }
+  return out;
+}
+function chMake(b, m) { // new board after the move (rook step of castling included)
+  const nb = b.slice(), p = nb[m.f]; nb[m.f] = ''; nb[m.t] = m.p ? (chCol(p) === 'w' ? m.p.toUpperCase() : m.p) : p;
+  if (m.ep) nb[m.t + (chCol(p) === 'w' ? 8 : -8)] = '';
+  if (m.cs) { const home = m.f; if (m.cs === 'k') { nb[home + 1] = nb[home + 3]; nb[home + 3] = ''; } else { nb[home - 1] = nb[home - 4]; nb[home - 4] = ''; } }
+  return nb;
+}
+function chLegal(d, col) {
+  const out = [], en = col === 'w' ? 'b' : 'w', K = col === 'w' ? 'K' : 'k';
+  for (const m of chPseudo(d, col)) { const nb = chMake(d.b, m); const ks = nb.indexOf(K); if (!chAttacked(nb, ks, en)) out.push(m); }
+  return out;
+}
+function chApply(d, m) {
+  const p = d.b[m.f], col = chCol(p), cap = d.b[m.t] || m.ep;
+  d.b = chMake(d.b, m); d.last = [m.f, m.t]; d.sel = -1;
+  let cas = d.cas; const strip = ch => { cas = cas.replace(ch, ''); };
+  if (p === 'K') { strip('K'); strip('Q'); } if (p === 'k') { strip('k'); strip('q'); }
+  for (const [sq, ch] of [[63, 'K'], [56, 'Q'], [7, 'k'], [0, 'q']]) if (m.f === sq || m.t === sq) strip(ch);
+  d.cas = cas; d.ep = m.dbl ? (m.f + m.t) / 2 : -1; d.half = (p.toLowerCase() === 'p' || cap) ? 0 : d.half + 1;
+  const nx = col === 'w' ? 'b' : 'w'; d.turn = nx; const ks = d.b.indexOf(nx === 'w' ? 'K' : 'k'); d.check = chAttacked(d.b, ks, col);
+  if (!chLegal(d, nx).length) d.over = d.check ? col : 'draw'; else if (d.half >= 100) d.over = 'draw';
+}
+
+Object.assign(ARC, { othello: 'Othello', checkers: 'Checkers', chess: 'Chess' });
+const BOARD_INIT = { othello: otInit, checkers: ckInit, chess: chInit };
+const CH_GLYPH = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙︎', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟︎' };
+const bdSend = (w, mv) => sendSig(w.id, { t: 'g2', a: 'mv', k: w.arc.k, d: mv });
+function boardRecv(w, m) {
+  const a = w.arc, d = a.d, k = a.k; if (!d || d.over || d.turn === d.me) return;
+  if (k === 'othello') { const i = +m.i; if (Number.isInteger(i) && i >= 0 && i < 64 && otFlips(d.b, i, d.turn).length) otApply(d, i); }
+  else if (k === 'checkers') { const p = Array.isArray(m.p) ? m.p.map(Number) : [], ok = ckLegal(d.b, d.turn).find(x => x.length === p.length && x.every((v, j) => v === p[j])); if (ok) ckApply(d, ok); }
+  else if (k === 'chess') { const mv = chLegal(d, d.turn).find(x => x.f === +m.f && x.t === +m.t); if (mv) chApply(d, mv); }
+}
+function drawBoard(w, body, nm) {
+  const a = w.arc, d = a.d, k = a.k, mine = d.turn === d.me && !d.over, flip = k !== 'othello' && d.me === 'b';
+  let res = null, status = '', cell, click;
+  if (k === 'othello') {
+    const cnt = otCount(d.b), op = d.me === 'B' ? 'W' : 'B', legal = new Set(mine ? otMoves(d.b, d.me) : []);
+    if (d.over) res = cnt[d.me] === cnt[op] ? 'draw' : cnt[d.me] > cnt[op] ? 'win' : 'loss';
+    status = (d.over ? (res === 'draw' ? "It's a draw!" : res === 'win' ? 'You win! 🎉' : nm + ' wins.') : mine ? 'Your turn. Tap a green dot.' : nm + "'s turn") + `   You (${d.me === 'B' ? 'black' : 'white'}) ${cnt[d.me]} – ${cnt[op]} ${nm}` + (d.note ? (d.note === d.me ? '  (You had no move and passed.)' : `  (${nm} had no move and passed.)`) : '');
+    cell = i => [d.b[i] ? '●' : '', (d.b[i] === 'B' ? 'ob' : d.b[i] === 'W' ? 'ow' : '') + (legal.has(i) ? ' hint' : '') + (i === d.last ? ' lastm' : '')];
+    click = i => { if (mine && legal.has(i)) { otApply(d, i); bdSend(w, { i }); drawArc(w); } };
+  } else if (k === 'checkers') {
+    const legal = mine ? ckLegal(d.b, d.me) : [], from = new Set(legal.map(p => p[0])), tg = new Set(legal.filter(p => p[0] === d.sel).map(p => p[p.length - 1]));
+    if (d.over) res = d.over === 'draw' ? 'draw' : d.over === d.me ? 'win' : 'loss';
+    status = d.over ? (res === 'draw' ? "It's a draw!" : res === 'win' ? 'You win! 🎉' : nm + ' wins.') : mine ? (legal.length && Math.abs((legal[0][1] >> 3) - (legal[0][0] >> 3)) === 2 ? 'Your turn. You must capture!' : 'Your turn. Tap a piece, then where to go.') : nm + "'s turn";
+    status += `   You are ${d.me === 'w' ? 'White (moves first)' : 'Black'}`;
+    cell = i => { const p = d.b[i]; return [p ? (p === p.toUpperCase() ? '♛' : '●') : '', (p ? 'pc ' + (p.toLowerCase() === 'w' ? 'cw' : 'cb') : '') + (d.sel === i ? ' sel' : '') + (tg.has(i) ? ' tgt' : '') + (d.last.includes(i) ? ' lastm' : '')]; };
+    click = i => { if (!mine) return; if (from.has(i)) { d.sel = i; drawArc(w); return; } if (d.sel >= 0) { const p = legal.find(x => x[0] === d.sel && x[x.length - 1] === i); if (p) { ckApply(d, p); bdSend(w, { p }); drawArc(w); } } };
+  } else {
+    const legal = mine ? chLegal(d, d.me) : [], from = new Set(legal.map(m => m.f)), tg = new Set(legal.filter(m => m.f === d.sel).map(m => m.t));
+    if (d.over) res = d.over === 'draw' ? 'draw' : d.over === d.me ? 'win' : 'loss';
+    status = d.over ? (res === 'draw' ? "It's a draw!" : res === 'win' ? 'Checkmate. You win! 🎉' : 'Checkmate. ' + nm + ' wins.') : (d.check ? 'Check! ' : '') + (mine ? 'Your turn. Tap a piece, then where to go.' : nm + "'s turn");
+    status += `   You are ${d.me === 'w' ? 'White (moves first)' : 'Black'}`;
+    const kingSq = d.check ? d.b.indexOf(d.turn === 'w' ? 'K' : 'k') : -1;
+    cell = i => { const p = d.b[i]; return [p ? CH_GLYPH[p] : '', (p ? 'cp ' + (chCol(p) === 'w' ? 'cw' : 'cb') : '') + (d.sel === i ? ' sel' : '') + (tg.has(i) ? ' tgt' : '') + (d.last.includes(i) ? ' lastm' : '') + (i === kingSq ? ' chk' : '')]; };
+    click = i => { if (!mine) return; if (from.has(i)) { d.sel = i; drawArc(w); return; } if (d.sel >= 0) { const m = legal.find(x => x.f === d.sel && x.t === i); if (m) { chApply(d, m); bdSend(w, { f: m.f, t: m.t }); drawArc(w); } } };
+  }
+  if (res && !a.done) { a.done = true; arcRec(w, k, res); }
+  const g = el('div', { class: 'bgrid' + (k === 'othello' ? ' og' : '') });
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const rr = flip ? 7 - r : r, cc = flip ? 7 - c : c, i = rr * 8 + cc, [t, cls] = cell(i); g.append(el('div', { class: 'bc ' + (((rr + cc) % 2) ? 'dk' : 'lt') + ' ' + cls, text: t, onclick: () => click(i) })); }
+  body.append(g, el('div', { class: 'hint', style: 'font-weight:700;color:#1f4170', text: status }));
+}
+
 function c4Win(b) {
   for (let r = 0; r < 6; r++) for (let c = 0; c < 7; c++) { const v = b[r * 7 + c]; if (!v) continue;
     for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [1, -1]]) { let k = 1; for (; k < 4; k++) { const cc = c + dc * k, rr = r + dr * k; if (cc < 0 || cc > 6 || rr < 0 || rr > 5 || b[rr * 7 + cc] !== v) break; } if (k === 4) return v; } }
@@ -1988,7 +2176,7 @@ function drawArc(w) {
   if (a.st === 'wait') { box.append(el('span', { text: 'Waiting for ' + nm + ' to accept…' }), close); return; }
   if (a.st === 'ask') { box.append(el('span', { text: nm + ' invited you to play.' }), el('button', { text: 'Accept', onclick: () => { a.st = 'play'; sendSig(w.id, { t: 'g2', a: 'acc', k: a.k }); arcInit(w); } }), close); close.textContent = 'Decline'; return; }
   const body = el('div', { class: 'arcbody' }); box.append(body);
-  ({ c4: drawC4, rps: drawRPS, hang: drawHang, trivia: drawQuiz, wyr: drawQuiz, knows: drawKnows })[a.k](w, body, nm);
+  ({ c4: drawC4, rps: drawRPS, hang: drawHang, trivia: drawQuiz, wyr: drawQuiz, knows: drawKnows, othello: drawBoard, checkers: drawBoard, chess: drawBoard })[a.k](w, body, nm);
   box.append(close);
 }
 function drawC4(w, body, nm) {
@@ -2675,9 +2863,20 @@ function openSettings() {
       el('div', { class: 'row2' }, pwBtn, el('button', { text: 'Sign out', onclick: () => { closeSettings(); signOut(); } }), el('button', { class: 'danger', text: 'Delete my account…', onclick: () => { closeSettings(); deleteAccount(); } }))));
   { const NAV = [['👤', 'Personal'], ['🎨', 'Appearance'], ['💬', 'Messages'], ['🔔', 'Alerts'], ['🔒', 'Privacy and help'], ['⚙️', 'Account']];
     const GROUP = { 'My profile': 0, 'My picture': 0, 'Make it yours': 0, 'Appearance': 1, 'My emoticon shortcuts': 2, 'Conversations': 2, 'Sounds and notifications': 3, 'Privacy and safety': 4, 'Help, rules and reports': 4 };
-    const snd = (k, t) => chk(t, localStorage.getItem('brb_snd_' + k) !== 'off', v => localStorage.setItem('brb_snd_' + k, v ? 'on' : 'off'));
-    const secs = [...box.querySelectorAll(':scope > .sec')], sounds = secs.find(x => (x.querySelector('h3') || {}).textContent === 'Sounds and notifications');
-    if (sounds) sounds.append(el('div', { class: 'hint', text: 'Choose which sounds play:' }), snd('msg', 'New message sound'), snd('online', 'Contact signs in sound'), snd('nudge', 'Nudge sound'));
+    let secs = [...box.querySelectorAll(':scope > .sec')]; const sounds = secs.find(x => (x.querySelector('h3') || {}).textContent === 'Sounds and notifications');
+    if (sounds) {
+      const kids = [...sounds.children].slice(1), master = kids[0], pops = kids.slice(1, 4), dev = kids.slice(4);
+      const rows = SND_EVENTS.map(([k, label, opts]) => {
+        const sel = el('select', { onchange: () => { if (sel.value === 'custom') { fl.click(); sel.value = localStorage.getItem('brb_snd_' + k) || 'brb'; return; } if (sel.value === 'brb') localStorage.removeItem('brb_snd_' + k); else localStorage.setItem('brb_snd_' + k, sel.value); } },
+          el('option', { value: 'brb', text: 'BRB classic (default)' }), ...opts.map(o => el('option', { value: o, text: SND_NAMES[o] })), el('option', { value: 'custom', text: localStorage.getItem('brb_sndfile_' + k) ? 'My own sound (change)…' : 'My own sound file…' }), el('option', { value: 'off', text: 'No sound' }));
+        sel.value = localStorage.getItem('brb_snd_' + k) || 'brb';
+        const fl = el('input', { type: 'file', accept: 'audio/*', style: 'display:none', onchange: () => { const f = fl.files[0]; fl.value = ''; if (!f) return; if (f.size > 400 * 1024) { say('Please pick a shorter sound: under 400 KB, about 10 seconds.'); return; } const rd = new FileReader(); rd.onload = () => { try { localStorage.setItem('brb_sndfile_' + k, rd.result); localStorage.setItem('brb_snd_' + k, 'custom'); if (![...sel.options].some(o => o.value === 'custom')) return; sel.value = 'custom'; say('Your own sound is set for: ' + label, true); } catch (e) { say('That sound is too big to keep on this device.'); } }; rd.readAsDataURL(f); } });
+        return el('div', { class: 'sndrow' }, el('span', { class: 'sndlbl', text: label }), sel, el('button', { type: 'button', title: 'Listen', text: '▶', onclick: () => { const was = state.sound; state.sound = true; tone(SND[k]); state.sound = was; } }), fl);
+      });
+      const sSounds = sec('Sounds', master, el('div', { class: 'hint', text: 'Pick a sound for each event, press ▶ to listen, or use your own sound file. Your own sounds stay on this device only.' }), ...rows);
+      secs = secs.filter(x => x !== sounds); secs.push(sec('Pop-up alerts', ...pops), sec('Notifications on this device', ...dev), sSounds);
+      GROUP['Pop-up alerts'] = 3; GROUP['Notifications on this device'] = 3; GROUP['Sounds'] = 3;
+    }
     secs.push(sec('Conversations', chk('Show the time on every message', localStorage.getItem('brb_ts') === '1', v => localStorage.setItem('brb_ts', v ? '1' : '0'))));
     const pages = NAV.map(() => el('div', { class: 'spage' }));
     secs.forEach(x => { const g = GROUP[(x.querySelector('h3') || {}).textContent]; pages[g === undefined ? 5 : g].append(x); });
