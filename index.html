@@ -415,7 +415,8 @@ body{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 const SUPABASE_URL = 'https://mzijzbkotfcimueyecin.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_UwdFy7WPB-YGuurepN7rxQ_3Z34w0Xc'; // publishable key ONLY. Never put the secret/service_role key here.
 const APP_NAME = 'BeRightBack';
-const STALE_MS = 150000;   // no heartbeat for this long = shown offline
+const STALE_MS = 150000;   // no heartbeat for this long = shown Away (unless they signed out)
+const AWAY_MAX_MS = 7 * 24 * 3600 * 1000;   // after this long with no sign of life = shown Offline
 /* Sign in automatically: if the person unticked it, a new start of the app begins signed out (shared-computer safety) */
 try { if (!(/Electron/.test(navigator.userAgent) && new URLSearchParams(location.search).get('pop')) && localStorage.getItem('brb_auto') === '0' && !sessionStorage.getItem('brb_live')) Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 const TURNSTILE_KEY = '';   // Cloudflare Turnstile site key (public). Empty = no bot check yet.
@@ -617,9 +618,14 @@ const hue = id => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)
 function effStatus(p) {
   if (!p) return 'offline';
   if (p.status === 'invisible') return 'offline';
-  if (Date.now() - new Date(p.last_seen).getTime() > STALE_MS) return 'offline';
+  const t = new Date(p.last_seen).getTime();
+  if (!t || t < 631152000000) return 'offline';          // signed out on purpose (or never signed in)
+  const age = Date.now() - t;
+  if (age > AWAY_MAX_MS) return 'offline';               // not seen for over 7 days
+  if (age > STALE_MS) return 'away';                     // app closed or phone asleep, but not signed out
   return p.status;
 }
+const isStale = p => !p || Date.now() - new Date(p.last_seen).getTime() > STALE_MS;
 const PRESETS = [
  { n: 'Sunny beach', bg: 'linear-gradient(#7fd0ff,#e3f6ff)', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="68" cy="32" r="15" fill="#ffd43b"/><path d="M0 62Q12 56 25 62T50 62T75 62T100 62V100H0Z" fill="#2f9fe0"/><path d="M0 76Q12 70 25 76T50 76T75 76T100 76V100H0Z" fill="#1c7ed6"/><ellipse cx="22" cy="94" rx="34" ry="11" fill="#f4d58d"/></svg>' },
  { n: 'Goldfish', bg: 'linear-gradient(#9be7ff,#2aa5d8)', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="46" cy="54" rx="27" ry="19" fill="#ff922b"/><path d="M69 54L92 36V72Z" fill="#fd7e14"/><path d="M42 36Q52 22 60 38Z" fill="#fd7e14"/><circle cx="34" cy="49" r="5.5" fill="#fff"/><circle cx="33" cy="49" r="2.6" fill="#222"/><circle cx="18" cy="24" r="4" fill="#fff" fill-opacity=".6"/><circle cx="27" cy="14" r="2.5" fill="#fff" fill-opacity=".6"/></svg>' },
@@ -815,7 +821,7 @@ async function loadAll() {
   state.unread = new Map();
   (u.data || []).forEach(m => state.unread.set(m.sender, (state.unread.get(m.sender) || 0) + 1));
   if (state.profiles.get(state.uid)) state.me = state.profiles.get(state.uid);
-  if (!state.eff.size) for (const [id, pr] of state.profiles) { const st = effStatus(pr); state.eff.set(id, st); state.npSeen.set(id, (st !== 'offline' && pr.now_playing) || ''); }
+  if (!state.eff.size) for (const [id, pr] of state.profiles) { const st = effStatus(pr); state.eff.set(id, st); state.npSeen.set(id, (st !== 'offline' && !isStale(pr) && pr.now_playing) || ''); }
 }
 
 /* ============ MAIN WINDOW ============ */
@@ -1071,7 +1077,7 @@ function signedIn(p) {
   setTimeout(() => { state.flash.delete(p.id); renderContacts(); }, 5000);
 }
 function checkContact(p, say) {
-  const now = effStatus(p), np = (now !== 'offline' && p.now_playing) || '';
+  const now = effStatus(p), np = (now !== 'offline' && !isStale(p) && p.now_playing) || '';
   const was = state.eff.get(p.id), wasNp = state.npSeen.get(p.id) || '';
   state.eff.set(p.id, now); state.npSeen.set(p.id, np);
   if (!say || was === undefined) return;
@@ -3319,6 +3325,9 @@ if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigato
 
 /* ============ AUTO UPDATE ============ */
 const RELEASES = [   // newest first. Add one entry per update that has something people can notice. v must be the same as APP_VER for that update.
+  { v: '2026-11-23a', title: 'Away, not offline', items: [
+    '🌙 If a friend closes the app or their phone goes to sleep, you now see them as Away instead of Offline. Only Sign out and Invisible show Offline.'
+  ] },
   { v: '2026-11-22l', title: 'Private by default', items: [
     '🔔 Phone notifications now show only who wrote to you. Want to see the start of the message too? Switch it on in Settings > Sounds and notifications.'
   ] },
@@ -3347,7 +3356,7 @@ function showLatest(force) {
   const ov = el('div', { class: 'modal latest', onclick: ev => { if (ev.target === ov) done(); } }, el('div', { class: 'mbox' }, el('div', { class: 'lhd' }, el('span', { text: '📰 Latest from BRB' }), el('button', { text: '✕', title: 'Close', onclick: done })), body));
   document.body.append(ov);
 }
-const APP_VER = '2026-11-22l';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-23a';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
