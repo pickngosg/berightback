@@ -1029,6 +1029,7 @@ const noteOn = k => localStorage.getItem('brb_n_' + k) !== 'off';
 async function sysNotify(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   if (!document.hidden && document.hasFocus()) return;     // app is in front: the in-app pop-up is enough
+  body = String(body == null ? '' : body).replace(/\[\[g:[^\]]*\]\]/g, 'sent a GIF 🎞️');
   const opts = { body, tag, icon: ICON_URL, badge: ICON_URL, renotify: true };
   try {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
@@ -1380,10 +1381,32 @@ function sendSig(id, p) {
   }
   sendLive(id, 'sig', { ...p, from: state.uid });
 }
+/* A call or file offer must be proven genuine: the real sender first writes a small proof row (the database only lets you write it as yourself, to your friends).
+   The receiver checks it before ringing. If the check itself cannot run (for example the newest setup.sql was not run yet), it fails open so calls keep working. */
+async function sendInvite(id, p) {
+  const n = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)).slice(0, 40);
+  try { await sb.from('signal_intents').insert({ recipient: id, nonce: n }); } catch (e) {}
+  sendSig(id, { ...p, n });
+  return n;
+}
+const proofOk = new Set();
+async function verifyInvite(p) {
+  const key = p.from + ':' + p.n;
+  if (proofOk.has(key)) return true;
+  if (!p.n || typeof p.n !== 'string') return false;
+  try {
+    const { data, error } = await sb.from('signal_intents').select('id').eq('sender', p.from).eq('nonce', p.n.slice(0, 64)).gt('created_at', new Date(Date.now() - 15 * 60000).toISOString()).limit(1);
+    if (error) { console.warn('invite check unavailable', error.message); return true; }
+    if (data && data.length) { proofOk.add(key); return true; }
+    return false;
+  } catch (e) { return true; }
+}
 function onSig(p) {
   if (p && p.from && (POP ? p.from !== POP : (CAN_POP && isPopped(p.from)))) return;
   if (!p || typeof p.t !== 'string' || !p.from || !friendIds().accepted.includes(p.from) || !state.profiles.get(p.from)) return;
-  if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {}); else if (p.t[0] === 'f') onFile(p.from, p);
+  const go = () => { if (p.t[0] === 'g') onGame(p.from, p); else if (p.t[0] === 'c') onCall(p.from, p).catch(() => {}); else if (p.t[0] === 'f') onFile(p.from, p); };
+  if (p.t === 'c-inv' || p.t === 'f-off') { verifyInvite(p).then(ok => { if (ok) go(); }); return; }
+  go();
 }
 const getNicks = () => { try { return JSON.parse(localStorage.getItem('brb_nicks') || '{}') || {}; } catch (e) { return {}; } };
 const nick = id => getNicks()[id] || '';
@@ -1488,7 +1511,7 @@ async function startCall(w, video) {
   if (!navigator.mediaDevices || !window.RTCPeerConnection) { sysLine(w, 'Calls are not supported by this browser.'); return; }
   RTC.id = w.id; RTC.video = video; RTC.caller = true;
   if (!(await getMedia(w, video))) { RTC.id = null; return; }
-  sendSig(w.id, { t: 'c-inv', video }); { let n = 0; const rep = () => { if (RTC.id === w.id && !RTC.pc && n++ < 8) { sendSig(w.id, { t: 'c-inv', video: RTC.video }); RTC.timers.push(setTimeout(rep, 4000)); } }; RTC.timers.push(setTimeout(rep, 4000)); }
+  const inviteN = await sendInvite(w.id, { t: 'c-inv', video }); { let n = 0; const rep = () => { if (RTC.id === w.id && !RTC.pc && n++ < 8) { sendSig(w.id, { t: 'c-inv', video: RTC.video, n: inviteN }); RTC.timers.push(setTimeout(rep, 4000)); } }; RTC.timers.push(setTimeout(rep, 4000)); }
   callUI(w, (video ? 'Video' : 'Voice') + ' call - ringing…', [['Cancel', () => endCall(w, true)]]);
   setTimeout(() => { if (RTC.id === w.id && !RTC.pc) { sysLine(w, 'No answer.'); endCall(w, true); } }, 45000);
 }
@@ -1762,7 +1785,7 @@ function offerFile(w, file) {
   box.append(el('button', { text: 'Cancel', onclick: () => { if (done) return; end(); sendSig(w.id, { t: 'f-can', fid }); sysLine(w, 'You cancelled the file.'); } }));
   w.log.append(box); w.log.scrollTop = w.log.scrollHeight;
   FOFF.set(fid, { id: w.id, acc: () => { if (done) return; end(); sendMedia(w, file); }, dec: () => { if (done) return; end(); sysLine(w, nm + ' declined the file.'); } });
-  sendSig(w.id, { t: 'f-off', fid, name: (file.name || 'file').slice(0, 60), size: file.size });
+  sendInvite(w.id, { t: 'f-off', fid, name: (file.name || 'file').slice(0, 60), size: file.size });
   tm = setTimeout(() => { if (done) return; end(); sysLine(w, nm + ' did not answer, so the file is going to their inbox instead.'); sendMedia(w, file); }, 20000);
 }
 function onFile(id, p) {
@@ -3325,6 +3348,10 @@ if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigato
 
 /* ============ AUTO UPDATE ============ */
 const RELEASES = [   // newest first. Add one entry per update that has something people can notice. v must be the same as APP_VER for that update.
+  { v: '2026-11-23b', title: 'Safer calls, tidier alerts', items: [
+    '📞 Call and file offers are now checked, so only your real friends can ring you or send you a file request.',
+    '🎞️ Notifications now say "sent you a GIF" instead of showing a long web address.'
+  ] },
   { v: '2026-11-23a', title: 'Away, not offline', items: [
     '🌙 If a friend closes the app or their phone goes to sleep, you now see them as Away instead of Offline. Only Sign out and Invisible show Offline.'
   ] },
@@ -3356,7 +3383,7 @@ function showLatest(force) {
   const ov = el('div', { class: 'modal latest', onclick: ev => { if (ev.target === ov) done(); } }, el('div', { class: 'mbox' }, el('div', { class: 'lhd' }, el('span', { text: '📰 Latest from BRB' }), el('button', { text: '✕', title: 'Close', onclick: done })), body));
   document.body.append(ov);
 }
-const APP_VER = '2026-11-23a';   // change this text every time a new index.html is published; open copies notice the change and update themselves
+const APP_VER = '2026-11-23b';   // change this text every time a new index.html is published; open copies notice the change and update themselves
 let updReady = false, updBar = null;
 const updBusy = () => { try { return !!RTC.pc || [...state.wins.values()].some(w => w.input && w.input.value.trim()); } catch (e) { return false; } };
 async function applyUpdate() {
